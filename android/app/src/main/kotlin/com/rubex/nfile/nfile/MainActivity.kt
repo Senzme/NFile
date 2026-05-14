@@ -1,0 +1,5 @@
+package com.rubex.nfile.nfile
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()
