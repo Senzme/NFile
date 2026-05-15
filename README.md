@@ -22,7 +22,13 @@ With the latest update, NFile transitions from a simple file explorer to a compr
 - **Fluid UI:** iOS-style bouncy physics and smooth transitions throughout the app.
 
 ## Screenshots
-*(Add your screenshots here)*
+<img width="720" height="1600" alt="image" src="https://github.com/user-attachments/assets/bf0782e6-9c6e-46e5-a93f-aaebb01b3d71" />
+<img width="720" height="1600" alt="image" src="https://github.com/user-attachments/assets/66b864ed-2598-477c-bdb4-d045a71e93b9" />
+
+<img width="720" height="1600" alt="image" src="https://github.com/user-attachments/assets/7ffbe12f-f045-4d22-9b0f-9cf6f5dd5416" />
+<img width="720" height="1600" alt="image" src="https://github.com/user-attachments/assets/ca1e78e0-8e68-4985-bc9c-39e763b8ed74" />
+
+
 
 ## Permissions
 The application requires the following permissions for full functionality:
