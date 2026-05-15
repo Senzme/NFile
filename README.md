@@ -1,62 +1,46 @@
-# NFile 🚀
+# NFile
 
 A beautiful, premium, and feature-rich File Manager application built with Flutter.
 
-[![GitHub Repo](https://img.shields.io/badge/GitHub-NFile-blue?style=for-the-badge&logo=github)](https://github.com/Senzme/NFile.git)
+## Overview
+NFile is designed to provide a highly aesthetic file management experience on Android. It features a stunning interface with an exclusive "Broken" icon pack, dynamic AMOLED-friendly dark mode, and a fluid user experience. 
 
-## 🎨 Overview
-NFile is designed to provide a highly aesthetic file management experience on Android. It features a stunning interface with an exclusive "Broken" icon pack, dynamic AMOLED-friendly dark mode, and a fluid user experience.
+With the latest update, NFile transitions from a simple file explorer to a comprehensive media hub with built-in high-performance players and viewers.
 
-## ✨ Features
-
-### 📂 File Management
+## Features
 - **Premium UI/UX:** A textured and alpha-blended aesthetic that gives a modern, glassmorphic feel to your file browsing.
+- **Native Media Indexing:** Lightning-fast gallery views for Images, Videos, and Audio using native device indexing. No more slow recursive scans.
+- **Built-in Media Players:**
+    - **High-Performance Video Player:** Powered by `media_kit` for smooth playback of high-resolution videos.
+    - **Elegant Audio Player:** Clean playback interface with album art support and precise seeking.
+    - **Pinch-to-Zoom Image Viewer:** View your memories in full detail with smooth gestures.
+- **Built-in Text Editor:** View and edit `.txt`, `.md`, `.json`, and other code files directly within the app.
+- **Advanced Sorting:** Filter your media by Newest, Oldest, or Date-wise to find what you need instantly.
 - **Complete File Operations:** Easily copy, cut, paste, rename, and delete files or folders.
-- **Deep Directory Navigation:** Browse internal storage and deeply nested folders with ease.
+- **Quick Categories:** One-tap access to your indexed media libraries.
 - **Storage Overview:** Visual representation of your device's internal storage usage.
+- **Fluid UI:** iOS-style bouncy physics and smooth transitions throughout the app.
 
-### 🎥 Media & Viewing
-- **Native Media Indexing:** Blazing fast indexing of Images, Videos, and Audio files using native system providers—no more waiting for scans.
-- **Built-in Media Players:** High-performance video and audio playback powered by the robust `media_kit` engine.
-- **Integrated Image Viewer:** A premium, zoomable image viewing experience with high-resolution support.
-- **Smart Sorting:** Advanced filtering for media categories—sort by Newest, Oldest, or Date-wise with a single tap.
-
-### 📝 Productivity
-- **Built-in Text Editor:** View and edit `.txt`, `.md`, `.json`, and `.xml` files directly within the application.
-- **Document Handler:** Seamlessly open PDFs and Office documents (DOCX, XLSX, PPTX) using the device's native system handlers for maximum compatibility.
-
-## 📸 Screenshots
+## Screenshots
 *(Add your screenshots here)*
 
-## 🛠️ Permissions
+## Permissions
 The application requires the following permissions for full functionality:
-- `MANAGE_EXTERNAL_STORAGE` (Android 11+) / `READ_EXTERNAL_STORAGE` (Legacy)
-- `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO`, `READ_MEDIA_AUDIO` (Android 13+)
+- `MANAGE_EXTERNAL_STORAGE`: For seamless file operations across the entire device.
+- `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO`, `READ_MEDIA_AUDIO`: For high-speed native media indexing.
 
-## 🚀 Building and Running
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/Senzme/NFile.git
-   ```
-2. Install dependencies:
-   ```bash
-   flutter pub get
-   ```
-3. Run the application:
-   ```bash
-   flutter run
-   ```
+## Building and Running
+1. Clone this repository.
+2. Run `flutter pub get` to install dependencies.
+3. Run `flutter run` on an Android device (API 21+ required).
 
-## 📦 Technologies Used
+## Technologies Used
 - **Flutter & Dart**
-- **media_kit** (High-performance playback)
-- **photo_manager** (Native media indexing)
-- **on_audio_query** (Music database management)
-- **provider** (State Management)
-- **open_filex** (External document handling)
+- **State Management:** `provider`
+- **Media Engine:** `media_kit` (Video & Audio playback)
+- **Indexing:** `photo_manager` & `on_audio_query`
+- **Permissions:** `permission_handler`
+- **Viewers:** `photo_view` & `open_filex`
 
-## 📜 License
+## License
 MIT License
-
----
-Developed with ❤️ by [Senzme](https://github.com/Senzme)
