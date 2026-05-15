@@ -4,6 +4,7 @@ import '../../providers/file_manager_provider.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import '../widgets/storage_overview.dart';
 import 'directory_screen.dart';
+import 'media_category_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback toggleTheme;
@@ -97,8 +98,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildCategoryItem(BuildContext context, IconData icon, String label, Color color, String path) {
     return GestureDetector(
       onTap: () {
-        context.read<FileManagerProvider>().loadDirectory(path);
-        setState(() => _currentIndex = 1);
+        if (label == 'Images') {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.images)));
+        } else if (label == 'Videos') {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.videos)));
+        } else if (label == 'Audio') {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.audios)));
+        } else {
+          context.read<FileManagerProvider>().loadDirectory(path);
+          setState(() => _currentIndex = 1);
+        }
       },
       child: Column(
         children: [

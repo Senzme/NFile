@@ -7,12 +7,17 @@ import 'providers/file_manager_provider.dart';
 import 'ui/screens/home_screen.dart';
 import 'core/icon_fonts/broken_icons.dart';
 
+import 'package:media_kit/media_kit.dart';
+import 'providers/media_provider.dart';
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => FileManagerProvider()),
+        ChangeNotifierProvider(create: (_) => MediaProvider()),
       ],
       child: const NFileApp(),
     ),

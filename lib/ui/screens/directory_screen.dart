@@ -132,7 +132,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                             } else {
                               return FileItem(
                                 file: item,
-                                onTap: () => OpenFilex.open(item.path),
+                                onTap: () => provider.openFile(context, item.path),
                                 onAction: (action) => _handleAction(context, action, item.path),
                               );
                             }

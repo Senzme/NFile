@@ -3,6 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import '../models/file_item_model.dart';
+import 'package:mime/mime.dart';
+import 'package:open_filex/open_filex.dart';
+import '../ui/screens/image_viewer_screen.dart';
+import '../ui/screens/video_player_screen.dart';
+import '../ui/screens/audio_player_screen.dart';
+import '../ui/screens/text_editor_screen.dart';
 
 class FileManagerProvider extends ChangeNotifier {
   List<FileItemModel> _currentFiles = [];
@@ -172,6 +178,21 @@ class FileManagerProvider extends ChangeNotifier {
       await loadDirectory(_currentPath);
     } catch (e) {
       debugPrint('Error creating file: $e');
+    }
+  }
+
+  Future<void> openFile(BuildContext context, String path) async {
+    final mimeType = lookupMimeType(path) ?? '';
+    if (mimeType.startsWith('image/')) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => ImageViewerScreen(imagePath: path)));
+    } else if (mimeType.startsWith('video/')) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => VideoPlayerScreen(videoPath: path)));
+    } else if (mimeType.startsWith('audio/')) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => AudioPlayerScreen(audioPath: path, title: p.basename(path))));
+    } else if (mimeType.startsWith('text/') || path.endsWith('.md') || path.endsWith('.json') || path.endsWith('.xml')) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => TextEditorScreen(filePath: path)));
+    } else {
+      await OpenFilex.open(path);
     }
   }
 }
