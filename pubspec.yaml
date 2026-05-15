@@ -27,6 +27,12 @@ environment:
 # dependencies can be manually updated by changing the version numbers below to
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
+dependency_overrides:
+  on_audio_query_platform_interface:
+    git:
+      url: https://github.com/MSOB7YY/on_audio_query
+      path: packages/on_audio_query_platform_interface
+
 dependencies:
   flutter:
     sdk: flutter
@@ -41,6 +47,15 @@ dependencies:
   intl: ^0.19.0
   mime: ^1.0.5
   path: ^1.9.0
+  photo_manager: ^3.3.0
+  on_audio_query:
+    git:
+      url: https://github.com/MSOB7YY/on_audio_query
+      path: packages/on_audio_query
+  photo_view: ^0.15.0
+  media_kit: any
+  media_kit_video: any
+  media_kit_libs_video: any
 
 dev_dependencies:
   flutter_test:
