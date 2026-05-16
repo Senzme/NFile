@@ -1,8 +1,11 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:on_audio_query/on_audio_query.dart';
+import 'package:path_provider/path_provider.dart';
 
 enum MediaSortOrder {
   newest,
@@ -13,26 +16,74 @@ enum MediaSortOrder {
 class ThumbnailCache {
   static final Map<String, Uint8List?> _cache = {};
   static final Map<String, Future<Uint8List?>> _pending = {};
+  static String? _cacheDir;
+
+  static Future<void> init() async {
+    if (_cacheDir != null) return;
+    try {
+      final dir = await getTemporaryDirectory();
+      final folder = Directory('${dir.path}/nfile_thumbnails');
+      if (!await folder.exists()) {
+        await folder.create(recursive: true);
+      }
+      _cacheDir = folder.path;
+    } catch (_) {}
+  }
 
   static Future<Uint8List?> get(AssetEntity asset) async {
     final key = asset.id;
-    if (_cache.containsKey(key)) return _cache[key];
+    if (_cache.containsKey(key) && _cache[key] != null) return _cache[key];
     if (_pending.containsKey(key)) return _pending[key];
 
-    final future = asset.thumbnailDataWithSize(const ThumbnailSize.square(300));
-    _pending[key] = future;
-    final data = await future;
-    _cache[key] = data;
-    _pending.remove(key);
-    return data;
+    final completer = Completer<Uint8List?>();
+    _pending[key] = completer.future;
+
+    try {
+      await init();
+      if (_cacheDir != null) {
+        final sanitizedKey = key.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+        final file = File('$_cacheDir/$sanitizedKey.thumb');
+        if (await file.exists()) {
+          final bytes = await file.readAsBytes();
+          if (bytes.isNotEmpty) {
+            _cache[key] = bytes;
+            _pending.remove(key);
+            completer.complete(bytes);
+            return bytes;
+          }
+        }
+      }
+
+      final data = await asset.thumbnailDataWithSize(const ThumbnailSize.square(300));
+      if (data != null && data.isNotEmpty) {
+        _cache[key] = data;
+        if (_cacheDir != null) {
+          final sanitizedKey = key.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+          final file = File('$_cacheDir/$sanitizedKey.thumb');
+          await file.writeAsBytes(data, flush: true);
+        }
+      }
+      _pending.remove(key);
+      completer.complete(data);
+      return data;
+    } catch (e) {
+      _pending.remove(key);
+      completer.complete(null);
+      return null;
+    }
   }
 
   static Uint8List? getCached(String id) => _cache[id];
-  static bool hasCached(String id) => _cache.containsKey(id);
+  static bool hasCached(String id) => _cache.containsKey(id) && _cache[id] != null;
 
   static void clear() {
     _cache.clear();
     _pending.clear();
+    if (_cacheDir != null) {
+      try {
+        Directory(_cacheDir!).deleteSync(recursive: true);
+      } catch (_) {}
+    }
   }
 }
 
@@ -56,28 +107,65 @@ class MediaProvider extends ChangeNotifier {
 
   final OnAudioQuery _audioQuery = OnAudioQuery();
 
+  Future<void> _loadFromDiskCache() async {
+    try {
+      final dir = await getTemporaryDirectory();
+      final cacheFile = File('${dir.path}/media_meta_cache.json');
+      if (await cacheFile.exists()) {
+        final jsonStr = await cacheFile.readAsString();
+        final map = jsonDecode(jsonStr) as Map<String, dynamic>;
+
+        if (map.containsKey('documents')) {
+          final docPaths = List<String>.from(map['documents'] ?? []);
+          final cachedDocs = <FileSystemEntity>[];
+          for (final p in docPaths) {
+            final f = File(p);
+            if (f.existsSync()) cachedDocs.add(f);
+          }
+          if (cachedDocs.isNotEmpty && _documents.isEmpty) {
+            _documents = cachedDocs;
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveCache() async {
+    try {
+      final dir = await getTemporaryDirectory();
+      final cacheFile = File('${dir.path}/media_meta_cache.json');
+      final map = {
+        'documents': _documents.map((e) => e.path).toList(),
+      };
+      await cacheFile.writeAsString(jsonEncode(map), flush: true);
+    } catch (_) {}
+  }
+
   Future<void> loadMedia({bool forceRefresh = false}) async {
-    // Don't reload if already loaded (prevents repeated loading on navigation)
     if (_isLoaded && !forceRefresh) return;
 
     _isLoading = true;
     notifyListeners();
 
-    // Request permissions
-    final PermissionState ps = await PhotoManager.requestPermissionExtend();
-    if (ps.isAuth) {
-      await _loadImagesAndVideos();
-    }
+    // Fast initial load from disk cache
+    await _loadFromDiskCache();
 
+    final PermissionState ps = await PhotoManager.requestPermissionExtend();
     bool hasAudioPermission = await _audioQuery.permissionsStatus();
     if (!hasAudioPermission) {
       hasAudioPermission = await _audioQuery.permissionsRequest();
     }
-    if (hasAudioPermission) {
-      await _loadAudios();
-    }
 
-    await _loadDocuments();
+    final futures = <Future<void>>[];
+    if (ps.isAuth) {
+      futures.add(_loadImagesAndVideos());
+    }
+    if (hasAudioPermission) {
+      futures.add(_loadAudios());
+    }
+    futures.add(_loadDocuments().then((_) => _saveCache()));
+
+    await Future.wait(futures);
 
     _applySort();
     _isLoading = false;
@@ -89,7 +177,6 @@ class MediaProvider extends ChangeNotifier {
     List<AssetPathEntity> albums =
         await PhotoManager.getAssetPathList(onlyAll: true);
     if (albums.isNotEmpty) {
-      // Load in pages for fast initial display
       List<AssetEntity> allMedia =
           await albums[0].getAssetListPaged(page: 0, size: 10000);
       _images = allMedia.where((e) => e.type == AssetType.image).toList();
@@ -162,15 +249,15 @@ class MediaProvider extends ChangeNotifier {
   void _applySort() {
     if (_sortOrder == MediaSortOrder.newest ||
         _sortOrder == MediaSortOrder.dateWise) {
-      _images.sort((a, b) => b.createDateTime.compareTo(a.createDateTime));
-      _videos.sort((a, b) => b.createDateTime.compareTo(a.createDateTime));
-      _audios.sort(
-          (a, b) => (b.dateAdded ?? 0).compareTo(a.dateAdded ?? 0));
+        _images.sort((a, b) => b.createDateTime.compareTo(a.createDateTime));
+        _videos.sort((a, b) => b.createDateTime.compareTo(a.createDateTime));
+        _audios.sort(
+            (a, b) => (b.dateAdded ?? 0).compareTo(a.dateAdded ?? 0));
     } else if (_sortOrder == MediaSortOrder.oldest) {
-      _images.sort((a, b) => a.createDateTime.compareTo(b.createDateTime));
-      _videos.sort((a, b) => a.createDateTime.compareTo(b.createDateTime));
-      _audios.sort(
-          (a, b) => (a.dateAdded ?? 0).compareTo(b.dateAdded ?? 0));
+        _images.sort((a, b) => a.createDateTime.compareTo(b.createDateTime));
+        _videos.sort((a, b) => a.createDateTime.compareTo(b.createDateTime));
+        _audios.sort(
+            (a, b) => (a.dateAdded ?? 0).compareTo(b.dateAdded ?? 0));
     }
 
     _documents.sort((a, b) {
@@ -186,3 +273,4 @@ class MediaProvider extends ChangeNotifier {
     });
   }
 }
+
