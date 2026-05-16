@@ -7,6 +7,7 @@ import '../widgets/file_item.dart';
 import '../widgets/folder_item.dart';
 import '../widgets/file_action_dialogs.dart';
 import '../../core/icon_fonts/broken_icons.dart';
+import 'global_search_screen.dart';
 
 class DirectoryScreen extends StatefulWidget {
   const DirectoryScreen({super.key});
@@ -76,7 +77,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
               IconButton(
                 icon: const Icon(Broken.search_normal),
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Search not implemented yet')));
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const GlobalSearchScreen()));
                 },
               ),
               IconButton(

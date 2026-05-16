@@ -393,6 +393,64 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
   }
 }
 
+// ─── Thumbnail Shimmer Placeholder (Namida-style) ───────────────────────────
+class _ThumbnailShimmerPlaceholder extends StatefulWidget {
+  const _ThumbnailShimmerPlaceholder({super.key});
+
+  @override
+  State<_ThumbnailShimmerPlaceholder> createState() => _ThumbnailShimmerPlaceholderState();
+}
+
+class _ThumbnailShimmerPlaceholderState extends State<_ThumbnailShimmerPlaceholder>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final baseColor = isDark ? const Color(0xFF1E1E2E) : const Color(0xFFE0E0E0);
+    final highlightColor = isDark ? const Color(0xFF2A2A3E) : const Color(0xFFF5F5F5);
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return ShaderMask(
+          shaderCallback: (rect) {
+            final gradient = LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [baseColor, highlightColor, baseColor],
+              stops: [
+                0.0,
+                _controller.value,
+                1.0,
+              ],
+            );
+            return gradient.createShader(rect);
+          },
+          child: Container(color: baseColor),
+        );
+      },
+    );
+  }
+}
+
 // ─── Cached Image Tile ────────────────────────────────────────────────────────
 class _CachedImageTile extends StatefulWidget {
   final AssetEntity asset;
@@ -450,14 +508,7 @@ class _CachedImageTileState extends State<_CachedImageTile> {
                   height: double.infinity,
                   gaplessPlayback: true,
                 )
-              : Container(
-                  key: const ValueKey('placeholder'),
-                  color: Colors.grey.withOpacity(0.15),
-                  child: const Center(
-                    child: Icon(Icons.image_outlined,
-                        color: Colors.grey, size: 28),
-                  ),
-                ),
+              : const _ThumbnailShimmerPlaceholder(key: ValueKey('shimmer')),
         ),
       ),
     );
@@ -531,10 +582,7 @@ class _CachedVideoTileState extends State<_CachedVideoTile> {
                       height: double.infinity,
                       gaplessPlayback: true,
                     )
-                  : Container(
-                      key: const ValueKey('placeholder'),
-                      color: Colors.grey.withOpacity(0.15),
-                    ),
+                  : const _ThumbnailShimmerPlaceholder(key: ValueKey('shimmer')),
             ),
             // Dark gradient overlay
             Positioned.fill(
