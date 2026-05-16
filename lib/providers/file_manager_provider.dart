@@ -6,8 +6,8 @@ import '../models/file_item_model.dart';
 import 'package:mime/mime.dart';
 import 'package:open_filex/open_filex.dart';
 import '../ui/screens/image_viewer_screen.dart';
-import '../ui/screens/video_player_screen.dart';
-import '../ui/screens/audio_player_screen.dart';
+import '../ui/screens/video_player/video_player_screen.dart';
+import '../ui/screens/audio_player/audio_player_screen.dart';
 import '../ui/screens/text_editor_screen.dart';
 import '../ui/screens/document_viewer_screen.dart';
 

@@ -6,8 +6,8 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import '../../providers/media_provider.dart';
 import 'image_viewer_screen.dart';
-import 'video_player_screen.dart';
-import 'audio_player_screen.dart';
+import 'video_player/video_player_screen.dart';
+import 'audio_player/audio_player_screen.dart';
 import 'document_viewer_screen.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 

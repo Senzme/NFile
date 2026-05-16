@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 
 class DocumentViewerScreen extends StatefulWidget {
@@ -18,6 +19,8 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
       _fileName.contains('.')
           ? _fileName.substring(_fileName.lastIndexOf('.')).toLowerCase()
           : '';
+
+  bool get _isPdf => _ext == '.pdf';
 
   bool get _isText =>
       _ext == '.txt' ||
@@ -199,7 +202,21 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _isText
               ? _buildTextViewer(theme, isDark)
-              : _buildDocumentPreview(theme, isDark),
+              : _isPdf
+                  ? _buildPdfViewer(theme, isDark)
+                  : _buildDocumentPreview(theme, isDark),
+    );
+  }
+
+  Widget _buildPdfViewer(ThemeData theme, bool isDark) {
+    return Container(
+      color: isDark ? const Color(0xFF0D0D1A) : const Color(0xFFF9F9FF),
+      child: SfPdfViewer.file(
+        File(widget.filePath),
+        canShowScrollHead: true,
+        canShowScrollStatus: true,
+        canShowPaginationDialog: true,
+      ),
     );
   }
 
