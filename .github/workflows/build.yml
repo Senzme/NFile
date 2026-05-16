@@ -37,21 +37,25 @@ jobs:
       - name: Build APK
         run: flutter build apk --release --no-tree-shake-icons
 
+      - name: Rename APK
+        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/NFile-v1.0.${{ github.run_number }}-release.apk
+
       - name: Upload APK to Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: nfile-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: nfile-v1.0.${{ github.run_number }}-apk
+          path: build/app/outputs/flutter-apk/NFile-v1.0.${{ github.run_number }}-release.apk
 
       - name: Release APK
         uses: softprops/action-gh-release@v2
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
-          tag_name: latest
-          name: "Latest Build"
-          body: "Automatic build from the latest push to main branch."
+          tag_name: v1.0.${{ github.run_number }}
+          name: "NFile Release v1.0.${{ github.run_number }}"
+          body: "Automatic release build from latest push to main branch (Commit: ${{ github.sha }})."
           draft: false
           prerelease: false
-          files: build/app/outputs/flutter-apk/app-release.apk
+          make_latest: true
+          files: build/app/outputs/flutter-apk/NFile-v1.0.${{ github.run_number }}-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
