@@ -1,50 +1,120 @@
-# NFile
+<div align="center">
 
-A beautiful, premium, and feature-rich File Manager application built with Flutter.
+# 🗂️ NFile — Premium Media Hub & File Manager
 
-## Overview
-NFile is designed to provide a highly aesthetic file management experience on Android. It features a stunning interface with an exclusive "Broken" icon pack, dynamic AMOLED-friendly dark mode, and a fluid user experience. 
+[![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
+[![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?logo=android&logoColor=white)](https://www.android.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Build & Release APK](https://github.com/Senzme/NFile/actions/workflows/build.yml/badge.svg)](https://github.com/Senzme/NFile/actions/workflows/build.yml)
 
-With the latest update, NFile transitions from a simple file explorer to a comprehensive media hub with built-in high-performance players and viewers.
+**A next-generation, ultra-fast, aesthetic File Manager and Media Hub for Android, featuring hardware-accelerated media players, audio visualizers, and code/document editing.**
 
-## Features
-- **Premium UI/UX:** A textured and alpha-blended aesthetic that gives a modern, glassmorphic feel to your file browsing.
-- **Native Media Indexing:** Lightning-fast gallery views for Images, Videos, and Audio using native device indexing. No more slow recursive scans.
-- **Built-in Media Players:**
-    - **High-Performance Video Player:** Powered by `media_kit` for smooth playback of high-resolution videos.
-    - **Elegant Audio Player:** Clean playback interface with album art support and precise seeking.
-    - **Pinch-to-Zoom Image Viewer:** View your memories in full detail with smooth gestures.
-- **Built-in Text Editor:** View and edit `.txt`, `.md`, `.json`, and other code files directly within the app.
-- **Advanced Sorting:** Filter your media by Newest, Oldest, or Date-wise to find what you need instantly.
-- **Complete File Operations:** Easily copy, cut, paste, rename, and delete files or folders.
-- **Quick Categories:** One-tap access to your indexed media libraries.
-- **Storage Overview:** Visual representation of your device's internal storage usage.
-- **Fluid UI:** iOS-style bouncy physics and smooth transitions throughout the app.
+</div>
 
-## Screenshots
+---
 
-| | | | |
+## ✨ Overview
+
+**NFile** redefines Android file management by combining lightning-fast native indexing with a breathtaking, glassmorphic UI. Moving beyond a conventional file explorer, NFile acts as an all-in-one immersive media hub—allowing you to play high-res videos, enjoy music with live visualizers, inspect documents, and manage your storage flawlessly without ever leaving the app.
+
+---
+
+## 🚀 Key Features
+
+### 💎 Next-Gen Aesthetics & UI/UX
+* **Glassmorphic & Metallic UI:** Beautiful frosted glass overlays, custom depth shadows, and rich AMOLED dark themes.
+* **Exclusive Iconography:** Bespoke icon sets tailored for every file type and system folder.
+* **Bouncy & Fluid Physics:** Cupertino-style spring physics, silky-smooth transitions, and tactile micro-animations.
+
+### 🎵 Advanced Modular Audio Player
+* **Live Waveform Visualization:** Real-time animated frequency waveforms reflecting audio amplitudes.
+* **Immersive Particle Visualizer:** Floating, dynamic background particle effects synced to the playback state.
+* **Spinning Vinyl Artwork:** High-fidelity album art rendering with smooth rotational physics during playback.
+* **Interactive Queue Sheet:** Seamlessly manage upcoming tracks, toggle repeat/shuffle modes, and jump across queues.
+* **Persistent Playback Memory:** Remembers your exact track position and settings across sessions.
+
+### 🎬 High-Performance Video Player
+* **Hardware Acceleration:** Powered by `media_kit` for buttery-smooth 4K/60fps MKV, MP4, and WebM decoding.
+* **Advanced Gesture Controls:** Interactive vertical sliders on screen edges for instant Volume and Brightness adjustments. Swipe horizontally for precise seeking.
+* **Floating Controls Overlay:** Sleek, auto-hiding OSD with quick speed toggles, aspect-ratio switching, and seek indicators showing exact time deltas.
+
+### 📄 Built-in Document & Text Suite
+* **Multi-Format Support:** Instantly open, view, and edit `.txt`, `.md`, `.json`, `.xml`, and source code files.
+* **Syntax & Formatting:** Clean line numbering, adjustable typography scaling, and distraction-free reading modes.
+* **In-App Editing:** Modify configuration files or take quick notes directly inside the storage explorer.
+
+### 🖼️ High-Fidelity Image Viewer
+* **Pinch-to-Zoom:** Fluid multi-touch scaling and smooth pan navigation.
+* **Instant Gallery Swipe:** Seamlessly transition between hundreds of photos without lag.
+
+### ⚡ Lightning-Fast Media Indexing & Operations
+* **Native Android MediaStore Integration:** Bypasses slow recursive folder scanning. Audio, Images, Videos, and Documents appear instantly upon launch.
+* **Robust File Operations:** Batch selection, instant cut/copy/paste, renaming, deletion, and directory creation.
+* **Storage Analytics:** Real-time visual storage breakdown showing used capacity and remaining free space.
+
+---
+
+## 📸 Screenshots
+
+| Home & Storage | Media Indexing | Audio Visualizer | Advanced Player |
 |:---:|:---:|:---:|:---:|
-| <img src="https://github.com/user-attachments/assets/bf0782e6-9c6e-46e5-a93f-aaebb01b3d71" width="200"> | <img src="https://github.com/user-attachments/assets/66b864ed-2598-477c-bdb4-d045a71e93b9" width="200"> | <img src="https://github.com/user-attachments/assets/7ffbe12f-f045-4d22-9b0f-9cf6f5dd5416" width="200"> | <img src="https://github.com/user-attachments/assets/ca1e78e0-8e68-4985-bc9c-39e763b8ed74" width="200"> |
+| <img src="https://github.com/user-attachments/assets/bf0782e6-9c6e-46e5-a93f-aaebb01b3d71" width="220"> | <img src="https://github.com/user-attachments/assets/66b864ed-2598-477c-bdb4-d045a71e93b9" width="220"> | <img src="https://github.com/user-attachments/assets/7ffbe12f-f045-4d22-9b0f-9cf6f5dd5416" width="220"> | <img src="https://github.com/user-attachments/assets/ca1e78e0-8e68-4985-bc9c-39e763b8ed74" width="220"> |
 
+---
 
-## Permissions
-The application requires the following permissions for full functionality:
-- `MANAGE_EXTERNAL_STORAGE`: For seamless file operations across the entire device.
-- `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO`, `READ_MEDIA_AUDIO`: For high-speed native media indexing.
+## 🛠️ Architecture & Tech Stack
 
-## Building and Running
-1. Clone this repository.
-2. Run `flutter pub get` to install dependencies.
-3. Run `flutter run` on an Android device (API 21+ required).
+```yaml
+Core Framework: Flutter (Dart)
+Media Engine: media_kit & video_player
+Audio Indexing: on_audio_query
+Gallery Indexing: photo_manager
+State Management: provider
+Permissions: permission_handler
+Document & Image Viewing: photo_view, open_filex
+CI/CD Pipeline: GitHub Actions (Automated Release APK Generation)
+```
 
-## Technologies Used
-- **Flutter & Dart**
-- **State Management:** `provider`
-- **Media Engine:** `media_kit` (Video & Audio playback)
-- **Indexing:** `photo_manager` & `on_audio_query`
-- **Permissions:** `permission_handler`
-- **Viewers:** `photo_view` & `open_filex`
+---
 
-## License
-MIT License
+## 📦 Automated Releases & Downloads
+
+Every push to the `main` branch automatically triggers our GitHub Actions workflow, compiling a fully optimized, release-grade Android APK.
+
+📥 **[Download the Latest APK from the Releases Page](https://github.com/Senzme/NFile/releases/latest)**
+
+---
+
+## 🔐 Permissions & Privacy
+
+To deliver its robust capabilities, NFile requests the following standard permissions:
+* `MANAGE_EXTERNAL_STORAGE`: Essential for full-device file manipulation and organization.
+* `READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO` / `READ_MEDIA_AUDIO`: Required for ultra-fast, zero-lag media category indexing.
+
+*NFile operates 100% locally on your device. Your data and media never leave your phone.*
+
+---
+
+## 💻 Building Locally
+
+1. **Clone the Repository:**
+   ```bash
+   git clone https://github.com/Senzme/NFile.git
+   cd NFile
+   ```
+2. **Install Dependencies:**
+   ```bash
+   flutter pub get
+   ```
+3. **Compile & Run:**
+   ```bash
+   flutter run --release
+   ```
+
+---
+
+<div align="center">
+
+**Built with ❤️ for Android** • [MIT License](LICENSE)
+
+</div>
