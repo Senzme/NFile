@@ -9,6 +9,7 @@ import '../ui/screens/image_viewer_screen.dart';
 import '../ui/screens/video_player_screen.dart';
 import '../ui/screens/audio_player_screen.dart';
 import '../ui/screens/text_editor_screen.dart';
+import '../ui/screens/document_viewer_screen.dart';
 
 class FileManagerProvider extends ChangeNotifier {
   List<FileItemModel> _currentFiles = [];
@@ -183,6 +184,8 @@ class FileManagerProvider extends ChangeNotifier {
 
   Future<void> openFile(BuildContext context, String path) async {
     final mimeType = lookupMimeType(path) ?? '';
+    final ext = p.extension(path).toLowerCase();
+    const docExts = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.epub', '.odt'];
     if (mimeType.startsWith('image/')) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => ImageViewerScreen(imagePath: path)));
     } else if (mimeType.startsWith('video/')) {
@@ -191,6 +194,8 @@ class FileManagerProvider extends ChangeNotifier {
       Navigator.push(context, MaterialPageRoute(builder: (_) => AudioPlayerScreen(audioPath: path, title: p.basename(path))));
     } else if (mimeType.startsWith('text/') || path.endsWith('.md') || path.endsWith('.json') || path.endsWith('.xml')) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => TextEditorScreen(filePath: path)));
+    } else if (docExts.contains(ext)) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => DocumentViewerScreen(filePath: path)));
     } else {
       await OpenFilex.open(path);
     }

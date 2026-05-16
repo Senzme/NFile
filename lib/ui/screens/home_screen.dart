@@ -83,10 +83,10 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildCategoryItem(context, Broken.image, 'Images', Colors.purpleAccent, '/storage/emulated/0/Pictures'),
-                _buildCategoryItem(context, Broken.video, 'Videos', Colors.redAccent, '/storage/emulated/0/Movies'),
-                _buildCategoryItem(context, Broken.music, 'Audio', Colors.orangeAccent, '/storage/emulated/0/Music'),
-                _buildCategoryItem(context, Broken.document, 'Docs', Colors.blueAccent, '/storage/emulated/0/Documents'),
+                _buildCategoryItem(context, Broken.image, 'Images', Colors.purpleAccent, ''),
+                _buildCategoryItem(context, Broken.video, 'Videos', Colors.redAccent, ''),
+                _buildCategoryItem(context, Broken.music, 'Audio', Colors.orangeAccent, ''),
+                _buildCategoryItem(context, Broken.document, 'Docs', Colors.blueAccent, ''),
               ],
             ),
           ),
@@ -104,6 +104,8 @@ class _HomeScreenState extends State<HomeScreen> {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.videos)));
         } else if (label == 'Audio') {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.audios)));
+        } else if (label == 'Docs') {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.documents)));
         } else {
           context.read<FileManagerProvider>().loadDirectory(path);
           setState(() => _currentIndex = 1);
