@@ -438,7 +438,7 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
                         itemBuilder: (context, index) {
                           final item = items[index];
                           final isSelected = _selectedInternalPaths.contains(item.fullPath);
-                          final iconColor = item.isDirectory ? Colors.amber : FileUtils.getColorForFile(item.name, context);
+                          final iconColor = item.isDirectory ? theme.colorScheme.primary : FileUtils.getColorForFile(item.name, context);
 
                           return Card(
                             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -471,11 +471,11 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
                                       width: 48,
                                       height: 48,
                                       decoration: BoxDecoration(
-                                        color: isSelected ? theme.colorScheme.primary : iconColor.withOpacity(0.1),
+                                        color: isSelected ? theme.colorScheme.primary : (item.isDirectory ? theme.colorScheme.primary.withOpacity(0.1) : iconColor.withOpacity(0.1)),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Icon(
-                                        isSelected ? Broken.tick_circle : (item.isDirectory ? Broken.folder_2 : FileUtils.getIconForFile(item.name)),
+                                        isSelected ? Broken.tick_circle : (item.isDirectory ? Broken.folder : FileUtils.getIconForFile(item.name)),
                                         color: isSelected ? theme.colorScheme.onPrimary : iconColor,
                                         size: 28,
                                       ),
