@@ -228,9 +228,41 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
     }
   }
 
+  Future<void> _pasteFromClipboard() async {
+    final provider = context.read<FileManagerProvider>();
+    if (!provider.hasClipboard) return;
+
+    setState(() => _isLoading = true);
+
+    int count = 0;
+    for (final path in provider.clipboardPaths) {
+      final success = await ArchiveService.addFileToArchive(
+        archivePath: widget.archivePath,
+        filePathToAdd: path,
+        internalPath: _currentInternalPath,
+      );
+      if (success) {
+        count++;
+        if (provider.isCut) {
+          try {
+            await File(path).delete();
+          } catch (_) {}
+        }
+      }
+    }
+
+    provider.clearClipboard();
+    await _loadArchive();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pasted $count item(s) into archive ✓')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final provider = context.watch<FileManagerProvider>();
     final items = _currentItems;
 
     return PopScope(
@@ -362,11 +394,19 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
                           );
                         },
                       ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _addNewFile,
-          icon: const Icon(Broken.add),
-          label: const Text('Add File'),
-        ),
+        floatingActionButton: provider.hasClipboard
+            ? FloatingActionButton.extended(
+                onPressed: _pasteFromClipboard,
+                backgroundColor: theme.colorScheme.primaryContainer,
+                foregroundColor: theme.colorScheme.onPrimaryContainer,
+                icon: const Icon(Broken.document_download),
+                label: Text('Paste Here (${provider.clipboardPaths.length})'),
+              )
+            : FloatingActionButton.extended(
+                onPressed: _addNewFile,
+                icon: const Icon(Broken.add),
+                label: const Text('Add File'),
+              ),
       ),
     );
   }

@@ -28,6 +28,14 @@ class FileManagerProvider extends ChangeNotifier {
   final List<String> _clipboardPaths = [];
   bool _isCut = false;
   bool get hasClipboard => _clipboardPaths.isNotEmpty;
+  List<String> get clipboardPaths => _clipboardPaths;
+  bool get isCut => _isCut;
+
+  void clearClipboard() {
+    _clipboardPaths.clear();
+    _isCut = false;
+    notifyListeners();
+  }
 
   final Set<String> _selectedPaths = {};
   Set<String> get selectedPaths => _selectedPaths;
