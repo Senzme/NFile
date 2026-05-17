@@ -9,23 +9,32 @@ class PremiumStorageOverview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const double usedPercentage = 0.65;
+    final theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+
+    final gradientColors = isDark
+        ? const [Color(0xFF1E293B), Color(0xFF0F172A)] // Sleek Slate in Dark Mode
+        : [theme.colorScheme.primary, theme.colorScheme.primary.withOpacity(0.82)]; // Primary Theme Gradient in Light Mode
+
+    final accentColor = isDark ? const Color(0xFF38BDF8) : Colors.white;
+    final iconBgColor = isDark ? const Color(0xFF38BDF8).withOpacity(0.15) : Colors.white.withOpacity(0.25);
+    final iconBorderColor = isDark ? const Color(0xFF38BDF8).withOpacity(0.3) : Colors.white.withOpacity(0.4);
+    final shadowColor = isDark ? const Color(0xFF0F172A).withOpacity(0.3) : theme.colorScheme.primary.withOpacity(0.35);
+    final progressBgColor = isDark ? Colors.white.withOpacity(0.12) : Colors.white.withOpacity(0.3);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Container(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [
-              Color(0xFF1E293B), // Sleek Slate 800
-              Color(0xFF0F172A), // Deep Slate 900
-            ],
+          gradient: LinearGradient(
+            colors: gradientColors,
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF0F172A).withOpacity(0.3),
+              color: shadowColor,
               blurRadius: 18,
               offset: const Offset(0, 8),
             ),
@@ -50,11 +59,11 @@ class PremiumStorageOverview extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF38BDF8).withOpacity(0.15),
+                          color: iconBgColor,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.3), width: 1),
+                          border: Border.all(color: iconBorderColor, width: 1),
                         ),
-                        child: const Icon(Broken.folder_2, color: Color(0xFF38BDF8), size: 26),
+                        child: Icon(Broken.folder_2, color: accentColor, size: 26),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -76,7 +85,7 @@ class PremiumStorageOverview extends StatelessWidget {
                             Text(
                               'Browse device files',
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.75),
+                                color: Colors.white.withOpacity(0.8),
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -90,9 +99,9 @@ class PremiumStorageOverview extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
+                          color: Colors.white.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
+                          border: Border.all(color: Colors.white.withOpacity(0.25), width: 1),
                         ),
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
@@ -113,8 +122,8 @@ class PremiumStorageOverview extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                     child: LinearProgressIndicator(
                       value: usedPercentage,
-                      backgroundColor: Colors.white.withOpacity(0.12),
-                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF38BDF8)), // Vibrant Sky Blue
+                      backgroundColor: progressBgColor,
+                      valueColor: AlwaysStoppedAnimation<Color>(accentColor),
                       minHeight: 8,
                     ),
                   ),
@@ -128,7 +137,7 @@ class PremiumStorageOverview extends StatelessWidget {
                       ),
                       Text(
                         '128 GB total',
-                        style: TextStyle(color: Colors.white.withOpacity(0.7), fontWeight: FontWeight.w500, fontSize: 12),
+                        style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w500, fontSize: 12),
                       ),
                     ],
                   ),
