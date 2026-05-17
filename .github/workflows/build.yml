@@ -33,22 +33,45 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Get App Version
+        id: get_version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d '+' -f 1)
+          echo "APP_VERSION=v$VERSION" >> $GITHUB_ENV
+
+      - name: Check if Version Already Released
+        id: check_release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view ${{ env.APP_VERSION }} --repo ${{ github.repository }} >/dev/null 2>&1; then
+            echo "Version ${{ env.APP_VERSION }} is already released. Skipping build!"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Version ${{ env.APP_VERSION }} is new. Proceeding with build!"
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Set up Java
+        if: steps.check_release.outputs.exists == 'false'
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
 
       - name: Set up Flutter
+        if: steps.check_release.outputs.exists == 'false'
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.x'
           channel: 'stable'
 
       - name: Install Dependencies
+        if: steps.check_release.outputs.exists == 'false'
         run: flutter pub get
 
       - name: Configure Keystore and Signing
+        if: steps.check_release.outputs.exists == 'false'
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
@@ -67,37 +90,34 @@ jobs:
             echo "Keystore secrets not found, skipping cryptographic signing setup."
           fi
 
-      - name: Get App Version
-        id: get_version
-        run: |
-          VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d '+' -f 1)
-          echo "APP_VERSION=v$VERSION" >> $GITHUB_ENV
-
       - name: Build Split APKs
+        if: steps.check_release.outputs.exists == 'false'
         run: flutter build apk --release --split-per-abi --obfuscate --split-debug-info=build/app/outputs/symbols --no-tree-shake-icons
 
       - name: Rename APKs
+        if: steps.check_release.outputs.exists == 'false'
         run: |
           mv build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/app/outputs/flutter-apk/NFile-${{ env.APP_VERSION }}-arm64-v8a.apk
           mv build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk build/app/outputs/flutter-apk/NFile-${{ env.APP_VERSION }}-armeabi-v7a.apk
           mv build/app/outputs/flutter-apk/app-x86_64-release.apk build/app/outputs/flutter-apk/NFile-${{ env.APP_VERSION }}-x86_64.apk
 
       - name: Upload APKs to Artifacts
+        if: steps.check_release.outputs.exists == 'false'
         uses: actions/upload-artifact@v4
         with:
           name: nfile-${{ env.APP_VERSION }}-apks
           path: build/app/outputs/flutter-apk/NFile-${{ env.APP_VERSION }}-*.apk
 
       - name: Release APKs
+        if: steps.check_release.outputs.exists == 'false' && github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
           tag_name: ${{ env.APP_VERSION }}
           name: "NFile Release ${{ env.APP_VERSION }}"
           body: |
             ### Official NFile Production Release ${{ env.APP_VERSION }}
-            * **Optimized & Split by Architecture**: Download `arm64-v8a` for 64-bit modern devices (~15MB).
-            * Professionally signed and compiled with R8 code shrinking and uncompressed native libs.
+            * **Optimized & Architecture Split**: Download `arm64-v8a` for 64-bit modern devices.
+            * Professionally signed and compiled with R8 code shrinking, Dart obfuscation, and uncompressed native libs.
           draft: false
           prerelease: false
           make_latest: true
