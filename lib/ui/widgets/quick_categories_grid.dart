@@ -12,62 +12,63 @@ class QuickCategoriesGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final mediaProvider = context.watch<MediaProvider>();
 
     final allCategoriesMap = <String, Map<String, dynamic>>{
       'Images': {
         'label': 'Images',
         'icon': Broken.image,
-        'color': Colors.purpleAccent,
+        'color': isDark ? Colors.purpleAccent : Colors.purple,
         'count': '${mediaProvider.images.length}',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.images))),
       },
       'Videos': {
         'label': 'Videos',
         'icon': Broken.video,
-        'color': Colors.redAccent,
+        'color': isDark ? Colors.redAccent : const Color(0xFFD32F2F),
         'count': '${mediaProvider.videos.length}',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.videos))),
       },
       'Audio': {
         'label': 'Audio',
         'icon': Broken.music,
-        'color': Colors.orangeAccent,
+        'color': isDark ? Colors.orangeAccent : const Color(0xFFE65100),
         'count': '${mediaProvider.audios.length}',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.audios))),
       },
       'Documents': {
         'label': 'Documents',
         'icon': Broken.document,
-        'color': Colors.blueAccent,
+        'color': isDark ? Colors.blueAccent : const Color(0xFF1976D2),
         'count': '${mediaProvider.documents.length}',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.documents))),
       },
       'Archives': {
         'label': 'Archives',
         'icon': Broken.archive,
-        'color': Colors.tealAccent,
+        'color': isDark ? Colors.tealAccent : const Color(0xFF00796B),
         'count': '${mediaProvider.archives.length}',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.archives))),
       },
       'Downloads': {
         'label': 'Downloads',
         'icon': Broken.document_download,
-        'color': Colors.greenAccent,
+        'color': isDark ? Colors.greenAccent : const Color(0xFF2E7D32),
         'count': '${mediaProvider.downloads.length}',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.downloads))),
       },
       'APKs': {
         'label': 'APKs',
         'icon': Broken.box,
-        'color': Colors.amber,
+        'color': isDark ? Colors.amber : const Color(0xFFF57C00),
         'count': '${mediaProvider.apks.length}',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.apks))),
       },
       'Screenshots': {
         'label': 'Screenshots',
         'icon': Broken.mobile,
-        'color': Colors.pinkAccent,
+        'color': isDark ? Colors.pinkAccent : const Color(0xFFC2185B),
         'count': '${mediaProvider.screenshots.length}',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.screenshots))),
       },

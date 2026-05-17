@@ -12,6 +12,7 @@ import '../ui/screens/text_editor_screen.dart';
 import '../ui/screens/document_viewer_screen.dart';
 import '../ui/screens/archive_viewer_screen.dart';
 import '../services/archive_service.dart';
+import '../services/apk_installer_service.dart';
 import '../ui/widgets/extract_archive_dialog.dart';
 import '../core/utils.dart';
 
@@ -385,6 +386,8 @@ class FileManagerProvider extends ChangeNotifier {
       Navigator.push(context, MaterialPageRoute(builder: (_) => TextEditorScreen(filePath: path)));
     } else if (docExts.contains(ext)) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => DocumentViewerScreen(filePath: path)));
+    } else if (ApkInstallerService.isApk(path)) {
+      await ApkInstallerService.installApk(context, path);
     } else {
       await OpenFilex.open(path);
     }
