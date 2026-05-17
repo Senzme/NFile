@@ -6,30 +6,39 @@ import '../../core/icon_fonts/broken_icons.dart';
 class FileItem extends StatelessWidget {
   final FileItemModel file;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final Function(String) onAction;
+  final bool isSelected;
 
   const FileItem({
     super.key,
     required this.file,
     required this.onTap,
+    this.onLongPress,
     required this.onAction,
+    this.isSelected = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final iconColor = FileUtils.getColorForFile(file.path, context);
+    final isArchive = FileUtils.isArchive(file.path);
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      color: theme.colorScheme.surface,
+      color: isSelected ? theme.colorScheme.primaryContainer.withOpacity(0.4) : theme.colorScheme.surface,
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: theme.dividerColor.withOpacity(0.1)),
+        side: BorderSide(
+          color: isSelected ? theme.colorScheme.primary : theme.dividerColor.withOpacity(0.1),
+          width: isSelected ? 1.5 : 1.0,
+        ),
       ),
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(12.0),
@@ -39,12 +48,12 @@ class FileItem extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.1),
+                  color: isSelected ? theme.colorScheme.primary : iconColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
-                  FileUtils.getIconForFile(file.path),
-                  color: iconColor,
+                  isSelected ? Broken.tick_circle : FileUtils.getIconForFile(file.path),
+                  color: isSelected ? theme.colorScheme.onPrimary : iconColor,
                   size: 28,
                 ),
               ),
@@ -84,16 +93,21 @@ class FileItem extends StatelessWidget {
                 ),
               ),
               PopupMenuButton<String>(
-                icon: const Icon(Broken.more, size: 20),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                icon: const Icon(Broken.more, size: 22),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                position: PopupMenuPosition.under,
+                elevation: 8,
                 onSelected: onAction,
                 itemBuilder: (context) => [
-                  const PopupMenuItem(value: 'copy', child: Row(children: [Icon(Broken.copy, size: 18), SizedBox(width: 8), Text('Copy')])),
-                  const PopupMenuItem(value: 'cut', child: Row(children: [Icon(Broken.scissor, size: 18), SizedBox(width: 8), Text('Cut')])),
-                  const PopupMenuItem(value: 'rename', child: Row(children: [Icon(Broken.edit, size: 18), SizedBox(width: 8), Text('Rename')])),
+                  if (isArchive)
+                    const PopupMenuItem(value: 'extract', child: Row(children: [Icon(Broken.archive, size: 20), SizedBox(width: 12), Text('Extract', style: TextStyle(fontWeight: FontWeight.w500))])),
+                  const PopupMenuItem(value: 'archive', child: Row(children: [Icon(Broken.box_add, size: 20), SizedBox(width: 12), Text('Archive', style: TextStyle(fontWeight: FontWeight.w500))])),
+                  const PopupMenuItem(value: 'copy', child: Row(children: [Icon(Broken.document_copy, size: 20), SizedBox(width: 12), Text('Copy', style: TextStyle(fontWeight: FontWeight.w500))])),
+                  const PopupMenuItem(value: 'cut', child: Row(children: [Icon(Broken.scissor, size: 20), SizedBox(width: 12), Text('Cut', style: TextStyle(fontWeight: FontWeight.w500))])),
+                  const PopupMenuItem(value: 'rename', child: Row(children: [Icon(Broken.edit, size: 20), SizedBox(width: 12), Text('Rename', style: TextStyle(fontWeight: FontWeight.w500))])),
                   const PopupMenuItem(
                     value: 'delete',
-                    child: Row(children: [Icon(Broken.trash, size: 18, color: Colors.red), SizedBox(width: 8), Text('Delete', style: TextStyle(color: Colors.red))]),
+                    child: Row(children: [Icon(Broken.trash, size: 20, color: Colors.redAccent), SizedBox(width: 12), Text('Delete', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w500))]),
                   ),
                 ],
               ),

@@ -10,6 +10,9 @@ import '../ui/screens/video_player/video_player_screen.dart';
 import '../ui/screens/audio_player/audio_player_screen.dart';
 import '../ui/screens/text_editor_screen.dart';
 import '../ui/screens/document_viewer_screen.dart';
+import '../services/archive_service.dart';
+import '../ui/widgets/extract_archive_dialog.dart';
+import '../core/utils.dart';
 
 class FileManagerProvider extends ChangeNotifier {
   List<FileItemModel> _currentFiles = [];
@@ -21,13 +24,15 @@ class FileManagerProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
-  String? _clipboardPath;
+  final List<String> _clipboardPaths = [];
   bool _isCut = false;
-  
-  bool get hasClipboard => _clipboardPath != null;
+  bool get hasClipboard => _clipboardPaths.isNotEmpty;
+
+  final Set<String> _selectedPaths = {};
+  Set<String> get selectedPaths => _selectedPaths;
+  bool get isSelectionMode => _selectedPaths.isNotEmpty;
 
   Future<void> init() async {
-    // Start at external storage root if available, otherwise app doc dir
     if (Platform.isAndroid) {
       _currentPath = '/storage/emulated/0';
       if (!Directory(_currentPath).existsSync()) {
@@ -44,6 +49,7 @@ class FileManagerProvider extends ChangeNotifier {
   Future<void> loadDirectory(String path) async {
     _isLoading = true;
     _currentPath = path;
+    _selectedPaths.clear();
     notifyListeners();
 
     try {
@@ -51,7 +57,6 @@ class FileManagerProvider extends ChangeNotifier {
       final entities = dir.listSync();
       _currentFiles = entities.map((e) => FileItemModel.fromEntity(e)).toList();
       
-      // Sort: Directories first, then alphabetically
       _currentFiles.sort((a, b) {
         if (a.isDirectory && !b.isDirectory) return -1;
         if (!a.isDirectory && b.isDirectory) return 1;
@@ -72,51 +77,120 @@ class FileManagerProvider extends ChangeNotifier {
     }
   }
 
+  void toggleSelection(String path) {
+    if (_selectedPaths.contains(path)) {
+      _selectedPaths.remove(path);
+    } else {
+      _selectedPaths.add(path);
+    }
+    notifyListeners();
+  }
+
+  void selectAll() {
+    _selectedPaths.clear();
+    _selectedPaths.addAll(_currentFiles.map((e) => e.path));
+    notifyListeners();
+  }
+
+  void clearSelection() {
+    _selectedPaths.clear();
+    notifyListeners();
+  }
+
   void copyFile(String path) {
-    _clipboardPath = path;
+    _clipboardPaths.clear();
+    _clipboardPaths.add(path);
     _isCut = false;
     notifyListeners();
   }
 
   void cutFile(String path) {
-    _clipboardPath = path;
+    _clipboardPaths.clear();
+    _clipboardPaths.add(path);
     _isCut = true;
     notifyListeners();
   }
 
-  Future<void> pasteFile() async {
-    if (_clipboardPath == null) return;
-    
-    final sourceEntity = FileSystemEntity.typeSync(_clipboardPath!) == FileSystemEntityType.directory
-        ? Directory(_clipboardPath!)
-        : File(_clipboardPath!);
-        
-    final fileName = p.basename(_clipboardPath!);
-    final destinationPath = p.join(_currentPath, fileName);
+  void copySelected() {
+    if (_selectedPaths.isEmpty) return;
+    _clipboardPaths.clear();
+    _clipboardPaths.addAll(_selectedPaths);
+    _isCut = false;
+    _selectedPaths.clear();
+    notifyListeners();
+  }
+
+  void cutSelected() {
+    if (_selectedPaths.isEmpty) return;
+    _clipboardPaths.clear();
+    _clipboardPaths.addAll(_selectedPaths);
+    _isCut = true;
+    _selectedPaths.clear();
+    notifyListeners();
+  }
+
+  Future<void> deleteSelected() async {
+    if (_selectedPaths.isEmpty) return;
+    _isLoading = true;
+    notifyListeners();
 
     try {
-      if (sourceEntity is File) {
-        if (_isCut) {
-          await sourceEntity.rename(destinationPath);
-        } else {
-          await sourceEntity.copy(destinationPath);
+      for (final path in _selectedPaths) {
+        final type = FileSystemEntity.typeSync(path);
+        if (type == FileSystemEntityType.directory) {
+          await Directory(path).delete(recursive: true);
+        } else if (type == FileSystemEntityType.file) {
+          await File(path).delete();
         }
-      } else if (sourceEntity is Directory) {
-        if (_isCut) {
-          await sourceEntity.rename(destinationPath);
-        } else {
-          await _copyDirectory(Directory(_clipboardPath!), Directory(destinationPath));
+      }
+    } catch (e) {
+      debugPrint('Error deleting selected files: $e');
+    }
+
+    _selectedPaths.clear();
+    await loadDirectory(_currentPath);
+  }
+
+  Future<void> pasteFile() async {
+    if (_clipboardPaths.isEmpty) return;
+    
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      for (final srcPath in _clipboardPaths) {
+        final sourceEntity = FileSystemEntity.typeSync(srcPath) == FileSystemEntityType.directory
+            ? Directory(srcPath)
+            : File(srcPath);
+            
+        final fileName = p.basename(srcPath);
+        final destinationPath = p.join(_currentPath, fileName);
+
+        if (sourceEntity is File) {
+          if (_isCut) {
+            await sourceEntity.rename(destinationPath);
+          } else {
+            await sourceEntity.copy(destinationPath);
+          }
+        } else if (sourceEntity is Directory) {
+          if (_isCut) {
+            await sourceEntity.rename(destinationPath);
+          } else {
+            await _copyDirectory(Directory(srcPath), Directory(destinationPath));
+          }
         }
       }
       
       if (_isCut) {
-        _clipboardPath = null;
+        _clipboardPaths.clear();
         _isCut = false;
       }
       
       await loadDirectory(_currentPath);
     } catch (e) {
       debugPrint('Error pasting file: $e');
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
@@ -182,7 +256,62 @@ class FileManagerProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> createArchive({
+    required String archiveName,
+    required String format,
+    required int compressionLevel,
+    String? password,
+    int? splitSizeMB,
+    required bool deleteSource,
+    required bool separateArchives,
+    List<String>? targetPaths,
+  }) async {
+    final paths = targetPaths ?? (_selectedPaths.isNotEmpty ? _selectedPaths.toList() : [_currentPath]);
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await ArchiveService.createArchive(
+        sourcePaths: paths,
+        destinationDir: _currentPath,
+        archiveName: archiveName,
+        format: format,
+        compressionLevel: compressionLevel,
+        password: password,
+        splitSizeMB: splitSizeMB,
+        deleteSource: deleteSource,
+        separateArchives: separateArchives,
+      );
+    } catch (e) {
+      debugPrint('Error creating archive: $e');
+    }
+
+    _selectedPaths.clear();
+    await loadDirectory(_currentPath);
+  }
+
   Future<void> openFile(BuildContext context, String path) async {
+    if (FileUtils.isArchive(path)) {
+      final destDir = p.join(_currentPath, p.basenameWithoutExtension(path));
+      final res = await ExtractArchiveDialog.show(context, archiveName: p.basename(path), defaultDestDir: destDir);
+      if (res != null && context.mounted) {
+        _isLoading = true;
+        notifyListeners();
+        try {
+          await ArchiveService.extractArchive(archivePath: path, destinationDir: res.destinationDir, password: res.password);
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Archive extracted successfully')));
+          }
+        } catch (e) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Extraction failed: $e')));
+          }
+        }
+        await loadDirectory(_currentPath);
+      }
+      return;
+    }
+
     final mimeType = lookupMimeType(path) ?? '';
     final ext = p.extension(path).toLowerCase();
     const docExts = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.epub', '.odt'];

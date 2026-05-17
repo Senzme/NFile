@@ -21,7 +21,24 @@ class FileUtils {
     return DateFormat('MMM dd, yyyy  HH:mm').format(date);
   }
 
+  static bool isArchive(String path) {
+    final lower = path.toLowerCase();
+    return lower.endsWith('.zip') ||
+        lower.endsWith('.tar') ||
+        lower.endsWith('.tar.gz') ||
+        lower.endsWith('.tgz') ||
+        lower.endsWith('.tar.bz2') ||
+        lower.endsWith('.tbz2') ||
+        lower.endsWith('.gz') ||
+        lower.endsWith('.bz2') ||
+        lower.endsWith('.7z') ||
+        lower.endsWith('.rar') ||
+        lower.endsWith('.001');
+  }
+
   static IconData getIconForFile(String path) {
+    if (isArchive(path)) return Broken.archive;
+
     final mimeType = lookupMimeType(path);
     if (mimeType == null) return Broken.document;
 
@@ -30,9 +47,6 @@ class FileUtils {
     if (mimeType.startsWith('audio/')) return Broken.music;
     if (mimeType.startsWith('text/')) return Broken.document_text;
     if (mimeType == 'application/pdf') return Broken.document;
-    if (mimeType.contains('zip') || mimeType.contains('tar') || mimeType.contains('rar')) {
-      return Broken.folder_connection;
-    }
     if (mimeType.startsWith('application/vnd.android.package-archive')) {
       return Broken.mobile;
     }
@@ -41,6 +55,8 @@ class FileUtils {
   }
   
   static Color getColorForFile(String path, BuildContext context) {
+    if (isArchive(path)) return Colors.brown;
+
     final mimeType = lookupMimeType(path);
     if (mimeType == null) return Theme.of(context).colorScheme.primary;
 
@@ -49,9 +65,6 @@ class FileUtils {
     if (mimeType.startsWith('audio/')) return Colors.orangeAccent;
     if (mimeType.startsWith('text/')) return Colors.blueAccent;
     if (mimeType == 'application/pdf') return Colors.red;
-    if (mimeType.contains('zip') || mimeType.contains('tar') || mimeType.contains('rar')) {
-      return Colors.brown;
-    }
 
     return Theme.of(context).colorScheme.primary;
   }
