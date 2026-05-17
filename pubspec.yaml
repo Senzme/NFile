@@ -63,6 +63,7 @@ dependencies:
   docx_to_text: ^1.0.1
   excel: ^4.0.6
   xml: ^6.6.1
+  excel2003: ^1.0.0
 
 dev_dependencies:
   flutter_test:

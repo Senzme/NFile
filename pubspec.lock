@@ -185,6 +185,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.0.6"
+  excel2003:
+    dependency: "direct main"
+    description:
+      name: excel2003
+      sha256: "22339fee9c0a6a9dbe21810358822ec366b9f9f66062e451bff6753cdaeaa480"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
   fake_async:
     dependency: transitive
     description:
