@@ -25,7 +25,7 @@ With the latest update, NFile transitions from a simple file explorer to a compr
 
 | | | | |
 |:---:|:---:|:---:|:---:|
-| <img src="https://github.com/user-attachments/assets/bf0782e6-9c6e-46e5-a93f-aaebb01b3d71" width="200"> | <img src="https://github.com/user-attachments/assets/66b864ed-2598-477c-bdb4-d045a71e93b9" width="200"> | <img src="https://github.com/user-attachments/assets/7ffbe12f-f045-4d22-9b0f-9cf6f5dd5416" width="200"> | <img src="https://github.com/user-attachments/assets/ca1e78e0-8e68-4985-bc9c-39e763b8ed74" width="200"> |
+| <img src="https://github.com/user-attachments/assets/2d36cbea-e994-4302-b3a3-4b4364e96a41" width="200"> | <img src="https://github.com/user-attachments/assets/66b864ed-2598-477c-bdb4-d045a71e93b9" width="200"> | <img src="https://github.com/user-attachments/assets/874a9d0f-1796-4e4d-9f92-2c8915626376" width="200"> | <img src="https://github.com/user-attachments/assets/ca1e78e0-8e68-4985-bc9c-39e763b8ed74" width="200"> |
 
 
 ## Permissions
