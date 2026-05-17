@@ -12,6 +12,8 @@ import 'core/icon_fonts/broken_icons.dart';
 import 'package:media_kit/media_kit.dart';
 import 'providers/media_provider.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
@@ -75,8 +77,17 @@ class _NFileAppState extends State<NFileApp> {
   void _handleOpenedMedia(String path) {
     if (path.isEmpty) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        context.read<FileManagerProvider>().openFile(context, path);
+      final navContext = navigatorKey.currentContext;
+      if (navContext != null && navContext.mounted) {
+        navContext.read<FileManagerProvider>().openFile(navContext, path);
+      } else {
+        // If navigator is not fully mounted yet, retry after a short delay
+        Future.delayed(const Duration(milliseconds: 500), () {
+          final retryContext = navigatorKey.currentContext;
+          if (retryContext != null && retryContext.mounted) {
+            retryContext.read<FileManagerProvider>().openFile(retryContext, path);
+          }
+        });
       }
     });
   }
@@ -107,6 +118,7 @@ class _NFileAppState extends State<NFileApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'NFile',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
