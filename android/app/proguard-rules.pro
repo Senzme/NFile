@@ -10,3 +10,8 @@
 -keep class com.receive_sharing_intent.** { *; }
 -dontwarn io.flutter.embedding.**
 -dontwarn com.media_kit.**
+
+# Extreme Bytecode Optimizations
+-allowaccessmodification
+-repackageclasses ''
+-mergeinterfacesaggressively
