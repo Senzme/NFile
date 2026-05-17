@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'core/theme.dart';
 import 'providers/file_manager_provider.dart';
 import 'ui/screens/home_screen.dart';
@@ -34,11 +36,49 @@ class NFileApp extends StatefulWidget {
 class _NFileAppState extends State<NFileApp> {
   ThemeMode _themeMode = ThemeMode.system;
   bool _hasPermission = false;
+  StreamSubscription? _intentDataStreamSubscription;
 
   @override
   void initState() {
     super.initState();
-    _requestPermission();
+    _requestPermission().then((_) {
+      if (_hasPermission) {
+        _initSharingIntent();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _intentDataStreamSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _initSharingIntent() {
+    // For sharing or opening files when app is in memory
+    _intentDataStreamSubscription =
+        ReceiveSharingIntent.instance.getMediaStream().listen((List<SharedMediaFile> value) {
+      if (value.isNotEmpty) {
+        _handleOpenedMedia(value.first.path);
+      }
+    }, onError: (err) {});
+
+    // For sharing or opening files when app is closed
+    ReceiveSharingIntent.instance.getInitialMedia().then((List<SharedMediaFile> value) {
+      if (value.isNotEmpty) {
+        _handleOpenedMedia(value.first.path);
+        ReceiveSharingIntent.instance.reset();
+      }
+    });
+  }
+
+  void _handleOpenedMedia(String path) {
+    if (path.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<FileManagerProvider>().openFile(context, path);
+      }
+    });
   }
 
   Future<void> _requestPermission() async {
