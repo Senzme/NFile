@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.rubex.nfile.nfile"
+    namespace = "com.rubex.nfile"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -23,7 +23,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.rubex.nfile.nfile"
+        applicationId = "com.rubex.nfile"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

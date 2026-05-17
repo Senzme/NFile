@@ -1,4 +1,4 @@
-package com.rubex.nfile.nfile
+package com.rubex.nfile
 
 import io.flutter.embedding.android.FlutterActivity
 
