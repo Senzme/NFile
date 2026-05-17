@@ -57,6 +57,7 @@ dependencies:
   media_kit_video: any
   media_kit_libs_video: any
   syncfusion_flutter_pdfviewer: ^33.2.6
+  archive: ^3.6.1
 
 dev_dependencies:
   flutter_test:
