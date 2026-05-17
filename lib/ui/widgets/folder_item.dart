@@ -9,6 +9,7 @@ class FolderItem extends StatelessWidget {
   final VoidCallback? onLongPress;
   final Function(String) onAction;
   final bool isSelected;
+  final double iconScale;
 
   const FolderItem({
     super.key,
@@ -17,6 +18,7 @@ class FolderItem extends StatelessWidget {
     this.onLongPress,
     required this.onAction,
     this.isSelected = false,
+    this.iconScale = 1.0,
   });
 
   @override
@@ -43,8 +45,8 @@ class FolderItem extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 48 * iconScale,
+                height: 48 * iconScale,
                 decoration: BoxDecoration(
                   color: isSelected ? theme.colorScheme.primary : theme.colorScheme.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
@@ -52,7 +54,7 @@ class FolderItem extends StatelessWidget {
                 child: Icon(
                   isSelected ? Broken.tick_circle : Broken.folder,
                   color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.primary,
-                  size: 28,
+                  size: 28 * iconScale,
                 ),
               ),
               const SizedBox(width: 16),
@@ -64,7 +66,7 @@ class FolderItem extends StatelessWidget {
                       folder.name,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
-                        fontSize: 15,
+                        fontSize: 15 * (1 + (iconScale - 1) * 0.3),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

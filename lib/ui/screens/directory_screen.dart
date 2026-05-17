@@ -5,13 +5,18 @@ import 'package:path/path.dart' as p;
 import '../../providers/file_manager_provider.dart';
 import '../widgets/file_item.dart';
 import '../widgets/folder_item.dart';
+import '../widgets/file_grid_item.dart';
+import '../widgets/folder_grid_item.dart';
 import '../widgets/file_action_dialogs.dart';
 import '../widgets/create_archive_dialog.dart';
+import '../widgets/nfile_drawer.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import 'global_search_screen.dart';
 
 class DirectoryScreen extends StatefulWidget {
-  const DirectoryScreen({super.key});
+  final VoidCallback toggleTheme;
+  final Function(int)? onNavigateTab;
+  const DirectoryScreen({super.key, required this.toggleTheme, this.onNavigateTab});
 
   @override
   State<DirectoryScreen> createState() => _DirectoryScreenState();
@@ -164,6 +169,216 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
     }
   }
 
+  void _showAddBottomSheet(BuildContext context, FileManagerProvider provider) {
+    final theme = Theme.of(context);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(topLeft: Radius.circular(28), topRight: Radius.circular(28)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2)),
+              ),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: theme.colorScheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                  child: Icon(Broken.folder_add, color: theme.colorScheme.primary, size: 24),
+                ),
+                title: const Text('New Folder', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                subtitle: Text('Create a new directory', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6))),
+                onTap: () {
+                  Navigator.pop(context);
+                  _handleMenuAction(context, 'folder', provider);
+                },
+              ),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: theme.colorScheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                  child: Icon(Broken.document_1, color: theme.colorScheme.primary, size: 24),
+                ),
+                title: const Text('New File', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                subtitle: Text('Create a new empty text document', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6))),
+                onTap: () {
+                  Navigator.pop(context);
+                  _handleMenuAction(context, 'file', provider);
+                },
+              ),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: theme.colorScheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                  child: Icon(Broken.box_add, color: theme.colorScheme.primary, size: 24),
+                ),
+                title: const Text('New Archive', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                subtitle: Text('Compress current folder contents', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6))),
+                onTap: () {
+                  Navigator.pop(context);
+                  _handleMenuAction(context, 'archive', provider);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showSortModal(BuildContext context, FileManagerProvider provider) {
+    final theme = Theme.of(context);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: theme.colorScheme.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateModal) {
+            return SafeArea(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('View & Sort Options', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                        IconButton(icon: const Icon(Broken.close_circle), onPressed: () => Navigator.pop(context)),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Text('Layout Mode', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: () {
+                              provider.setGridView(false);
+                              setStateModal(() {});
+                            },
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: !provider.isGridView ? theme.colorScheme.primary : theme.colorScheme.surfaceVariant,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Broken.row_vertical, color: !provider.isGridView ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface),
+                                  const SizedBox(width: 8),
+                                  Text('List View', style: TextStyle(fontWeight: FontWeight.bold, color: !provider.isGridView ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () {
+                              provider.setGridView(true);
+                              setStateModal(() {});
+                            },
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: provider.isGridView ? theme.colorScheme.primary : theme.colorScheme.surfaceVariant,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Broken.element_3, color: provider.isGridView ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface),
+                                  const SizedBox(width: 8),
+                                  Text('Grid View', style: TextStyle(fontWeight: FontWeight.bold, color: provider.isGridView ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Icon & Folder Size', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                        Text('${(provider.iconScale * 100).round()}%', style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Slider(
+                      value: provider.iconScale,
+                      min: 0.7,
+                      max: 1.5,
+                      divisions: 8,
+                      activeColor: theme.colorScheme.primary,
+                      onChanged: (val) {
+                        provider.setIconScale(val);
+                        setStateModal(() {});
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Text('Sort By', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _buildSortChip(context, provider, setStateModal, 'Name (A-Z)', FileSortType.nameAsc),
+                        _buildSortChip(context, provider, setStateModal, 'Name (Z-A)', FileSortType.nameDesc),
+                        _buildSortChip(context, provider, setStateModal, 'Newest', FileSortType.dateNewest),
+                        _buildSortChip(context, provider, setStateModal, 'Oldest', FileSortType.dateOldest),
+                        _buildSortChip(context, provider, setStateModal, 'Size (Large)', FileSortType.sizeLargest),
+                        _buildSortChip(context, provider, setStateModal, 'Size (Small)', FileSortType.sizeSmallest),
+                        _buildSortChip(context, provider, setStateModal, 'Type', FileSortType.type),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
+  Widget _buildSortChip(BuildContext context, FileManagerProvider provider, StateSetter setStateModal, String label, FileSortType sortType) {
+    final theme = Theme.of(context);
+    final isSelected = provider.sortType == sortType;
+    return ActionChip(
+      label: Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface)),
+      backgroundColor: isSelected ? theme.colorScheme.primary : theme.colorScheme.surfaceVariant,
+      onPressed: () {
+        provider.setSortType(sortType);
+        setStateModal(() {});
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<FileManagerProvider>(
@@ -181,6 +396,10 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
             }
           },
           child: Scaffold(
+            drawer: NFileDrawer(
+              toggleTheme: widget.toggleTheme,
+              onNavigateTab: widget.onNavigateTab,
+            ),
             appBar: AppBar(
               title: Text(isSelectionMode ? '${provider.selectedPaths.length} selected' : 'Files'),
               leading: isSelectionMode
@@ -188,10 +407,17 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                       icon: const Icon(Broken.close_square),
                       onPressed: () => provider.clearSelection(),
                     )
-                  : IconButton(
-                      icon: const Icon(Broken.arrow_left),
-                      onPressed: () => _goBack(provider),
-                    ),
+                  : provider.canGoBack
+                      ? IconButton(
+                          icon: const Icon(Broken.arrow_left),
+                          onPressed: () => _goBack(provider),
+                        )
+                      : Builder(
+                          builder: (context) => IconButton(
+                            icon: const Icon(Broken.menu),
+                            onPressed: () => Scaffold.of(context).openDrawer(),
+                          ),
+                        ),
               actions: isSelectionMode
                   ? [
                       IconButton(
@@ -260,6 +486,11 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                           Navigator.push(context, MaterialPageRoute(builder: (_) => const GlobalSearchScreen()));
                         },
                       ),
+                      IconButton(
+                        icon: const Icon(Broken.filter_edit),
+                        tooltip: 'View & Sort Options',
+                        onPressed: () => _showSortModal(context, provider),
+                      ),
                       PopupMenuButton<String>(
                         icon: const Icon(Broken.add_square, size: 26),
                         tooltip: 'Create New',
@@ -285,46 +516,99 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                         onRefresh: () => provider.loadDirectory(provider.currentPath),
                       ),
                       SliverPadding(
-                        padding: const EdgeInsets.only(bottom: 80),
-                        sliver: SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                              final item = provider.currentFiles[index];
-                              final isSelected = provider.selectedPaths.contains(item.path);
-
-                              if (item.isDirectory) {
-                                return FolderItem(
-                                  folder: item,
-                                  isSelected: isSelected,
-                                  onTap: () {
-                                    if (isSelectionMode) {
-                                      provider.toggleSelection(item.path);
-                                    } else {
-                                      _openFolder(provider, item.path);
-                                    }
-                                  },
-                                  onLongPress: () => provider.toggleSelection(item.path),
-                                  onAction: (action) => _handleAction(context, action, item.path),
-                                );
-                              } else {
-                                return FileItem(
-                                  file: item,
-                                  isSelected: isSelected,
-                                  onTap: () {
-                                    if (isSelectionMode) {
-                                      provider.toggleSelection(item.path);
-                                    } else {
-                                      provider.openFile(context, item.path);
-                                    }
-                                  },
-                                  onLongPress: () => provider.toggleSelection(item.path),
-                                  onAction: (action) => _handleAction(context, action, item.path),
-                                );
-                              }
-                            },
-                            childCount: provider.currentFiles.length,
-                          ),
+                        padding: EdgeInsets.only(
+                          bottom: 80,
+                          left: provider.isGridView ? 16 : 0,
+                          right: provider.isGridView ? 16 : 0,
+                          top: 8,
                         ),
+                        sliver: provider.isGridView
+                            ? SliverGrid(
+                                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: (MediaQuery.of(context).size.width / (110 * provider.iconScale)).floor().clamp(2, 6),
+                                  mainAxisSpacing: 12,
+                                  crossAxisSpacing: 12,
+                                  childAspectRatio: 0.75,
+                                ),
+                                delegate: SliverChildBuilderDelegate(
+                                  (context, index) {
+                                    final item = provider.currentFiles[index];
+                                    final isSelected = provider.selectedPaths.contains(item.path);
+                                    if (item.isDirectory) {
+                                      return FolderGridItem(
+                                        folder: item,
+                                        isSelected: isSelected,
+                                        iconScale: provider.iconScale,
+                                        onTap: () {
+                                          if (isSelectionMode) {
+                                            provider.toggleSelection(item.path);
+                                          } else {
+                                            _openFolder(provider, item.path);
+                                          }
+                                        },
+                                        onLongPress: () => provider.toggleSelection(item.path),
+                                        onAction: (action) => _handleAction(context, action, item.path),
+                                      );
+                                    } else {
+                                      return FileGridItem(
+                                        file: item,
+                                        isSelected: isSelected,
+                                        iconScale: provider.iconScale,
+                                        onTap: () {
+                                          if (isSelectionMode) {
+                                            provider.toggleSelection(item.path);
+                                          } else {
+                                            provider.openFile(context, item.path);
+                                          }
+                                        },
+                                        onLongPress: () => provider.toggleSelection(item.path),
+                                        onAction: (action) => _handleAction(context, action, item.path),
+                                      );
+                                    }
+                                  },
+                                  childCount: provider.currentFiles.length,
+                                ),
+                              )
+                            : SliverList(
+                                delegate: SliverChildBuilderDelegate(
+                                  (context, index) {
+                                    final item = provider.currentFiles[index];
+                                    final isSelected = provider.selectedPaths.contains(item.path);
+                                    if (item.isDirectory) {
+                                      return FolderItem(
+                                        folder: item,
+                                        isSelected: isSelected,
+                                        iconScale: provider.iconScale,
+                                        onTap: () {
+                                          if (isSelectionMode) {
+                                            provider.toggleSelection(item.path);
+                                          } else {
+                                            _openFolder(provider, item.path);
+                                          }
+                                        },
+                                        onLongPress: () => provider.toggleSelection(item.path),
+                                        onAction: (action) => _handleAction(context, action, item.path),
+                                      );
+                                    } else {
+                                      return FileItem(
+                                        file: item,
+                                        isSelected: isSelected,
+                                        iconScale: provider.iconScale,
+                                        onTap: () {
+                                          if (isSelectionMode) {
+                                            provider.toggleSelection(item.path);
+                                          } else {
+                                            provider.openFile(context, item.path);
+                                          }
+                                        },
+                                        onLongPress: () => provider.toggleSelection(item.path),
+                                        onAction: (action) => _handleAction(context, action, item.path),
+                                      );
+                                    }
+                                  },
+                                  childCount: provider.currentFiles.length,
+                                ),
+                              ),
                       ),
                     ],
                   ),
@@ -339,7 +623,15 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                     icon: const Icon(Broken.clipboard),
                     label: const Text('Paste Here'),
                   )
-                : null,
+                : (!isSelectionMode && provider.showFloatingAddButton)
+                    ? FloatingActionButton(
+                        onPressed: () => _showAddBottomSheet(context, provider),
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 4,
+                        child: const Icon(Broken.add, size: 28),
+                      )
+                    : null,
           ),
         );
       },

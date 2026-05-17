@@ -9,13 +9,9 @@ class QuickCategoriesGrid extends StatelessWidget {
 
   const QuickCategoriesGrid({super.key, required this.onNavigateTab});
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final mediaProvider = context.watch<MediaProvider>();
-
-    final allCategoriesMap = <String, Map<String, dynamic>>{
+  static Map<String, Map<String, dynamic>> getAllCategoriesMap(BuildContext context, bool isDark) {
+    final mediaProvider = Provider.of<MediaProvider>(context, listen: false);
+    return {
       'Images': {
         'label': 'Images',
         'icon': Broken.image,
@@ -73,6 +69,30 @@ class QuickCategoriesGrid extends StatelessWidget {
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.screenshots))),
       },
     };
+  }
+
+  static void showCustomizeDialog(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final categoriesMap = getAllCategoriesMap(context, isDark);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) {
+        return _CustomizeCategoriesSheet(categoriesMap: categoriesMap);
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final mediaProvider = context.watch<MediaProvider>();
+
+    final allCategoriesMap = getAllCategoriesMap(context, isDark);
 
     final activeList = mediaProvider.categoryOrder
         .where((label) => mediaProvider.activeCategories.contains(label) && allCategoriesMap.containsKey(label))
@@ -92,7 +112,7 @@ class QuickCategoriesGrid extends StatelessWidget {
                 style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, fontSize: 18),
               ),
               InkWell(
-                onTap: () => _showCustomizeDialog(context, allCategoriesMap, theme),
+                onTap: () => showCustomizeDialog(context),
                 borderRadius: BorderRadius.circular(16),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
@@ -192,18 +212,6 @@ class QuickCategoriesGrid extends StatelessWidget {
             ),
         ],
       ),
-    );
-  }
-
-  void _showCustomizeDialog(BuildContext context, Map<String, Map<String, dynamic>> categoriesMap, ThemeData theme) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: theme.scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (context) {
-        return _CustomizeCategoriesSheet(categoriesMap: categoriesMap);
-      },
     );
   }
 }

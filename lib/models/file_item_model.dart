@@ -28,4 +28,6 @@ class FileItemModel {
       modified: stat.modified,
     );
   }
+
+  bool get isHidden => name.startsWith('.') && name != '.' && name != '..';
 }

@@ -16,7 +16,103 @@ import '../services/apk_installer_service.dart';
 import '../ui/widgets/extract_archive_dialog.dart';
 import '../core/utils.dart';
 
+enum FileSortType {
+  nameAsc,
+  nameDesc,
+  dateNewest,
+  dateOldest,
+  sizeLargest,
+  sizeSmallest,
+  type,
+}
+
 class FileManagerProvider extends ChangeNotifier {
+  FileSortType _sortType = FileSortType.nameAsc;
+  FileSortType get sortType => _sortType;
+
+  void setSortType(FileSortType type) {
+    if (_sortType == type) return;
+    _sortType = type;
+    final folders = _currentFiles.where((e) => e.isDirectory).toList();
+    final files = _currentFiles.where((e) => !e.isDirectory).toList();
+    _sortList(folders);
+    _sortList(files);
+    _currentFiles = [...folders, ...files];
+    notifyListeners();
+  }
+
+  bool _isGridView = false;
+  bool get isGridView => _isGridView;
+
+  void setGridView(bool value) {
+    if (_isGridView == value) return;
+    _isGridView = value;
+    notifyListeners();
+  }
+
+  void toggleViewMode() {
+    _isGridView = !_isGridView;
+    notifyListeners();
+  }
+
+  double _iconScale = 1.0;
+  double get iconScale => _iconScale;
+
+  void setIconScale(double scale) {
+    final clamped = scale.clamp(0.7, 1.5);
+    if (_iconScale == clamped) return;
+    _iconScale = clamped;
+    notifyListeners();
+  }
+
+  void _sortList(List<FileItemModel> items) {
+    switch (_sortType) {
+      case FileSortType.nameAsc:
+        items.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        break;
+      case FileSortType.nameDesc:
+        items.sort((a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+        break;
+      case FileSortType.dateNewest:
+        items.sort((a, b) => b.modified.compareTo(a.modified));
+        break;
+      case FileSortType.dateOldest:
+        items.sort((a, b) => a.modified.compareTo(b.modified));
+        break;
+      case FileSortType.sizeLargest:
+        items.sort((a, b) => b.size.compareTo(a.size));
+        break;
+      case FileSortType.sizeSmallest:
+        items.sort((a, b) => a.size.compareTo(b.size));
+        break;
+      case FileSortType.type:
+        items.sort((a, b) {
+          final extA = p.extension(a.name).toLowerCase();
+          final extB = p.extension(b.name).toLowerCase();
+          return extA.compareTo(extB);
+        });
+        break;
+    }
+  }
+  bool _showHiddenFiles = false;
+  bool get showHiddenFiles => _showHiddenFiles;
+
+  void toggleHiddenFiles() {
+    _showHiddenFiles = !_showHiddenFiles;
+    notifyListeners();
+    if (_currentPath.isNotEmpty) {
+      loadDirectory(_currentPath, showLoading: false);
+    }
+  }
+
+  bool _showFloatingAddButton = true;
+  bool get showFloatingAddButton => _showFloatingAddButton;
+
+  void toggleFloatingAddButton() {
+    _showFloatingAddButton = !_showFloatingAddButton;
+    notifyListeners();
+  }
+
   List<FileItemModel> _currentFiles = [];
   List<FileItemModel> get currentFiles => _currentFiles;
 
@@ -111,6 +207,9 @@ class FileManagerProvider extends ChangeNotifier {
 
         for (var entity in entities) {
           final item = FileItemModel.fromEntity(entity);
+          if (!_showHiddenFiles && item.isHidden) {
+            continue;
+          }
           if (item.isDirectory) {
             folders.add(item);
           } else {
@@ -118,8 +217,8 @@ class FileManagerProvider extends ChangeNotifier {
           }
         }
 
-        folders.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-        files.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        _sortList(folders);
+        _sortList(files);
 
         _currentFiles = [...folders, ...files];
       }

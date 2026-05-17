@@ -34,7 +34,10 @@ class _HomeScreenState extends State<HomeScreen> {
         index: _currentIndex,
         children: [
           _buildHomeTab(),
-          const DirectoryScreen(),
+          DirectoryScreen(
+            toggleTheme: widget.toggleTheme,
+            onNavigateTab: (index) => setState(() => _currentIndex = index),
+          ),
         ],
       ),
       bottomNavigationBar: NavigationBar(
