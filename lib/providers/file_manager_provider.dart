@@ -32,6 +32,29 @@ class FileManagerProvider extends ChangeNotifier {
   Set<String> get selectedPaths => _selectedPaths;
   bool get isSelectionMode => _selectedPaths.isNotEmpty;
 
+  String _rootPath = '';
+  String get rootPath => _rootPath;
+
+  final Map<String, double> _scrollOffsets = {};
+
+  bool get canGoBack {
+    if (_currentPath.isEmpty || _rootPath.isEmpty) return false;
+    if (_currentPath == _rootPath || _currentPath == '/' || p.dirname(_currentPath) == _currentPath) {
+      return false;
+    }
+    return true;
+  }
+
+  void saveScrollOffset(double offset) {
+    if (_currentPath.isNotEmpty) {
+      _scrollOffsets[_currentPath] = offset;
+    }
+  }
+
+  double getSavedScrollOffset(String path) {
+    return _scrollOffsets[path] ?? 0.0;
+  }
+
   Future<void> init() async {
     if (Platform.isAndroid) {
       _currentPath = '/storage/emulated/0';
@@ -39,9 +62,11 @@ class FileManagerProvider extends ChangeNotifier {
         final dir = await getExternalStorageDirectory();
         _currentPath = dir?.path ?? '/';
       }
+      _rootPath = _currentPath;
     } else {
       final dir = await getApplicationDocumentsDirectory();
       _currentPath = dir.path;
+      _rootPath = _currentPath;
     }
     await loadDirectory(_currentPath);
   }
@@ -70,11 +95,19 @@ class FileManagerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> goBack() async {
-    final parent = Directory(_currentPath).parent.path;
-    if (parent != _currentPath) {
-      await loadDirectory(parent);
+  Future<bool> goBack() async {
+    if (isSelectionMode) {
+      clearSelection();
+      return true;
     }
+    if (canGoBack) {
+      final parent = Directory(_currentPath).parent.path;
+      if (parent != _currentPath) {
+        await loadDirectory(parent);
+        return true;
+      }
+    }
+    return false;
   }
 
   void toggleSelection(String path) {

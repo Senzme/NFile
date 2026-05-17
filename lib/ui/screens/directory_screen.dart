@@ -18,12 +18,44 @@ class DirectoryScreen extends StatefulWidget {
 }
 
 class _DirectoryScreenState extends State<DirectoryScreen> {
+  final ScrollController _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<FileManagerProvider>().init();
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _openFolder(FileManagerProvider provider, String path) {
+    if (_scrollController.hasClients) {
+      provider.saveScrollOffset(_scrollController.offset);
+    }
+    provider.loadDirectory(path).then((_) {
+      if (_scrollController.hasClients) {
+        final savedOffset = provider.getSavedScrollOffset(path);
+        _scrollController.jumpTo(savedOffset);
+      }
+    });
+  }
+
+  void _goBack(FileManagerProvider provider) async {
+    if (_scrollController.hasClients) {
+      provider.saveScrollOffset(_scrollController.offset);
+    }
+    final prevPath = p.dirname(provider.currentPath);
+    final handled = await provider.goBack();
+    if (handled && _scrollController.hasClients) {
+      final savedOffset = provider.getSavedScrollOffset(prevPath);
+      _scrollController.jumpTo(savedOffset);
+    }
   }
 
   void _handleAction(BuildContext context, String action, String path) async {
@@ -138,165 +170,177 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
       builder: (context, provider, child) {
         final isSelectionMode = provider.isSelectionMode;
 
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(isSelectionMode ? '${provider.selectedPaths.length} selected' : 'Files'),
-            leading: isSelectionMode
-                ? IconButton(
-                    icon: const Icon(Broken.close_square),
-                    onPressed: () => provider.clearSelection(),
-                  )
-                : IconButton(
-                    icon: const Icon(Broken.arrow_left),
-                    onPressed: () => provider.goBack(),
-                  ),
-            actions: isSelectionMode
-                ? [
-                    IconButton(
-                      icon: const Icon(Broken.tick_square),
-                      tooltip: 'Select All',
-                      onPressed: () => provider.selectAll(),
+        return PopScope(
+          canPop: !isSelectionMode && !provider.canGoBack,
+          onPopInvoked: (didPop) {
+            if (didPop) return;
+            if (isSelectionMode) {
+              provider.clearSelection();
+            } else if (provider.canGoBack) {
+              _goBack(provider);
+            }
+          },
+          child: Scaffold(
+            appBar: AppBar(
+              title: Text(isSelectionMode ? '${provider.selectedPaths.length} selected' : 'Files'),
+              leading: isSelectionMode
+                  ? IconButton(
+                      icon: const Icon(Broken.close_square),
+                      onPressed: () => provider.clearSelection(),
+                    )
+                  : IconButton(
+                      icon: const Icon(Broken.arrow_left),
+                      onPressed: () => _goBack(provider),
                     ),
-                    IconButton(
-                      icon: const Icon(Broken.document_copy),
-                      tooltip: 'Copy',
-                      onPressed: () {
-                        provider.copySelected();
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied selected items')));
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Broken.scissor),
-                      tooltip: 'Cut',
-                      onPressed: () {
-                        provider.cutSelected();
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cut selected items')));
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Broken.box_add),
-                      tooltip: 'Create Archive',
-                      onPressed: () async {
-                        final res = await CreateArchiveDialog.show(
-                          context,
-                          initialName: p.basename(provider.currentPath).isEmpty ? 'archive' : p.basename(provider.currentPath),
-                          isMultiSelection: provider.selectedPaths.length > 1,
-                        );
-                        if (res != null) {
-                          await provider.createArchive(
-                            archiveName: res.archiveName,
-                            format: res.format,
-                            compressionLevel: res.compressionLevel,
-                            password: res.password,
-                            splitSizeMB: res.splitSizeMB,
-                            deleteSource: res.deleteSource,
-                            separateArchives: res.separateArchives,
-                            targetPaths: provider.selectedPaths.toList(),
+              actions: isSelectionMode
+                  ? [
+                      IconButton(
+                        icon: const Icon(Broken.tick_square),
+                        tooltip: 'Select All',
+                        onPressed: () => provider.selectAll(),
+                      ),
+                      IconButton(
+                        icon: const Icon(Broken.document_copy),
+                        tooltip: 'Copy',
+                        onPressed: () {
+                          provider.copySelected();
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied selected items')));
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Broken.scissor),
+                        tooltip: 'Cut',
+                        onPressed: () {
+                          provider.cutSelected();
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cut selected items')));
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Broken.box_add),
+                        tooltip: 'Create Archive',
+                        onPressed: () async {
+                          final res = await CreateArchiveDialog.show(
+                            context,
+                            initialName: p.basename(provider.currentPath).isEmpty ? 'archive' : p.basename(provider.currentPath),
+                            isMultiSelection: provider.selectedPaths.length > 1,
                           );
-                        }
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Broken.trash, color: Colors.redAccent),
-                      tooltip: 'Delete Selected',
-                      onPressed: () async {
-                        final confirm = await FileActionDialogs.showConfirmDialog(
-                          context,
-                          title: 'Delete Selected',
-                          content: 'Are you sure you want to delete ${provider.selectedPaths.length} items? This cannot be undone.',
-                        );
-                        if (confirm) {
-                          await provider.deleteSelected();
-                        }
-                      },
-                    ),
-                  ]
-                : [
-                    IconButton(
-                      icon: const Icon(Broken.search_normal),
-                      onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const GlobalSearchScreen()));
-                      },
-                    ),
-                    PopupMenuButton<String>(
-                      icon: const Icon(Broken.add_square, size: 26),
-                      tooltip: 'Create New',
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      position: PopupMenuPosition.under,
-                      elevation: 8,
-                      onSelected: (val) => _handleMenuAction(context, val, provider),
-                      itemBuilder: (context) => [
-                        const PopupMenuItem(value: 'file', child: Row(children: [Icon(Broken.document, size: 20), SizedBox(width: 12), Text('New File', style: TextStyle(fontWeight: FontWeight.w600))])),
-                        const PopupMenuItem(value: 'folder', child: Row(children: [Icon(Broken.folder, size: 20), SizedBox(width: 12), Text('New Folder', style: TextStyle(fontWeight: FontWeight.w600))])),
-                        const PopupMenuItem(value: 'archive', child: Row(children: [Icon(Broken.archive, size: 20), SizedBox(width: 12), Text('New Archive', style: TextStyle(fontWeight: FontWeight.w600))])),
-                      ],
-                    ),
-                  ],
-          ),
-          body: provider.isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : CustomScrollView(
-                  physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                  slivers: [
-                    CupertinoSliverRefreshControl(
-                      onRefresh: () => provider.loadDirectory(provider.currentPath),
-                    ),
-                    SliverPadding(
-                      padding: const EdgeInsets.only(bottom: 80),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final item = provider.currentFiles[index];
-                            final isSelected = provider.selectedPaths.contains(item.path);
+                          if (res != null) {
+                            await provider.createArchive(
+                              archiveName: res.archiveName,
+                              format: res.format,
+                              compressionLevel: res.compressionLevel,
+                              password: res.password,
+                              splitSizeMB: res.splitSizeMB,
+                              deleteSource: res.deleteSource,
+                              separateArchives: res.separateArchives,
+                              targetPaths: provider.selectedPaths.toList(),
+                            );
+                          }
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Broken.trash, color: Colors.redAccent),
+                        tooltip: 'Delete Selected',
+                        onPressed: () async {
+                          final confirm = await FileActionDialogs.showConfirmDialog(
+                            context,
+                            title: 'Delete Selected',
+                            content: 'Are you sure you want to delete ${provider.selectedPaths.length} items? This cannot be undone.',
+                          );
+                          if (confirm) {
+                            await provider.deleteSelected();
+                          }
+                        },
+                      ),
+                    ]
+                  : [
+                      IconButton(
+                        icon: const Icon(Broken.search_normal),
+                        onPressed: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const GlobalSearchScreen()));
+                        },
+                      ),
+                      PopupMenuButton<String>(
+                        icon: const Icon(Broken.add_square, size: 26),
+                        tooltip: 'Create New',
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        position: PopupMenuPosition.under,
+                        elevation: 8,
+                        onSelected: (val) => _handleMenuAction(context, val, provider),
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(value: 'file', child: Row(children: [Icon(Broken.document, size: 20), SizedBox(width: 12), Text('New File', style: TextStyle(fontWeight: FontWeight.w600))])),
+                          const PopupMenuItem(value: 'folder', child: Row(children: [Icon(Broken.folder, size: 20), SizedBox(width: 12), Text('New Folder', style: TextStyle(fontWeight: FontWeight.w600))])),
+                          const PopupMenuItem(value: 'archive', child: Row(children: [Icon(Broken.archive, size: 20), SizedBox(width: 12), Text('New Archive', style: TextStyle(fontWeight: FontWeight.w600))])),
+                        ],
+                      ),
+                    ],
+            ),
+            body: provider.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : CustomScrollView(
+                    controller: _scrollController,
+                    physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                    slivers: [
+                      CupertinoSliverRefreshControl(
+                        onRefresh: () => provider.loadDirectory(provider.currentPath),
+                      ),
+                      SliverPadding(
+                        padding: const EdgeInsets.only(bottom: 80),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              final item = provider.currentFiles[index];
+                              final isSelected = provider.selectedPaths.contains(item.path);
 
-                            if (item.isDirectory) {
-                              return FolderItem(
-                                folder: item,
-                                isSelected: isSelected,
-                                onTap: () {
-                                  if (isSelectionMode) {
-                                    provider.toggleSelection(item.path);
-                                  } else {
-                                    provider.loadDirectory(item.path);
-                                  }
-                                },
-                                onLongPress: () => provider.toggleSelection(item.path),
-                                onAction: (action) => _handleAction(context, action, item.path),
-                              );
-                            } else {
-                              return FileItem(
-                                file: item,
-                                isSelected: isSelected,
-                                onTap: () {
-                                  if (isSelectionMode) {
-                                    provider.toggleSelection(item.path);
-                                  } else {
-                                    provider.openFile(context, item.path);
-                                  }
-                                },
-                                onLongPress: () => provider.toggleSelection(item.path),
-                                onAction: (action) => _handleAction(context, action, item.path),
-                              );
-                            }
-                          },
-                          childCount: provider.currentFiles.length,
+                              if (item.isDirectory) {
+                                return FolderItem(
+                                  folder: item,
+                                  isSelected: isSelected,
+                                  onTap: () {
+                                    if (isSelectionMode) {
+                                      provider.toggleSelection(item.path);
+                                    } else {
+                                      _openFolder(provider, item.path);
+                                    }
+                                  },
+                                  onLongPress: () => provider.toggleSelection(item.path),
+                                  onAction: (action) => _handleAction(context, action, item.path),
+                                );
+                              } else {
+                                return FileItem(
+                                  file: item,
+                                  isSelected: isSelected,
+                                  onTap: () {
+                                    if (isSelectionMode) {
+                                      provider.toggleSelection(item.path);
+                                    } else {
+                                      provider.openFile(context, item.path);
+                                    }
+                                  },
+                                  onLongPress: () => provider.toggleSelection(item.path),
+                                  onAction: (action) => _handleAction(context, action, item.path),
+                                );
+                              }
+                            },
+                            childCount: provider.currentFiles.length,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-          floatingActionButton: provider.hasClipboard
-              ? FloatingActionButton.extended(
-                  onPressed: () async {
-                    await provider.pasteFile();
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pasted successfully')));
-                    }
-                  },
-                  icon: const Icon(Broken.clipboard),
-                  label: const Text('Paste Here'),
-                )
-              : null,
+                    ],
+                  ),
+            floatingActionButton: provider.hasClipboard
+                ? FloatingActionButton.extended(
+                    onPressed: () async {
+                      await provider.pasteFile();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pasted successfully')));
+                      }
+                    },
+                    icon: const Icon(Broken.clipboard),
+                    label: const Text('Paste Here'),
+                  )
+                : null,
+          ),
         );
       },
     );
