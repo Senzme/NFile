@@ -57,7 +57,7 @@ jobs:
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
             echo "$KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
-            cat <<EOF > key.properties
+            cat <<EOF > android/key.properties
           storePassword=$STORE_PASSWORD
           keyPassword=$KEY_PASSWORD
           keyAlias=$KEY_ALIAS
