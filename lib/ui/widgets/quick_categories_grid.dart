@@ -195,23 +195,24 @@ class QuickCategoriesGrid extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: theme.scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (context) {
-        return _CustomizeCategoriesSheet(provider: provider, allCategories: allCategories);
+      builder: (_) {
+        return ChangeNotifierProvider<MediaProvider>.value(
+          value: provider,
+          child: _CustomizeCategoriesSheet(allCategories: allCategories),
+        );
       },
     );
   }
 }
 
 class _CustomizeCategoriesSheet extends StatelessWidget {
-  final MediaProvider provider;
   final List<Map<String, dynamic>> allCategories;
 
-  const _CustomizeCategoriesSheet({required this.provider, required this.allCategories});
+  const _CustomizeCategoriesSheet({required this.allCategories});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final activeCats = provider.activeCategories;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.65,
@@ -230,36 +231,66 @@ class _CustomizeCategoriesSheet extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('Customize Shortcuts', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                  TextButton(onPressed: () => Navigator.pop(context), child: const Text('Done')),
+                  TextButton(onPressed: () => Navigator.pop(context), child: const Text('Done', style: TextStyle(fontWeight: FontWeight.bold))),
                 ],
               ),
             ),
             const Divider(),
             Expanded(
-              child: ListView.builder(
-                controller: scrollController,
-                physics: const BouncingScrollPhysics(),
-                itemCount: allCategories.length,
-                itemBuilder: (context, index) {
-                  final cat = allCategories[index];
-                  final label = cat['label'] as String;
-                  final icon = cat['icon'] as IconData;
-                  final color = cat['color'] as Color;
-                  final isEnabled = activeCats.contains(label);
+              child: Consumer<MediaProvider>(
+                builder: (context, mediaProv, child) {
+                  final activeCats = mediaProv.activeCategories;
+                  return ListView.builder(
+                    controller: scrollController,
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: allCategories.length,
+                    itemBuilder: (context, index) {
+                      final cat = allCategories[index];
+                      final label = cat['label'] as String;
+                      final icon = cat['icon'] as IconData;
+                      final color = cat['color'] as Color;
+                      final isEnabled = activeCats.contains(label);
 
-                  return ListTile(
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(color: color.withOpacity(0.15), shape: BoxShape.circle),
-                      child: Icon(icon, color: color, size: 20),
-                    ),
-                    title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-                    trailing: Switch(
-                      value: isEnabled,
-                      activeColor: theme.colorScheme.primary,
-                      onChanged: (val) => provider.toggleCategory(label),
-                    ),
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isEnabled ? color.withOpacity(0.08) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: ListTile(
+                          leading: AnimatedContainer(
+                            duration: const Duration(milliseconds: 250),
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: isEnabled ? color.withOpacity(0.18) : Colors.grey.withOpacity(0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(icon, color: isEnabled ? color : Colors.grey, size: 22),
+                          ),
+                          title: AnimatedDefaultTextStyle(
+                            duration: const Duration(milliseconds: 250),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                              color: isEnabled ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withOpacity(0.4),
+                            ),
+                            child: Text(label),
+                          ),
+                          trailing: Switch(
+                            value: isEnabled,
+                            activeColor: theme.colorScheme.primary,
+                            onChanged: (val) {
+                              mediaProv.toggleCategory(label);
+                            },
+                          ),
+                          onTap: () {
+                            mediaProv.toggleCategory(label);
+                          },
+                        ),
+                      );
+                    },
                   );
                 },
               ),
