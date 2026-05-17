@@ -5,13 +5,15 @@ import 'package:provider/provider.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import '../../providers/media_provider.dart';
+import '../../providers/file_manager_provider.dart';
+import '../../core/utils.dart';
 import 'image_viewer_screen.dart';
 import 'video_player/video_player_screen.dart';
 import 'audio_player/audio_player_screen.dart';
 import 'document_viewer_screen.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 
-enum MediaType { images, videos, audios, documents }
+enum MediaType { images, videos, audios, documents, archives, downloads }
 
 class MediaCategoryScreen extends StatefulWidget {
   final MediaType mediaType;
@@ -56,6 +58,10 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
         return 'Audios';
       case MediaType.documents:
         return 'Documents';
+      case MediaType.archives:
+        return 'Archives';
+      case MediaType.downloads:
+        return 'Downloads';
     }
   }
 
@@ -69,6 +75,10 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
         return Broken.music;
       case MediaType.documents:
         return Broken.document;
+      case MediaType.archives:
+        return Broken.archive;
+      case MediaType.downloads:
+        return Broken.document_download;
     }
   }
 
@@ -80,7 +90,7 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
       appBar: AppBar(
         title: Text(_title),
         actions: [
-          if (widget.mediaType != MediaType.documents)
+          if (widget.mediaType != MediaType.documents && widget.mediaType != MediaType.archives && widget.mediaType != MediaType.downloads)
             Consumer<MediaProvider>(
               builder: (context, provider, child) {
                 return PopupMenuButton<MediaSortOrder>(
@@ -131,6 +141,10 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
             return _buildVideoGrid(provider.videos, theme);
           } else if (widget.mediaType == MediaType.audios) {
             return _buildAudioList(provider.audios, theme);
+          } else if (widget.mediaType == MediaType.archives) {
+            return _buildGenericFileList(provider.archives, theme);
+          } else if (widget.mediaType == MediaType.downloads) {
+            return _buildGenericFileList(provider.downloads, theme);
           } else {
             return _buildDocumentList(provider.documents, theme);
           }
@@ -306,6 +320,63 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
               context,
               _slideRoute(DocumentViewerScreen(filePath: path)),
             );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildGenericFileList(List<FileSystemEntity> files, ThemeData theme) {
+    if (files.isEmpty) return _buildEmptyState(theme);
+    return ListView.builder(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      itemCount: files.length,
+      itemBuilder: (context, index) {
+        final file = files[index] as dynamic;
+        final path = file.path as String;
+        final name = path.split('/').last;
+        int size = 0;
+        DateTime modified = DateTime.now();
+        try {
+          final st = file.statSync();
+          size = st.size;
+          modified = st.modified;
+        } catch (_) {}
+        final iconColor = FileUtils.getColorForFile(name, context);
+
+        return ListTile(
+          leading: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(FileUtils.getIconForFile(name), color: iconColor, size: 22),
+          ),
+          title: Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w500),
+          ),
+          subtitle: Row(
+            children: [
+              Text(
+                FileUtils.formatBytes(size, 1),
+                style: TextStyle(color: theme.textTheme.bodySmall?.color?.withOpacity(0.6), fontSize: 11),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                FileUtils.formatDate(modified).split(',').first,
+                style: TextStyle(color: theme.colorScheme.primary, fontSize: 11),
+              ),
+            ],
+          ),
+          trailing: Icon(Broken.arrow_right_3, size: 16, color: theme.colorScheme.onSurface.withOpacity(0.4)),
+          onTap: () {
+            context.read<FileManagerProvider>().openFile(context, path);
           },
         );
       },

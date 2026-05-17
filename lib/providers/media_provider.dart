@@ -92,6 +92,8 @@ class MediaProvider extends ChangeNotifier {
   List<AssetEntity> _videos = [];
   List<SongModel> _audios = [];
   List<FileSystemEntity> _documents = [];
+  List<FileSystemEntity> _archives = [];
+  List<FileSystemEntity> _downloads = [];
 
   bool _isLoading = false;
   bool _isLoaded = false;
@@ -101,6 +103,8 @@ class MediaProvider extends ChangeNotifier {
   List<AssetEntity> get videos => _videos;
   List<SongModel> get audios => _audios;
   List<FileSystemEntity> get documents => _documents;
+  List<FileSystemEntity> get archives => _archives;
+  List<FileSystemEntity> get downloads => _downloads;
   bool get isLoading => _isLoading;
   bool get isLoaded => _isLoaded;
   MediaSortOrder get sortOrder => _sortOrder;
@@ -126,6 +130,30 @@ class MediaProvider extends ChangeNotifier {
             _documents = cachedDocs;
           }
         }
+
+        if (map.containsKey('archives')) {
+          final archPaths = List<String>.from(map['archives'] ?? []);
+          final cachedArch = <FileSystemEntity>[];
+          for (final p in archPaths) {
+            final f = File(p);
+            if (f.existsSync()) cachedArch.add(f);
+          }
+          if (cachedArch.isNotEmpty && _archives.isEmpty) {
+            _archives = cachedArch;
+          }
+        }
+
+        if (map.containsKey('downloads')) {
+          final dlPaths = List<String>.from(map['downloads'] ?? []);
+          final cachedDl = <FileSystemEntity>[];
+          for (final p in dlPaths) {
+            final f = File(p);
+            if (f.existsSync()) cachedDl.add(f);
+          }
+          if (cachedDl.isNotEmpty && _downloads.isEmpty) {
+            _downloads = cachedDl;
+          }
+        }
       }
     } catch (_) {}
   }
@@ -136,6 +164,8 @@ class MediaProvider extends ChangeNotifier {
       final cacheFile = File('${dir.path}/media_meta_cache.json');
       final map = {
         'documents': _documents.map((e) => e.path).toList(),
+        'archives': _archives.map((e) => e.path).toList(),
+        'downloads': _downloads.map((e) => e.path).toList(),
       };
       await cacheFile.writeAsString(jsonEncode(map), flush: true);
     } catch (_) {}
@@ -163,9 +193,11 @@ class MediaProvider extends ChangeNotifier {
     if (hasAudioPermission) {
       futures.add(_loadAudios());
     }
-    futures.add(_loadDocuments().then((_) => _saveCache()));
+    futures.add(_loadDocuments());
+    futures.add(_loadArchivesAndDownloads());
 
     await Future.wait(futures);
+    await _saveCache();
 
     _applySort();
     _isLoading = false;
@@ -240,6 +272,56 @@ class MediaProvider extends ChangeNotifier {
     _documents = docs;
   }
 
+  static const List<String> _archiveExtensions = ['.zip', '.tar', '.gz', '.bz2', '.rar', '.7z'];
+
+  Future<void> _loadArchivesAndDownloads() async {
+    final arch = <FileSystemEntity>[];
+    final dl = <FileSystemEntity>[];
+
+    // For downloads
+    final dlDirs = ['/storage/emulated/0/Download', '/storage/emulated/0/Downloads'];
+    for (final dirPath in dlDirs) {
+      final dir = Directory(dirPath);
+      if (await dir.exists()) {
+        try {
+          await for (final entity in dir.list(recursive: false)) {
+            if (entity is File) {
+              dl.add(entity);
+            }
+          }
+        } catch (_) {}
+      }
+    }
+
+    // For archives, scan standard user directories
+    final searchDirs = [
+      '/storage/emulated/0/Download',
+      '/storage/emulated/0/Downloads',
+      '/storage/emulated/0/Documents',
+      '/storage/emulated/0/Telegram',
+      '/storage/emulated/0/WhatsApp/Media',
+    ];
+
+    for (final dirPath in searchDirs) {
+      final dir = Directory(dirPath);
+      if (await dir.exists()) {
+        try {
+          await for (final entity in dir.list(recursive: true)) {
+            if (entity is File) {
+              final ext = entity.path.contains('.') ? entity.path.substring(entity.path.lastIndexOf('.')).toLowerCase() : '';
+              if (_archiveExtensions.contains(ext)) {
+                arch.add(entity);
+              }
+            }
+          }
+        } catch (_) {}
+      }
+    }
+
+    _downloads = dl;
+    _archives = arch;
+  }
+
   void setSortOrder(MediaSortOrder order) {
     _sortOrder = order;
     _applySort();
@@ -260,7 +342,7 @@ class MediaProvider extends ChangeNotifier {
             (a, b) => (a.dateAdded ?? 0).compareTo(b.dateAdded ?? 0));
     }
 
-    _documents.sort((a, b) {
+    int fileSort(FileSystemEntity a, FileSystemEntity b) {
       try {
         final aTime = (a as File).lastModifiedSync();
         final bTime = (b as File).lastModifiedSync();
@@ -270,7 +352,11 @@ class MediaProvider extends ChangeNotifier {
       } catch (_) {
         return 0;
       }
-    });
+    }
+
+    _documents.sort(fileSort);
+    _archives.sort(fileSort);
+    _downloads.sort(fileSort);
   }
 }
 
