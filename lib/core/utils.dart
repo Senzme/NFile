@@ -36,8 +36,24 @@ class FileUtils {
         lower.endsWith('.001');
   }
 
+  static bool isTextOrCode(String path) {
+    final lower = path.toLowerCase();
+    const exts = [
+      '.txt', '.md', '.json', '.xml', '.py', '.js', '.ts', '.dart', '.html', '.css',
+      '.scss', '.java', '.kt', '.cpp', '.c', '.h', '.hpp', '.cs', '.php', '.rb', '.go',
+      '.rs', '.swift', '.sql', '.yaml', '.yml', '.ini', '.cfg', '.conf', '.sh', '.bat',
+      '.ps1', '.cmd', '.env', '.log', '.csv', '.tsv', '.properties', '.gradle', '.pom', '.err'
+    ];
+    for (final ext in exts) {
+      if (lower.endsWith(ext)) return true;
+    }
+    final mime = lookupMimeType(path);
+    return mime != null && mime.startsWith('text/');
+  }
+
   static IconData getIconForFile(String path) {
     if (isArchive(path)) return Broken.archive;
+    if (isTextOrCode(path)) return Broken.document_code;
 
     final mimeType = lookupMimeType(path);
     if (mimeType == null) return Broken.document;
@@ -45,7 +61,6 @@ class FileUtils {
     if (mimeType.startsWith('image/')) return Broken.image;
     if (mimeType.startsWith('video/')) return Broken.video;
     if (mimeType.startsWith('audio/')) return Broken.music;
-    if (mimeType.startsWith('text/')) return Broken.document_text;
     if (mimeType == 'application/pdf') return Broken.document;
     if (mimeType.startsWith('application/vnd.android.package-archive')) {
       return Broken.mobile;
@@ -56,6 +71,7 @@ class FileUtils {
   
   static Color getColorForFile(String path, BuildContext context) {
     if (isArchive(path)) return Colors.brown;
+    if (isTextOrCode(path)) return Colors.blueAccent;
 
     final mimeType = lookupMimeType(path);
     if (mimeType == null) return Theme.of(context).colorScheme.primary;
@@ -63,7 +79,6 @@ class FileUtils {
     if (mimeType.startsWith('image/')) return Colors.purpleAccent;
     if (mimeType.startsWith('video/')) return Colors.redAccent;
     if (mimeType.startsWith('audio/')) return Colors.orangeAccent;
-    if (mimeType.startsWith('text/')) return Colors.blueAccent;
     if (mimeType == 'application/pdf') return Colors.red;
 
     return Theme.of(context).colorScheme.primary;
