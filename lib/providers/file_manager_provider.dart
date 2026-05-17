@@ -21,19 +21,32 @@ class FileManagerProvider extends ChangeNotifier {
 
   String _currentPath = '';
   String get currentPath => _currentPath;
-
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
   final List<String> _clipboardPaths = [];
   bool _isCut = false;
+  String? _sourceArchiveForCut;
+  List<String>? _internalSourcePathsForCut;
+
   bool get hasClipboard => _clipboardPaths.isNotEmpty;
   List<String> get clipboardPaths => _clipboardPaths;
   bool get isCut => _isCut;
 
+  void setClipboard(List<String> paths, {required bool isCut, String? sourceArchive, List<String>? internalSourcePaths}) {
+    _clipboardPaths.clear();
+    _clipboardPaths.addAll(paths);
+    _isCut = isCut;
+    _sourceArchiveForCut = sourceArchive;
+    _internalSourcePathsForCut = internalSourcePaths;
+    notifyListeners();
+  }
+
   void clearClipboard() {
     _clipboardPaths.clear();
     _isCut = false;
+    _sourceArchiveForCut = null;
+    _internalSourcePathsForCut = null;
     notifyListeners();
   }
 
@@ -77,7 +90,7 @@ class FileManagerProvider extends ChangeNotifier {
       _currentPath = dir.path;
       _rootPath = _currentPath;
     }
-    await loadDirectory(_currentPath);
+    await loadDirectory(_currentPath, showLoading: false);
   }
 
   Future<void> loadDirectory(String path, {bool showLoading = true}) async {
@@ -85,42 +98,43 @@ class FileManagerProvider extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
     }
-    _currentPath = path;
-    _selectedPaths.clear();
 
     try {
       final dir = Directory(path);
-      final entities = dir.listSync();
-      _currentFiles = entities.map((e) => FileItemModel.fromEntity(e)).toList();
-      
-      _currentFiles.sort((a, b) {
-        if (a.isDirectory && !b.isDirectory) return -1;
-        if (!a.isDirectory && b.isDirectory) return 1;
-        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-      });
+      if (await dir.exists()) {
+        _currentPath = path;
+        final entities = await dir.list().toList();
+        
+        final folders = <FileItemModel>[];
+        final files = <FileItemModel>[];
+
+        for (var entity in entities) {
+          final item = FileItemModel.fromEntity(entity);
+          if (item.isDirectory) {
+            folders.add(item);
+          } else {
+            files.add(item);
+          }
+        }
+
+        folders.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        files.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+
+        _currentFiles = [...folders, ...files];
+      }
     } catch (e) {
       debugPrint('Error loading directory: $e');
     }
 
-    if (showLoading) {
-      _isLoading = false;
-    }
+    _isLoading = false;
     notifyListeners();
   }
 
   Future<bool> goBack() async {
-    if (isSelectionMode) {
-      clearSelection();
-      return true;
-    }
-    if (canGoBack) {
-      final parent = Directory(_currentPath).parent.path;
-      if (parent != _currentPath) {
-        await loadDirectory(parent);
-        return true;
-      }
-    }
-    return false;
+    if (!canGoBack) return false;
+    final parent = p.dirname(_currentPath);
+    await loadDirectory(parent, showLoading: false);
+    return true;
   }
 
   void toggleSelection(String path) {
@@ -134,7 +148,7 @@ class FileManagerProvider extends ChangeNotifier {
 
   void selectAll() {
     _selectedPaths.clear();
-    _selectedPaths.addAll(_currentFiles.map((e) => e.path));
+    _selectedPaths.addAll(_currentFiles.map((f) => f.path));
     notifyListeners();
   }
 
@@ -144,33 +158,23 @@ class FileManagerProvider extends ChangeNotifier {
   }
 
   void copyFile(String path) {
-    _clipboardPaths.clear();
-    _clipboardPaths.add(path);
-    _isCut = false;
-    notifyListeners();
+    setClipboard([path], isCut: false);
   }
 
   void cutFile(String path) {
-    _clipboardPaths.clear();
-    _clipboardPaths.add(path);
-    _isCut = true;
-    notifyListeners();
+    setClipboard([path], isCut: true);
   }
 
   void copySelected() {
     if (_selectedPaths.isEmpty) return;
-    _clipboardPaths.clear();
-    _clipboardPaths.addAll(_selectedPaths);
-    _isCut = false;
+    setClipboard(_selectedPaths.toList(), isCut: false);
     _selectedPaths.clear();
     notifyListeners();
   }
 
   void cutSelected() {
     if (_selectedPaths.isEmpty) return;
-    _clipboardPaths.clear();
-    _clipboardPaths.addAll(_selectedPaths);
-    _isCut = true;
+    setClipboard(_selectedPaths.toList(), isCut: true);
     _selectedPaths.clear();
     notifyListeners();
   }
@@ -178,12 +182,15 @@ class FileManagerProvider extends ChangeNotifier {
   Future<void> deleteSelected() async {
     if (_selectedPaths.isEmpty) return;
 
+    _isLoading = true;
+    notifyListeners();
+
     try {
       for (final path in _selectedPaths) {
         final type = FileSystemEntity.typeSync(path);
         if (type == FileSystemEntityType.directory) {
           await Directory(path).delete(recursive: true);
-        } else if (type == FileSystemEntityType.file) {
+        } else {
           await File(path).delete();
         }
       }
@@ -192,6 +199,7 @@ class FileManagerProvider extends ChangeNotifier {
     }
 
     _selectedPaths.clear();
+    _isLoading = false;
     await loadDirectory(_currentPath, showLoading: false);
   }
 
@@ -221,16 +229,19 @@ class FileManagerProvider extends ChangeNotifier {
           }
         }
       }
+
+      if (_isCut && _sourceArchiveForCut != null && _internalSourcePathsForCut != null) {
+        await ArchiveService.deleteItemsFromArchive(
+          archivePath: _sourceArchiveForCut!,
+          internalPathsToDelete: _internalSourcePathsForCut!,
+        );
+      }
       
-      _clipboardPaths.clear();
-      _isCut = false;
-      
+      clearClipboard();
       await loadDirectory(_currentPath, showLoading: false);
     } catch (e) {
       debugPrint('Error pasting file: $e');
-      _clipboardPaths.clear();
-      _isCut = false;
-      notifyListeners();
+      clearClipboard();
     }
   }
 

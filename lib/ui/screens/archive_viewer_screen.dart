@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:archive/archive.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
@@ -35,8 +36,10 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
   Archive? _archive;
   String _currentInternalPath = '';
   bool _isLoading = true;
+  final Set<String> _selectedInternalPaths = {};
 
   String get _archiveName => p.basename(widget.archivePath);
+  bool get isSelectionMode => _selectedInternalPaths.isNotEmpty;
 
   @override
   void initState() {
@@ -51,6 +54,7 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
       setState(() {
         _archive = arch;
         _isLoading = false;
+        _selectedInternalPaths.clear();
       });
     }
   }
@@ -111,6 +115,16 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
     });
 
     return items;
+  }
+
+  void _toggleSelect(ArchiveItem item) {
+    setState(() {
+      if (_selectedInternalPaths.contains(item.fullPath)) {
+        _selectedInternalPaths.remove(item.fullPath);
+      } else {
+        _selectedInternalPaths.add(item.fullPath);
+      }
+    });
   }
 
   Future<bool> _handlePop() async {
@@ -176,55 +190,134 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
     }
   }
 
-  Future<void> _addNewFile() async {
-    final provider = context.read<FileManagerProvider>();
-    final availableFiles = provider.currentFiles.where((f) => !f.isDirectory).toList();
+  Future<void> _copySelectedToClipboard({required bool isCut}) async {
+    if (_selectedInternalPaths.isEmpty || _archive == null) return;
+    setState(() => _isLoading = true);
 
-    if (availableFiles.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No files in current folder to add')));
+    try {
+      final tempDir = Directory.systemTemp.createTempSync('archive_clipboard');
+      final List<String> physicalPaths = [];
+
+      for (final internalPath in _selectedInternalPaths) {
+        final isDir = internalPath.endsWith('/');
+        if (!isDir) {
+          final fileObj = _archive!.files.firstWhere((f) => f.name.replaceAll('\\', '/') == internalPath);
+          final fileName = p.basename(internalPath);
+          final physicalFile = File(p.join(tempDir.path, fileName));
+          physicalFile.writeAsBytesSync(fileObj.content as List<int>);
+          physicalPaths.add(physicalFile.path);
+        } else {
+          final folderName = p.basename(internalPath.substring(0, internalPath.length - 1));
+          final targetSubDir = Directory(p.join(tempDir.path, folderName));
+          targetSubDir.createSync(recursive: true);
+          physicalPaths.add(targetSubDir.path);
+
+          for (final f in _archive!.files) {
+            final name = f.name.replaceAll('\\', '/');
+            if (name.startsWith(internalPath) && f.isFile) {
+              final rel = name.substring(internalPath.length);
+              final destFile = File(p.join(targetSubDir.path, rel));
+              destFile.createSync(recursive: true);
+              destFile.writeAsBytesSync(f.content as List<int>);
+            }
+          }
+        }
       }
-      return;
-    }
 
-    final selectedPath = await showDialog<String>(
+      final provider = context.read<FileManagerProvider>();
+      provider.setClipboard(
+        physicalPaths,
+        isCut: isCut,
+        sourceArchive: isCut ? widget.archivePath : null,
+        internalSourcePaths: isCut ? _selectedInternalPaths.toList() : null,
+      );
+
+      setState(() {
+        _selectedInternalPaths.clear();
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${physicalPaths.length} item(s) copied to clipboard ✓')));
+      }
+    } catch (e) {
+      debugPrint('Error copying to clipboard: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _deleteSelectedInternalItems() async {
+    if (_selectedInternalPaths.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Select File to Add', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: availableFiles.length,
-            itemBuilder: (c, i) => ListTile(
-              leading: Icon(FileUtils.getIconForFile(availableFiles[i].path), color: Theme.of(context).colorScheme.primary),
-              title: Text(availableFiles[i].name),
-              subtitle: Text(FileUtils.formatBytes(availableFiles[i].size, 1), style: const TextStyle(fontSize: 12)),
-              onTap: () => Navigator.pop(c, availableFiles[i].path),
-            ),
+        title: const Text('Delete Selected Items', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        content: Text('Are you sure you want to delete precisely these ${_selectedInternalPaths.length} item(s) from the archive? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
           ),
-        ),
+        ],
       ),
-    );
+    ) ?? false;
 
-    if (selectedPath != null) {
+    if (confirm) {
       setState(() => _isLoading = true);
-      final success = await ArchiveService.addFileToArchive(
+      final success = await ArchiveService.deleteItemsFromArchive(
         archivePath: widget.archivePath,
-        filePathToAdd: selectedPath,
-        internalPath: _currentInternalPath,
+        internalPathsToDelete: _selectedInternalPaths.toList(),
       );
-      if (success) {
-        await _loadArchive();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File added successfully ✓')));
-        }
-      } else {
-        if (mounted) {
-          setState(() => _isLoading = false);
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to add file')));
+
+      _selectedInternalPaths.clear();
+      await _loadArchive();
+
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Items deleted successfully ✓')));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to delete items')));
         }
       }
+    }
+  }
+
+  Future<void> _addNewFile() async {
+    try {
+      final result = await FilePicker.pickFiles(
+        allowMultiple: true,
+        dialogTitle: 'Select File(s) to Add',
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        setState(() => _isLoading = true);
+        int successCount = 0;
+
+        for (final f in result.files) {
+          if (f.path != null && File(f.path!).existsSync()) {
+            final success = await ArchiveService.addFileToArchive(
+              archivePath: widget.archivePath,
+              filePathToAdd: f.path!,
+              internalPath: _currentInternalPath,
+            );
+            if (success) successCount++;
+          }
+        }
+
+        await _loadArchive();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Successfully added $successCount file(s) into archive ✓'),
+          ));
+        }
+      }
+    } catch (e) {
+      debugPrint('Error picking file: $e');
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -266,30 +359,61 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
     final items = _currentItems;
 
     return PopScope(
-      canPop: _currentInternalPath.isEmpty,
+      canPop: _currentInternalPath.isEmpty && !isSelectionMode,
       onPopInvoked: (didPop) async {
         if (didPop) return;
-        await _handlePop();
+        if (isSelectionMode) {
+          setState(() => _selectedInternalPaths.clear());
+        } else {
+          await _handlePop();
+        }
       },
       child: Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
-        appBar: AppBar(
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(_archiveName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              if (_currentInternalPath.isNotEmpty)
-                Text('/$_currentInternalPath', style: TextStyle(fontSize: 12, color: theme.colorScheme.primary)),
-            ],
-          ),
-          actions: [
-            IconButton(
-              icon: const Icon(Broken.refresh),
-              onPressed: _loadArchive,
-              tooltip: 'Refresh',
-            ),
-          ],
-        ),
+        appBar: isSelectionMode
+            ? AppBar(
+                backgroundColor: theme.colorScheme.primaryContainer,
+                leading: IconButton(
+                  icon: const Icon(Broken.close_square),
+                  onPressed: () => setState(() => _selectedInternalPaths.clear()),
+                ),
+                title: Text('${_selectedInternalPaths.length} selected', style: TextStyle(color: theme.colorScheme.onPrimaryContainer, fontWeight: FontWeight.bold, fontSize: 18)),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Broken.document_copy),
+                    tooltip: 'Copy',
+                    onPressed: () => _copySelectedToClipboard(isCut: false),
+                  ),
+                  IconButton(
+                    icon: const Icon(Broken.scissor),
+                    tooltip: 'Cut',
+                    onPressed: () => _copySelectedToClipboard(isCut: true),
+                  ),
+                  IconButton(
+                    icon: const Icon(Broken.trash),
+                    color: Colors.redAccent,
+                    tooltip: 'Delete',
+                    onPressed: _deleteSelectedInternalItems,
+                  ),
+                ],
+              )
+            : AppBar(
+                title: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_archiveName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    if (_currentInternalPath.isNotEmpty)
+                      Text('/$_currentInternalPath', style: TextStyle(fontSize: 12, color: theme.colorScheme.primary)),
+                  ],
+                ),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Broken.refresh),
+                    onPressed: _loadArchive,
+                    tooltip: 'Refresh',
+                  ),
+                ],
+              ),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _archive == null
@@ -302,24 +426,31 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
                         itemCount: items.length,
                         itemBuilder: (context, index) {
                           final item = items[index];
+                          final isSelected = _selectedInternalPaths.contains(item.fullPath);
                           final iconColor = item.isDirectory ? Colors.amber : FileUtils.getColorForFile(item.name, context);
 
                           return Card(
                             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                            color: theme.colorScheme.surface,
+                            color: isSelected ? theme.colorScheme.primaryContainer.withOpacity(0.4) : theme.colorScheme.surface,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(color: theme.dividerColor.withOpacity(0.1)),
+                              side: BorderSide(
+                                color: isSelected ? theme.colorScheme.primary : theme.dividerColor.withOpacity(0.1),
+                                width: isSelected ? 1.5 : 1.0,
+                              ),
                             ),
                             child: InkWell(
                               onTap: () {
-                                if (item.isDirectory) {
+                                if (isSelectionMode) {
+                                  _toggleSelect(item);
+                                } else if (item.isDirectory) {
                                   setState(() => _currentInternalPath = item.fullPath);
                                 } else {
                                   _openArchiveItem(item);
                                 }
                               },
+                              onLongPress: () => _toggleSelect(item),
                               borderRadius: BorderRadius.circular(12),
                               child: Padding(
                                 padding: const EdgeInsets.all(12.0),
@@ -329,12 +460,12 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
                                       width: 48,
                                       height: 48,
                                       decoration: BoxDecoration(
-                                        color: iconColor.withOpacity(0.1),
+                                        color: isSelected ? theme.colorScheme.primary : iconColor.withOpacity(0.1),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Icon(
-                                        item.isDirectory ? Broken.folder_2 : FileUtils.getIconForFile(item.name),
-                                        color: iconColor,
+                                        isSelected ? Broken.tick_circle : (item.isDirectory ? Broken.folder_2 : FileUtils.getIconForFile(item.name)),
+                                        color: isSelected ? theme.colorScheme.onPrimary : iconColor,
                                         size: 28,
                                       ),
                                     ),

@@ -346,4 +346,96 @@ class ArchiveService {
       return false;
     }
   }
+
+  static Future<bool> deleteItemsFromArchive({
+    required String archivePath,
+    required List<String> internalPathsToDelete,
+  }) async {
+    return compute(_deleteItemsFromArchiveTask, {
+      'archivePath': archivePath,
+      'internalPathsToDelete': internalPathsToDelete,
+    });
+  }
+
+  static bool _deleteItemsFromArchiveTask(Map<String, dynamic> args) {
+    final archivePath = args['archivePath'] as String;
+    final internalPathsToDelete = args['internalPathsToDelete'] as List<String>;
+
+    try {
+      final archiveFile = File(archivePath);
+      if (!archiveFile.existsSync() || archiveFile.lengthSync() == 0) return false;
+
+      final bytes = archiveFile.readAsBytesSync();
+      final lowerPath = archivePath.toLowerCase();
+      Archive? archive;
+      bool isGz = false;
+      bool isBz2 = false;
+
+      try {
+        if (lowerPath.endsWith('.zip')) {
+          archive = ZipDecoder().decodeBytes(bytes);
+        } else if (lowerPath.endsWith('.tar.gz') || lowerPath.endsWith('.tgz')) {
+          isGz = true;
+          final tarBytes = GZipDecoder().decodeBytes(bytes);
+          archive = TarDecoder().decodeBytes(tarBytes);
+        } else if (lowerPath.endsWith('.tar.bz2') || lowerPath.endsWith('.tbz2')) {
+          isBz2 = true;
+          final tarBytes = BZip2Decoder().decodeBytes(bytes);
+          archive = TarDecoder().decodeBytes(tarBytes);
+        } else if (lowerPath.endsWith('.tar')) {
+          archive = TarDecoder().decodeBytes(bytes);
+        } else {
+          archive = ZipDecoder().decodeBytes(bytes);
+        }
+      } catch (_) {
+        return false;
+      }
+
+      if (archive == null) return false;
+
+      final newArchive = Archive();
+      for (final f in archive.files) {
+        final name = f.name.replaceAll('\\', '/');
+        bool shouldDelete = false;
+        for (final toDel in internalPathsToDelete) {
+          if (toDel.endsWith('/')) {
+            if (name.startsWith(toDel) || name == toDel.substring(0, toDel.length - 1)) {
+              shouldDelete = true;
+              break;
+            }
+          } else {
+            if (name == toDel) {
+              shouldDelete = true;
+              break;
+            }
+          }
+        }
+        if (!shouldDelete) {
+          newArchive.addFile(f);
+        }
+      }
+
+      List<int>? newArchiveBytes;
+      if (lowerPath.endsWith('.tar')) {
+        newArchiveBytes = TarEncoder().encode(newArchive);
+      } else if (isGz) {
+        final tarBytes = TarEncoder().encode(newArchive);
+        if (tarBytes != null) newArchiveBytes = GZipEncoder().encode(tarBytes);
+      } else if (isBz2) {
+        final tarBytes = TarEncoder().encode(newArchive);
+        if (tarBytes != null) newArchiveBytes = BZip2Encoder().encode(tarBytes);
+      } else {
+        newArchiveBytes = ZipEncoder().encode(newArchive);
+      }
+
+      if (newArchiveBytes != null) {
+        archiveFile.writeAsBytesSync(newArchiveBytes);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error deleting from archive: $e');
+      return false;
+    }
+  }
 }
