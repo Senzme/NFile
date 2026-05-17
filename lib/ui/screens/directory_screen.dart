@@ -158,7 +158,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                       onPressed: () => provider.selectAll(),
                     ),
                     IconButton(
-                      icon: const Icon(Broken.copy),
+                      icon: const Icon(Broken.document_copy),
                       tooltip: 'Copy',
                       onPressed: () {
                         provider.copySelected();
@@ -174,7 +174,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                       },
                     ),
                     IconButton(
-                      icon: const Icon(Broken.archive_add),
+                      icon: const Icon(Broken.box_add),
                       tooltip: 'Create Archive',
                       onPressed: () async {
                         final res = await CreateArchiveDialog.show(
