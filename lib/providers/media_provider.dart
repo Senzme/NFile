@@ -180,11 +180,18 @@ class MediaProvider extends ChangeNotifier {
     // Fast initial load from disk cache
     await _loadFromDiskCache();
 
-    final PermissionState ps = await PhotoManager.requestPermissionExtend();
-    bool hasAudioPermission = await _audioQuery.permissionsStatus();
-    if (!hasAudioPermission) {
-      hasAudioPermission = await _audioQuery.permissionsRequest();
-    }
+    PermissionState ps = PermissionState.denied;
+    try {
+      ps = await PhotoManager.requestPermissionExtend();
+    } catch (_) {}
+
+    bool hasAudioPermission = false;
+    try {
+      hasAudioPermission = await _audioQuery.permissionsStatus();
+      if (!hasAudioPermission) {
+        hasAudioPermission = await _audioQuery.permissionsRequest();
+      }
+    } catch (_) {}
 
     final futures = <Future<void>>[];
     if (ps.isAuth) {
@@ -206,23 +213,29 @@ class MediaProvider extends ChangeNotifier {
   }
 
   Future<void> _loadImagesAndVideos() async {
-    List<AssetPathEntity> albums =
-        await PhotoManager.getAssetPathList(onlyAll: true);
-    if (albums.isNotEmpty) {
-      List<AssetEntity> allMedia =
-          await albums[0].getAssetListPaged(page: 0, size: 10000);
-      _images = allMedia.where((e) => e.type == AssetType.image).toList();
-      _videos = allMedia.where((e) => e.type == AssetType.video).toList();
-    }
+    try {
+      List<AssetPathEntity> albums =
+          await PhotoManager.getAssetPathList(onlyAll: true);
+      if (albums.isNotEmpty) {
+        List<AssetEntity> allMedia =
+            await albums[0].getAssetListPaged(page: 0, size: 10000);
+        _images = allMedia.where((e) => e.type == AssetType.image).toList();
+        _videos = allMedia.where((e) => e.type == AssetType.video).toList();
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadAudios() async {
-    _audios = await _audioQuery.querySongs(
-      sortType: null,
-      orderType: OrderType.ASC_OR_SMALLER,
-      uriType: UriType.EXTERNAL,
-      ignoreCase: true,
-    );
+    try {
+      _audios = await _audioQuery.querySongs(
+        sortType: null,
+        orderType: OrderType.ASC_OR_SMALLER,
+        uriType: UriType.EXTERNAL,
+        ignoreCase: true,
+      );
+    } catch (_) {
+      _audios = [];
+    }
   }
 
   static const List<String> _docExtensions = [
@@ -359,4 +372,3 @@ class MediaProvider extends ChangeNotifier {
     _downloads.sort(fileSort);
   }
 }
-
