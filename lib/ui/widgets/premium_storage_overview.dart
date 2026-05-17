@@ -16,8 +16,8 @@ class PremiumStorageOverview extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [
-              Color(0xFF4F46E5), // Premium Indigo
-              Color(0xFF7C3AED), // Premium Violet
+              Color(0xFF1E293B), // Sleek Slate 800
+              Color(0xFF0F172A), // Deep Slate 900
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -25,11 +25,12 @@ class PremiumStorageOverview extends StatelessWidget {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF4F46E5).withOpacity(0.35),
-              blurRadius: 20,
+              color: const Color(0xFF0F172A).withOpacity(0.3),
+              blurRadius: 18,
               offset: const Offset(0, 8),
             ),
           ],
+          border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
         ),
         child: Material(
           color: Colors.transparent,
@@ -37,8 +38,8 @@ class PremiumStorageOverview extends StatelessWidget {
           child: InkWell(
             onTap: onBrowseStorage,
             borderRadius: BorderRadius.circular(24),
-            splashColor: Colors.white.withOpacity(0.2),
-            highlightColor: Colors.white.withOpacity(0.1),
+            splashColor: Colors.white.withOpacity(0.15),
+            highlightColor: Colors.white.withOpacity(0.08),
             child: Padding(
               padding: const EdgeInsets.all(20.0),
               child: Column(
@@ -49,13 +50,13 @@ class PremiumStorageOverview extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: const Color(0xFF38BDF8).withOpacity(0.15),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+                          border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.3), width: 1),
                         ),
-                        child: const Icon(Broken.folder_2, color: Colors.white, size: 28),
+                        child: const Icon(Broken.folder_2, color: Color(0xFF38BDF8), size: 26),
                       ),
-                      const SizedBox(width: 14),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -64,9 +65,9 @@ class PremiumStorageOverview extends StatelessWidget {
                               'Internal Storage',
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 17,
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                letterSpacing: 0.3,
+                                letterSpacing: 0.2,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -75,8 +76,8 @@ class PremiumStorageOverview extends StatelessWidget {
                             Text(
                               'Browse device files',
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.8),
-                                fontSize: 12,
+                                color: Colors.white.withOpacity(0.75),
+                                fontSize: 11.5,
                                 fontWeight: FontWeight.w500,
                               ),
                               maxLines: 1,
@@ -87,18 +88,18 @@ class PremiumStorageOverview extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.25),
+                          color: Colors.white.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.white.withOpacity(0.4), width: 1),
+                          border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
                         ),
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
                               'Browse',
-                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 11.5),
                             ),
                             SizedBox(width: 4),
                             Icon(Broken.arrow_right_3, color: Colors.white, size: 14),
@@ -112,8 +113,8 @@ class PremiumStorageOverview extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                     child: LinearProgressIndicator(
                       value: usedPercentage,
-                      backgroundColor: Colors.white.withOpacity(0.25),
-                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                      backgroundColor: Colors.white.withOpacity(0.12),
+                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF38BDF8)), // Vibrant Sky Blue
                       minHeight: 8,
                     ),
                   ),
@@ -123,11 +124,11 @@ class PremiumStorageOverview extends StatelessWidget {
                     children: [
                       const Text(
                         '84.2 GB used',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12.5),
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12),
                       ),
                       Text(
                         '128 GB total',
-                        style: TextStyle(color: Colors.white.withOpacity(0.8), fontWeight: FontWeight.w500, fontSize: 12.5),
+                        style: TextStyle(color: Colors.white.withOpacity(0.7), fontWeight: FontWeight.w500, fontSize: 12),
                       ),
                     ],
                   ),

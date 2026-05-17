@@ -18,35 +18,35 @@ class QuickCategoriesGrid extends StatelessWidget {
       {
         'label': 'Images',
         'icon': Broken.image,
-        'color': const Color(0xFF8B5CF6), // Elegant Purple
+        'color': const Color(0xFF6366F1), // Premium Indigo
         'count': '${mediaProvider.images.length} items',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.images))),
       },
       {
         'label': 'Videos',
         'icon': Broken.video,
-        'color': const Color(0xFFEC4899), // Vibrant Pink
+        'color': const Color(0xFF8B5CF6), // Premium Violet
         'count': '${mediaProvider.videos.length} items',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.videos))),
       },
       {
         'label': 'Audio',
         'icon': Broken.music,
-        'color': const Color(0xFFF59E0B), // Warm Amber
+        'color': const Color(0xFF14B8A6), // Premium Teal
         'count': '${mediaProvider.audios.length} items',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.audios))),
       },
       {
         'label': 'Documents',
         'icon': Broken.document,
-        'color': const Color(0xFF3B82F6), // Premium Blue
+        'color': const Color(0xFF3B82F6), // Royal Blue
         'count': '${mediaProvider.documents.length} items',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.documents))),
       },
       {
         'label': 'Archives',
         'icon': Broken.archive,
-        'color': const Color(0xFF10B981), // Clean Emerald
+        'color': const Color(0xFF10B981), // Emerald Green
         'count': '${mediaProvider.archives.length} items',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.archives))),
       },
@@ -110,7 +110,7 @@ class QuickCategoriesGrid extends StatelessWidget {
                     ),
                   ],
                   border: Border.all(
-                    color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.withOpacity(0.15),
+                    color: isDark ? Colors.white.withOpacity(0.06) : Colors.grey.withOpacity(0.18),
                     width: 1,
                   ),
                 ),
@@ -120,8 +120,8 @@ class QuickCategoriesGrid extends StatelessWidget {
                   child: InkWell(
                     onTap: action,
                     borderRadius: BorderRadius.circular(16),
-                    splashColor: color.withOpacity(0.1),
-                    highlightColor: color.withOpacity(0.05),
+                    splashColor: color.withOpacity(0.12),
+                    highlightColor: color.withOpacity(0.06),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
                       child: Row(
