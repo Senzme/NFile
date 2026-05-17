@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:docx_to_text/docx_to_text.dart';
 import 'package:excel/excel.dart' as excel_pkg;
+import 'package:excel2003/excel2003.dart';
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
@@ -107,21 +108,37 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
     try {
       final file = File(widget.filePath);
       final bytes = await file.readAsBytes();
-      final excel = excel_pkg.Excel.decodeBytes(bytes);
 
       _excelSheets.clear();
-      for (final table in excel.tables.keys) {
-        final sheet = excel.tables[table]!;
-        final List<List<dynamic>> rows = [];
-        for (final row in sheet.rows) {
-          final List<dynamic> rowData = [];
-          for (final cell in row) {
-            rowData.add(cell?.value?.toString() ?? '');
+
+      if (_ext == '.xls') {
+        final xls = XlsReader.fromBytes(bytes);
+        for (final sheetName in xls.sheetNames) {
+          final sheet = xls.sheetByName(sheetName);
+          if (sheet != null) {
+            final List<List<dynamic>> rowsStr = [];
+            for (final r in sheet.rows) {
+              rowsStr.add(r.map((c) => c?.toString() ?? '').toList());
+            }
+            _excelSheets[sheetName] = rowsStr;
           }
-          rows.add(rowData);
         }
-        _excelSheets[table] = rows;
+      } else {
+        final excel = excel_pkg.Excel.decodeBytes(bytes);
+        for (final table in excel.tables.keys) {
+          final sheet = excel.tables[table]!;
+          final List<List<dynamic>> rows = [];
+          for (final row in sheet.rows) {
+            final List<dynamic> rowData = [];
+            for (final cell in row) {
+              rowData.add(cell?.value?.toString() ?? '');
+            }
+            rows.add(rowData);
+          }
+          _excelSheets[table] = rows;
+        }
       }
+
       if (_excelSheets.isNotEmpty) {
         _selectedSheet = _excelSheets.keys.first;
       }
