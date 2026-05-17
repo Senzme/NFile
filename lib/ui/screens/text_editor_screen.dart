@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import '../../core/icon_fonts/broken_icons.dart';
+import 'html_viewer_screen.dart';
+import 'markdown_viewer_screen.dart';
 
 class CodeTextEditingController extends TextEditingController {
   String language;
@@ -422,6 +424,10 @@ class _TextEditorScreenState extends State<TextEditorScreen> {
     final lineCount = _currentLineCount;
     final bool isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
+    final lowerPath = widget.filePath.toLowerCase();
+    final isHtml = lowerPath.endsWith('.html') || lowerPath.endsWith('.htm');
+    final isMd = lowerPath.endsWith('.md') || lowerPath.endsWith('.markdown');
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
@@ -468,8 +474,18 @@ class _TextEditorScreenState extends State<TextEditorScreen> {
           PopupMenuButton<String>(
             icon: const Icon(Broken.more),
             tooltip: 'More Options',
-            onSelected: (value) {
-              if (value == 'reset_zoom') {
+            onSelected: (value) async {
+              if (value == 'html_preview') {
+                if (_isModified) await _saveFile();
+                if (context.mounted) {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => HtmlViewerScreen(filePath: widget.filePath)));
+                }
+              } else if (value == 'md_preview') {
+                if (_isModified) await _saveFile();
+                if (context.mounted) {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => MarkdownViewerScreen(filePath: widget.filePath)));
+                }
+              } else if (value == 'reset_zoom') {
                 setState(() {
                   _fontSize = 14.0;
                   _controller.fontSize = 14.0;
@@ -485,6 +501,16 @@ class _TextEditorScreenState extends State<TextEditorScreen> {
               }
             },
             itemBuilder: (context) => [
+              if (isHtml)
+                const PopupMenuItem(
+                  value: 'html_preview',
+                  child: Row(children: [Icon(Broken.global, size: 18, color: Colors.blueAccent), SizedBox(width: 12), Text('HTML Preview', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueAccent))]),
+                ),
+              if (isMd)
+                const PopupMenuItem(
+                  value: 'md_preview',
+                  child: Row(children: [Icon(Broken.document_text, size: 18, color: Colors.blueAccent), SizedBox(width: 12), Text('Markdown Preview', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueAccent))]),
+                ),
               PopupMenuItem(
                 value: 'reset_zoom',
                 child: Row(children: [const Icon(Broken.search_zoom_in_1, size: 18), const SizedBox(width: 12), Text('Default Zoom (${_fontSize.toInt()}pt)')]),
