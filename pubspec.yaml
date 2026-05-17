@@ -64,7 +64,6 @@ dependencies:
   excel: ^4.0.6
   xml: ^6.6.1
   excel2003: ^1.0.0
-  file_picker: ^11.0.2
 
 dev_dependencies:
   flutter_test:

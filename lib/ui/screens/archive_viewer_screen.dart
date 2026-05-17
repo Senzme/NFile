@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:archive/archive.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
@@ -8,6 +7,7 @@ import '../../core/icon_fonts/broken_icons.dart';
 import '../../core/utils.dart';
 import '../../providers/file_manager_provider.dart';
 import '../../services/archive_service.dart';
+import 'internal_file_picker_screen.dart';
 
 class ArchiveItem {
   final String name;
@@ -286,38 +286,49 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
   }
 
   Future<void> _addNewFile() async {
-    try {
-      final result = await FilePicker.pickFiles(
-        allowMultiple: true,
-        dialogTitle: 'Select File(s) to Add',
-      );
+    final provider = context.read<FileManagerProvider>();
+    final selectedPaths = await InternalFilePickerScreen.show(context, rootPath: provider.rootPath);
 
-      if (result != null && result.files.isNotEmpty) {
-        setState(() => _isLoading = true);
-        int successCount = 0;
+    if (selectedPaths != null && selectedPaths.isNotEmpty) {
+      setState(() => _isLoading = true);
+      int successCount = 0;
 
-        for (final f in result.files) {
-          if (f.path != null && File(f.path!).existsSync()) {
-            final success = await ArchiveService.addFileToArchive(
-              archivePath: widget.archivePath,
-              filePathToAdd: f.path!,
-              internalPath: _currentInternalPath,
-            );
-            if (success) successCount++;
+      for (final path in selectedPaths) {
+        final type = FileSystemEntity.typeSync(path);
+        if (type == FileSystemEntityType.directory) {
+          final dir = Directory(path);
+          final folderBaseName = p.basename(path);
+          final entities = dir.listSync(recursive: true);
+
+          for (final entity in entities) {
+            if (entity is File) {
+              final relPath = entity.path.substring(path.length + 1);
+              final targetInternalPath = p.join(_currentInternalPath, folderBaseName, p.dirname(relPath)).replaceAll('\\', '/');
+              final success = await ArchiveService.addFileToArchive(
+                archivePath: widget.archivePath,
+                filePathToAdd: entity.path,
+                internalPath: targetInternalPath == '.' ? '' : '$targetInternalPath/',
+              );
+              if (success) successCount++;
+            }
           }
-        }
-
-        await _loadArchive();
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Successfully added $successCount file(s) into archive ✓'),
-          ));
+        } else {
+          final success = await ArchiveService.addFileToArchive(
+            archivePath: widget.archivePath,
+            filePathToAdd: path,
+            internalPath: _currentInternalPath,
+          );
+          if (success) successCount++;
         }
       }
-    } catch (e) {
-      debugPrint('Error picking file: $e');
-      if (mounted) setState(() => _isLoading = false);
+
+      await _loadArchive();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Successfully added $successCount item(s) into archive ✓'),
+        ));
+      }
     }
   }
 
