@@ -71,11 +71,13 @@ class FileManagerProvider extends ChangeNotifier {
     await loadDirectory(_currentPath);
   }
 
-  Future<void> loadDirectory(String path) async {
-    _isLoading = true;
+  Future<void> loadDirectory(String path, {bool showLoading = true}) async {
+    if (showLoading) {
+      _isLoading = true;
+      notifyListeners();
+    }
     _currentPath = path;
     _selectedPaths.clear();
-    notifyListeners();
 
     try {
       final dir = Directory(path);
@@ -91,7 +93,9 @@ class FileManagerProvider extends ChangeNotifier {
       debugPrint('Error loading directory: $e');
     }
 
-    _isLoading = false;
+    if (showLoading) {
+      _isLoading = false;
+    }
     notifyListeners();
   }
 
@@ -164,8 +168,6 @@ class FileManagerProvider extends ChangeNotifier {
 
   Future<void> deleteSelected() async {
     if (_selectedPaths.isEmpty) return;
-    _isLoading = true;
-    notifyListeners();
 
     try {
       for (final path in _selectedPaths) {
@@ -181,14 +183,11 @@ class FileManagerProvider extends ChangeNotifier {
     }
 
     _selectedPaths.clear();
-    await loadDirectory(_currentPath);
+    await loadDirectory(_currentPath, showLoading: false);
   }
 
   Future<void> pasteFile() async {
     if (_clipboardPaths.isEmpty) return;
-    
-    _isLoading = true;
-    notifyListeners();
 
     try {
       for (final srcPath in _clipboardPaths) {
@@ -214,15 +213,14 @@ class FileManagerProvider extends ChangeNotifier {
         }
       }
       
-      if (_isCut) {
-        _clipboardPaths.clear();
-        _isCut = false;
-      }
+      _clipboardPaths.clear();
+      _isCut = false;
       
-      await loadDirectory(_currentPath);
+      await loadDirectory(_currentPath, showLoading: false);
     } catch (e) {
       debugPrint('Error pasting file: $e');
-      _isLoading = false;
+      _clipboardPaths.clear();
+      _isCut = false;
       notifyListeners();
     }
   }
@@ -248,7 +246,7 @@ class FileManagerProvider extends ChangeNotifier {
       } else {
         await File(path).delete();
       }
-      await loadDirectory(_currentPath);
+      await loadDirectory(_currentPath, showLoading: false);
     } catch (e) {
       debugPrint('Error deleting file: $e');
     }
@@ -263,7 +261,7 @@ class FileManagerProvider extends ChangeNotifier {
       } else {
         await File(oldPath).rename(newPath);
       }
-      await loadDirectory(_currentPath);
+      await loadDirectory(_currentPath, showLoading: false);
     } catch (e) {
       debugPrint('Error renaming file: $e');
     }
@@ -273,7 +271,7 @@ class FileManagerProvider extends ChangeNotifier {
     try {
       final newPath = p.join(_currentPath, name);
       await Directory(newPath).create();
-      await loadDirectory(_currentPath);
+      await loadDirectory(_currentPath, showLoading: false);
     } catch (e) {
       debugPrint('Error creating folder: $e');
     }
@@ -283,7 +281,7 @@ class FileManagerProvider extends ChangeNotifier {
     try {
       final newPath = p.join(_currentPath, name);
       await File(newPath).create();
-      await loadDirectory(_currentPath);
+      await loadDirectory(_currentPath, showLoading: false);
     } catch (e) {
       debugPrint('Error creating file: $e');
     }
@@ -320,7 +318,7 @@ class FileManagerProvider extends ChangeNotifier {
     }
 
     _selectedPaths.clear();
-    await loadDirectory(_currentPath);
+    await loadDirectory(_currentPath, showLoading: false);
   }
 
   Future<void> openFile(BuildContext context, String path) async {
