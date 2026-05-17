@@ -73,28 +73,34 @@ jobs:
           VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d '+' -f 1)
           echo "APP_VERSION=v$VERSION" >> $GITHUB_ENV
 
-      - name: Build APK
-        run: flutter build apk --release --no-tree-shake-icons
+      - name: Build Split APKs
+        run: flutter build apk --release --split-per-abi --no-tree-shake-icons
 
-      - name: Rename APK
-        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/NFile-${{ env.APP_VERSION }}-release.apk
+      - name: Rename APKs
+        run: |
+          mv build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/app/outputs/flutter-apk/NFile-${{ env.APP_VERSION }}-arm64-v8a.apk
+          mv build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk build/app/outputs/flutter-apk/NFile-${{ env.APP_VERSION }}-armeabi-v7a.apk
+          mv build/app/outputs/flutter-apk/app-x86_64-release.apk build/app/outputs/flutter-apk/NFile-${{ env.APP_VERSION }}-x86_64.apk
 
-      - name: Upload APK to Artifacts
+      - name: Upload APKs to Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: nfile-${{ env.APP_VERSION }}-apk
-          path: build/app/outputs/flutter-apk/NFile-${{ env.APP_VERSION }}-release.apk
+          name: nfile-${{ env.APP_VERSION }}-apks
+          path: build/app/outputs/flutter-apk/NFile-${{ env.APP_VERSION }}-*.apk
 
-      - name: Release APK
+      - name: Release APKs
         uses: softprops/action-gh-release@v2
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
           tag_name: ${{ env.APP_VERSION }}
           name: "NFile Release ${{ env.APP_VERSION }}"
-          body: "Official cryptographic signed release build v1.0.22 (Commit: ${{ github.sha }})."
+          body: |
+            ### Official NFile Production Release ${{ env.APP_VERSION }}
+            * **Optimized & Split by Architecture**: Download `arm64-v8a` for 64-bit modern devices (~15MB).
+            * Professionally signed and compiled with R8 code shrinking and uncompressed native libs.
           draft: false
           prerelease: false
           make_latest: true
-          files: build/app/outputs/flutter-apk/NFile-${{ env.APP_VERSION }}-release.apk
+          files: build/app/outputs/flutter-apk/NFile-${{ env.APP_VERSION }}-*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
