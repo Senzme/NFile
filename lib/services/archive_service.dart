@@ -242,26 +242,30 @@ class ArchiveService {
 
     try {
       final file = File(archivePath);
-      if (!file.existsSync()) return null;
+      if (!file.existsSync() || file.lengthSync() == 0) return Archive();
       final bytes = file.readAsBytesSync();
       final lowerPath = archivePath.toLowerCase();
 
-      if (lowerPath.endsWith('.zip') || lowerPath.contains('.zip.')) {
-        return ZipDecoder().decodeBytes(bytes, password: password != null && password.isNotEmpty ? password : null);
-      } else if (lowerPath.endsWith('.tar.gz') || lowerPath.endsWith('.tgz')) {
-        final tarBytes = GZipDecoder().decodeBytes(bytes);
-        return TarDecoder().decodeBytes(tarBytes);
-      } else if (lowerPath.endsWith('.tar.bz2') || lowerPath.endsWith('.tbz2')) {
-        final tarBytes = BZip2Decoder().decodeBytes(bytes);
-        return TarDecoder().decodeBytes(tarBytes);
-      } else if (lowerPath.endsWith('.tar')) {
-        return TarDecoder().decodeBytes(bytes);
-      } else {
-        return ZipDecoder().decodeBytes(bytes, password: password != null && password.isNotEmpty ? password : null);
+      try {
+        if (lowerPath.endsWith('.zip') || lowerPath.contains('.zip.')) {
+          return ZipDecoder().decodeBytes(bytes, password: password != null && password.isNotEmpty ? password : null);
+        } else if (lowerPath.endsWith('.tar.gz') || lowerPath.endsWith('.tgz')) {
+          final tarBytes = GZipDecoder().decodeBytes(bytes);
+          return TarDecoder().decodeBytes(tarBytes);
+        } else if (lowerPath.endsWith('.tar.bz2') || lowerPath.endsWith('.tbz2')) {
+          final tarBytes = BZip2Decoder().decodeBytes(bytes);
+          return TarDecoder().decodeBytes(tarBytes);
+        } else if (lowerPath.endsWith('.tar')) {
+          return TarDecoder().decodeBytes(bytes);
+        } else {
+          return ZipDecoder().decodeBytes(bytes, password: password != null && password.isNotEmpty ? password : null);
+        }
+      } catch (_) {
+        return Archive();
       }
     } catch (e) {
       debugPrint('Error reading archive: $e');
-      return null;
+      return Archive();
     }
   }
 
@@ -285,21 +289,35 @@ class ArchiveService {
     try {
       final archiveFile = File(archivePath);
       final fileToAdd = File(filePathToAdd);
-      if (!archiveFile.existsSync() || !fileToAdd.existsSync()) return false;
+      if (!fileToAdd.existsSync()) return false;
 
-      final bytes = archiveFile.readAsBytesSync();
+      Archive archive = Archive();
       final lowerPath = archivePath.toLowerCase();
-      Archive? archive;
+      bool isGz = false;
+      bool isBz2 = false;
 
-      if (lowerPath.endsWith('.zip')) {
-        archive = ZipDecoder().decodeBytes(bytes);
-      } else if (lowerPath.endsWith('.tar')) {
-        archive = TarDecoder().decodeBytes(bytes);
-      } else {
-        archive = ZipDecoder().decodeBytes(bytes);
+      if (archiveFile.existsSync() && archiveFile.lengthSync() > 0) {
+        final bytes = archiveFile.readAsBytesSync();
+        try {
+          if (lowerPath.endsWith('.zip')) {
+            archive = ZipDecoder().decodeBytes(bytes);
+          } else if (lowerPath.endsWith('.tar.gz') || lowerPath.endsWith('.tgz')) {
+            isGz = true;
+            final tarBytes = GZipDecoder().decodeBytes(bytes);
+            archive = TarDecoder().decodeBytes(tarBytes);
+          } else if (lowerPath.endsWith('.tar.bz2') || lowerPath.endsWith('.tbz2')) {
+            isBz2 = true;
+            final tarBytes = BZip2Decoder().decodeBytes(bytes);
+            archive = TarDecoder().decodeBytes(tarBytes);
+          } else if (lowerPath.endsWith('.tar')) {
+            archive = TarDecoder().decodeBytes(bytes);
+          } else {
+            archive = ZipDecoder().decodeBytes(bytes);
+          }
+        } catch (_) {
+          archive = Archive();
+        }
       }
-
-      if (archive == null) return false;
 
       final newFileBytes = fileToAdd.readAsBytesSync();
       final nameInside = p.join(internalPath, p.basename(filePathToAdd)).replaceAll('\\', '/');
@@ -308,6 +326,12 @@ class ArchiveService {
       List<int>? newArchiveBytes;
       if (lowerPath.endsWith('.tar')) {
         newArchiveBytes = TarEncoder().encode(archive);
+      } else if (isGz) {
+        final tarBytes = TarEncoder().encode(archive);
+        if (tarBytes != null) newArchiveBytes = GZipEncoder().encode(tarBytes);
+      } else if (isBz2) {
+        final tarBytes = TarEncoder().encode(archive);
+        if (tarBytes != null) newArchiveBytes = BZip2Encoder().encode(tarBytes);
       } else {
         newArchiveBytes = ZipEncoder().encode(archive);
       }
