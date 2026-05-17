@@ -321,7 +321,7 @@ class FileManagerProvider extends ChangeNotifier {
       Navigator.push(context, MaterialPageRoute(builder: (_) => VideoPlayerScreen(videoPath: path)));
     } else if (mimeType.startsWith('audio/')) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => AudioPlayerScreen(audioPath: path, title: p.basename(path))));
-    } else if (mimeType.startsWith('text/') || path.endsWith('.md') || path.endsWith('.json') || path.endsWith('.xml')) {
+    } else if (FileUtils.isTextOrCode(path)) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => TextEditorScreen(filePath: path)));
     } else if (docExts.contains(ext)) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => DocumentViewerScreen(filePath: path)));
