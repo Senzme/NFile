@@ -97,6 +97,17 @@ class MediaProvider extends ChangeNotifier {
   List<FileSystemEntity> _apks = [];
   List<AssetEntity> _screenshots = [];
 
+  List<String> _categoryOrder = [
+    'Images',
+    'Videos',
+    'Audio',
+    'Documents',
+    'Archives',
+    'Downloads',
+    'APKs',
+    'Screenshots',
+  ];
+
   List<String> _activeCategories = [
     'Images',
     'Videos',
@@ -120,6 +131,7 @@ class MediaProvider extends ChangeNotifier {
   List<FileSystemEntity> get downloads => _downloads;
   List<FileSystemEntity> get apks => _apks;
   List<AssetEntity> get screenshots => _screenshots;
+  List<String> get categoryOrder => _categoryOrder;
   List<String> get activeCategories => _activeCategories;
   bool get isLoading => _isLoading;
   bool get isLoaded => _isLoaded;
@@ -139,6 +151,16 @@ class MediaProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void reorderCategory(int oldIndex, int newIndex) {
+    if (newIndex > oldIndex) {
+      newIndex -= 1;
+    }
+    final item = _categoryOrder.removeAt(oldIndex);
+    _categoryOrder.insert(newIndex, item);
+    _saveCache();
+    notifyListeners();
+  }
+
   Future<void> _loadFromDiskCache() async {
     try {
       final dir = await getTemporaryDirectory();
@@ -147,6 +169,9 @@ class MediaProvider extends ChangeNotifier {
         final jsonStr = await cacheFile.readAsString();
         final map = jsonDecode(jsonStr) as Map<String, dynamic>;
 
+        if (map.containsKey('categoryOrder')) {
+          _categoryOrder = List<String>.from(map['categoryOrder'] ?? _categoryOrder);
+        }
         if (map.containsKey('activeCategories')) {
           _activeCategories = List<String>.from(map['activeCategories'] ?? _activeCategories);
         }
@@ -207,6 +232,7 @@ class MediaProvider extends ChangeNotifier {
       final dir = await getTemporaryDirectory();
       final cacheFile = File('${dir.path}/media_meta_cache.json');
       final map = {
+        'categoryOrder': _categoryOrder,
         'activeCategories': _activeCategories,
         'documents': _documents.map((e) => e.path).toList(),
         'archives': _archives.map((e) => e.path).toList(),

@@ -14,67 +14,68 @@ class QuickCategoriesGrid extends StatelessWidget {
     final theme = Theme.of(context);
     final mediaProvider = context.watch<MediaProvider>();
 
-    final allCategories = [
-      {
+    final allCategoriesMap = <String, Map<String, dynamic>>{
+      'Images': {
         'label': 'Images',
         'icon': Broken.image,
         'color': Colors.purpleAccent,
         'count': '${mediaProvider.images.length}',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.images))),
       },
-      {
+      'Videos': {
         'label': 'Videos',
         'icon': Broken.video,
         'color': Colors.redAccent,
         'count': '${mediaProvider.videos.length}',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.videos))),
       },
-      {
+      'Audio': {
         'label': 'Audio',
         'icon': Broken.music,
         'color': Colors.orangeAccent,
         'count': '${mediaProvider.audios.length}',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.audios))),
       },
-      {
+      'Documents': {
         'label': 'Documents',
         'icon': Broken.document,
         'color': Colors.blueAccent,
         'count': '${mediaProvider.documents.length}',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.documents))),
       },
-      {
+      'Archives': {
         'label': 'Archives',
         'icon': Broken.archive,
         'color': Colors.tealAccent,
         'count': '${mediaProvider.archives.length}',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.archives))),
       },
-      {
+      'Downloads': {
         'label': 'Downloads',
         'icon': Broken.document_download,
         'color': Colors.greenAccent,
         'count': '${mediaProvider.downloads.length}',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.downloads))),
       },
-      {
+      'APKs': {
         'label': 'APKs',
         'icon': Broken.box,
         'color': Colors.amber,
         'count': '${mediaProvider.apks.length}',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.apks))),
       },
-      {
+      'Screenshots': {
         'label': 'Screenshots',
         'icon': Broken.mobile,
         'color': Colors.pinkAccent,
         'count': '${mediaProvider.screenshots.length}',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.screenshots))),
       },
-    ];
+    };
 
-    final activeList = allCategories
-        .where((c) => mediaProvider.activeCategories.contains(c['label'] as String))
+    final activeList = mediaProvider.categoryOrder
+        .where((label) => mediaProvider.activeCategories.contains(label) && allCategoriesMap.containsKey(label))
+        .map((label) => allCategoriesMap[label]!)
         .toList();
 
     return Padding(
@@ -90,7 +91,7 @@ class QuickCategoriesGrid extends StatelessWidget {
                 style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, fontSize: 18),
               ),
               InkWell(
-                onTap: () => _showCustomizeDialog(context, mediaProvider, allCategories, theme),
+                onTap: () => _showCustomizeDialog(context, allCategoriesMap, theme),
                 borderRadius: BorderRadius.circular(16),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
@@ -121,94 +122,95 @@ class QuickCategoriesGrid extends StatelessWidget {
               ),
             )
           else
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 20,
-                childAspectRatio: 0.82,
-              ),
-              itemCount: activeList.length,
-              itemBuilder: (context, index) {
-                final cat = activeList[index];
-                final label = cat['label'] as String;
-                final icon = cat['icon'] as IconData;
-                final color = cat['color'] as Color;
-                final count = cat['count'] as String;
-                final action = cat['action'] as VoidCallback;
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: GridView.builder(
+                key: ValueKey(activeList.length),
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 20,
+                  childAspectRatio: 0.82,
+                ),
+                itemCount: activeList.length,
+                itemBuilder: (context, index) {
+                  final cat = activeList[index];
+                  final label = cat['label'] as String;
+                  final icon = cat['icon'] as IconData;
+                  final color = cat['color'] as Color;
+                  final count = cat['count'] as String;
+                  final action = cat['action'] as VoidCallback;
 
-                return Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Material(
-                      color: color.withOpacity(0.15),
-                      shape: const CircleBorder(),
-                      child: InkWell(
-                        onTap: action,
-                        customBorder: const CircleBorder(),
-                        splashColor: color.withOpacity(0.25),
-                        highlightColor: color.withOpacity(0.15),
-                        child: Container(
-                          width: 52,
-                          height: 52,
-                          alignment: Alignment.center,
-                          child: Icon(icon, color: color, size: 24),
+                  return Column(
+                    key: ValueKey(label),
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Material(
+                        color: color.withOpacity(0.15),
+                        shape: const CircleBorder(),
+                        child: InkWell(
+                          onTap: action,
+                          customBorder: const CircleBorder(),
+                          splashColor: color.withOpacity(0.25),
+                          highlightColor: color.withOpacity(0.15),
+                          child: Container(
+                            width: 52,
+                            height: 52,
+                            alignment: Alignment.center,
+                            child: Icon(icon, color: color, size: 24),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      label,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12.5,
+                      const SizedBox(height: 6),
+                      Text(
+                        label,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12.5,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 1),
-                    Text(
-                      count,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w500,
+                      const SizedBox(height: 1),
+                      Text(
+                        count,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                );
-              },
+                    ],
+                  );
+                },
+              ),
             ),
         ],
       ),
     );
   }
 
-  void _showCustomizeDialog(
-      BuildContext context, MediaProvider provider, List<Map<String, dynamic>> allCategories, ThemeData theme) {
+  void _showCustomizeDialog(BuildContext context, Map<String, Map<String, dynamic>> categoriesMap, ThemeData theme) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: theme.scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) {
-        return ChangeNotifierProvider<MediaProvider>.value(
-          value: provider,
-          child: _CustomizeCategoriesSheet(allCategories: allCategories),
-        );
+      builder: (context) {
+        return _CustomizeCategoriesSheet(categoriesMap: categoriesMap);
       },
     );
   }
 }
 
 class _CustomizeCategoriesSheet extends StatelessWidget {
-  final List<Map<String, dynamic>> allCategories;
+  final Map<String, Map<String, dynamic>> categoriesMap;
 
-  const _CustomizeCategoriesSheet({required this.allCategories});
+  const _CustomizeCategoriesSheet({required this.categoriesMap});
 
   @override
   Widget build(BuildContext context) {
@@ -220,82 +222,83 @@ class _CustomizeCategoriesSheet extends StatelessWidget {
       maxChildSize: 0.9,
       expand: false,
       builder: (context, scrollController) {
-        return Column(
-          children: [
-            const SizedBox(height: 12),
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Customize Shortcuts', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                  TextButton(onPressed: () => Navigator.pop(context), child: const Text('Done', style: TextStyle(fontWeight: FontWeight.bold))),
-                ],
-              ),
-            ),
-            const Divider(),
-            Expanded(
-              child: Consumer<MediaProvider>(
-                builder: (context, mediaProv, child) {
-                  final activeCats = mediaProv.activeCategories;
-                  return ListView.builder(
-                    controller: scrollController,
+        return Consumer<MediaProvider>(
+          builder: (context, provider, child) {
+            final activeCats = provider.activeCategories;
+            final order = provider.categoryOrder;
+
+            return Column(
+              children: [
+                const SizedBox(height: 12),
+                Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Customize Shortcuts', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Done')),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 4.0),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Drag items by the handle (=) to reorder icons on the Home Screen.',
+                      style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.5), fontSize: 12),
+                    ),
+                  ),
+                ),
+                const Divider(),
+                Expanded(
+                  child: ReorderableListView.builder(
+                    scrollController: scrollController,
                     physics: const BouncingScrollPhysics(),
-                    itemCount: allCategories.length,
+                    onReorder: (oldIndex, newIndex) => provider.reorderCategory(oldIndex, newIndex),
+                    itemCount: order.length,
                     itemBuilder: (context, index) {
-                      final cat = allCategories[index];
-                      final label = cat['label'] as String;
+                      final label = order[index];
+                      final cat = categoriesMap[label];
+                      if (cat == null) return const SizedBox.shrink(key: ValueKey('empty'));
+
                       final icon = cat['icon'] as IconData;
                       final color = cat['color'] as Color;
                       final isEnabled = activeCats.contains(label);
 
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isEnabled ? color.withOpacity(0.08) : Colors.transparent,
-                          borderRadius: BorderRadius.circular(16),
+                      return ListTile(
+                        key: ValueKey(label),
+                        leading: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(color: color.withOpacity(0.15), shape: BoxShape.circle),
+                          child: Icon(icon, color: color, size: 20),
                         ),
-                        child: ListTile(
-                          leading: AnimatedContainer(
-                            duration: const Duration(milliseconds: 250),
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: isEnabled ? color.withOpacity(0.18) : Colors.grey.withOpacity(0.15),
-                              shape: BoxShape.circle,
+                        title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Switch(
+                              value: isEnabled,
+                              activeColor: theme.colorScheme.primary,
+                              onChanged: (val) => provider.toggleCategory(label),
                             ),
-                            child: Icon(icon, color: isEnabled ? color : Colors.grey, size: 22),
-                          ),
-                          title: AnimatedDefaultTextStyle(
-                            duration: const Duration(milliseconds: 250),
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 15,
-                              color: isEnabled ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withOpacity(0.4),
+                            const SizedBox(width: 12),
+                            ReorderableDragStartListener(
+                              index: index,
+                              child: const Icon(Icons.drag_handle, color: Colors.grey, size: 24),
                             ),
-                            child: Text(label),
-                          ),
-                          trailing: Switch(
-                            value: isEnabled,
-                            activeColor: theme.colorScheme.primary,
-                            onChanged: (val) {
-                              mediaProv.toggleCategory(label);
-                            },
-                          ),
-                          onTap: () {
-                            mediaProv.toggleCategory(label);
-                          },
+                          ],
                         ),
                       );
                     },
-                  );
-                },
-              ),
-            ),
-          ],
+                  ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
