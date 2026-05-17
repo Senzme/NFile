@@ -10,6 +10,7 @@ import '../ui/screens/video_player/video_player_screen.dart';
 import '../ui/screens/audio_player/audio_player_screen.dart';
 import '../ui/screens/text_editor_screen.dart';
 import '../ui/screens/document_viewer_screen.dart';
+import '../ui/screens/archive_viewer_screen.dart';
 import '../services/archive_service.dart';
 import '../ui/widgets/extract_archive_dialog.dart';
 import '../core/utils.dart';
@@ -321,25 +322,34 @@ class FileManagerProvider extends ChangeNotifier {
     await loadDirectory(_currentPath, showLoading: false);
   }
 
+  Future<void> extractArchiveDirectly(BuildContext context, String path) async {
+    final destDir = p.join(_currentPath, p.basenameWithoutExtension(path));
+    final res = await ExtractArchiveDialog.show(context, archiveName: p.basename(path), defaultDestDir: destDir);
+    if (res != null && context.mounted) {
+      _isLoading = true;
+      notifyListeners();
+      try {
+        await ArchiveService.extractArchive(archivePath: path, destinationDir: res.destinationDir, password: res.password);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Archive extracted successfully')));
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Extraction failed: $e')));
+        }
+      }
+      await loadDirectory(_currentPath, showLoading: false);
+    }
+  }
+
   Future<void> openFile(BuildContext context, String path) async {
     if (FileUtils.isArchive(path)) {
-      final destDir = p.join(_currentPath, p.basenameWithoutExtension(path));
-      final res = await ExtractArchiveDialog.show(context, archiveName: p.basename(path), defaultDestDir: destDir);
-      if (res != null && context.mounted) {
-        _isLoading = true;
-        notifyListeners();
-        try {
-          await ArchiveService.extractArchive(archivePath: path, destinationDir: res.destinationDir, password: res.password);
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Archive extracted successfully')));
-          }
-        } catch (e) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Extraction failed: $e')));
-          }
-        }
-        await loadDirectory(_currentPath);
-      }
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ArchiveViewerScreen(archivePath: path),
+        ),
+      );
       return;
     }
 

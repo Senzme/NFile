@@ -81,7 +81,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
         }
         break;
       case 'extract':
-        await provider.openFile(context, path);
+        await provider.extractArchiveDirectly(context, path);
         break;
       case 'copy':
         provider.copyFile(path);

@@ -231,4 +231,95 @@ class ArchiveService {
       }
     } catch (_) {}
   }
+
+  static Future<Archive?> readArchive(String archivePath, {String? password}) async {
+    return compute(_readArchiveTask, {'archivePath': archivePath, 'password': password});
+  }
+
+  static Archive? _readArchiveTask(Map<String, dynamic> args) {
+    final archivePath = args['archivePath'] as String;
+    final password = args['password'] as String?;
+
+    try {
+      final file = File(archivePath);
+      if (!file.existsSync()) return null;
+      final bytes = file.readAsBytesSync();
+      final lowerPath = archivePath.toLowerCase();
+
+      if (lowerPath.endsWith('.zip') || lowerPath.contains('.zip.')) {
+        return ZipDecoder().decodeBytes(bytes, password: password != null && password.isNotEmpty ? password : null);
+      } else if (lowerPath.endsWith('.tar.gz') || lowerPath.endsWith('.tgz')) {
+        final tarBytes = GZipDecoder().decodeBytes(bytes);
+        return TarDecoder().decodeBytes(tarBytes);
+      } else if (lowerPath.endsWith('.tar.bz2') || lowerPath.endsWith('.tbz2')) {
+        final tarBytes = BZip2Decoder().decodeBytes(bytes);
+        return TarDecoder().decodeBytes(tarBytes);
+      } else if (lowerPath.endsWith('.tar')) {
+        return TarDecoder().decodeBytes(bytes);
+      } else {
+        return ZipDecoder().decodeBytes(bytes, password: password != null && password.isNotEmpty ? password : null);
+      }
+    } catch (e) {
+      debugPrint('Error reading archive: $e');
+      return null;
+    }
+  }
+
+  static Future<bool> addFileToArchive({
+    required String archivePath,
+    required String filePathToAdd,
+    required String internalPath,
+  }) async {
+    return compute(_addFileToArchiveTask, {
+      'archivePath': archivePath,
+      'filePathToAdd': filePathToAdd,
+      'internalPath': internalPath,
+    });
+  }
+
+  static bool _addFileToArchiveTask(Map<String, dynamic> args) {
+    final archivePath = args['archivePath'] as String;
+    final filePathToAdd = args['filePathToAdd'] as String;
+    final internalPath = args['internalPath'] as String;
+
+    try {
+      final archiveFile = File(archivePath);
+      final fileToAdd = File(filePathToAdd);
+      if (!archiveFile.existsSync() || !fileToAdd.existsSync()) return false;
+
+      final bytes = archiveFile.readAsBytesSync();
+      final lowerPath = archivePath.toLowerCase();
+      Archive? archive;
+
+      if (lowerPath.endsWith('.zip')) {
+        archive = ZipDecoder().decodeBytes(bytes);
+      } else if (lowerPath.endsWith('.tar')) {
+        archive = TarDecoder().decodeBytes(bytes);
+      } else {
+        archive = ZipDecoder().decodeBytes(bytes);
+      }
+
+      if (archive == null) return false;
+
+      final newFileBytes = fileToAdd.readAsBytesSync();
+      final nameInside = p.join(internalPath, p.basename(filePathToAdd)).replaceAll('\\', '/');
+      archive.addFile(ArchiveFile(nameInside, newFileBytes.length, newFileBytes));
+
+      List<int>? newArchiveBytes;
+      if (lowerPath.endsWith('.tar')) {
+        newArchiveBytes = TarEncoder().encode(archive);
+      } else {
+        newArchiveBytes = ZipEncoder().encode(archive);
+      }
+
+      if (newArchiveBytes != null) {
+        archiveFile.writeAsBytesSync(newArchiveBytes);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error adding to archive: $e');
+      return false;
+    }
+  }
 }
