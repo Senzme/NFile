@@ -60,6 +60,9 @@ dependencies:
   archive: ^3.6.1
   flutter_markdown: ^0.7.3
   flutter_widget_from_html: ^0.15.2
+  docx_to_text: ^1.0.1
+  excel: ^4.0.6
+  xml: ^6.6.1
 
 dev_dependencies:
   flutter_test:
