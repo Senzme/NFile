@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/icon_fonts/broken_icons.dart';
-import '../../providers/file_manager_provider.dart';
 import '../../providers/media_provider.dart';
 import '../screens/media_category_screen.dart';
 
@@ -19,46 +18,48 @@ class QuickCategoriesGrid extends StatelessWidget {
       {
         'label': 'Images',
         'icon': Broken.image,
-        'color': Colors.purpleAccent,
+        'color': const Color(0xFF8B5CF6), // Elegant Purple
         'count': '${mediaProvider.images.length} items',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.images))),
       },
       {
         'label': 'Videos',
         'icon': Broken.video,
-        'color': Colors.redAccent,
+        'color': const Color(0xFFEC4899), // Vibrant Pink
         'count': '${mediaProvider.videos.length} items',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.videos))),
       },
       {
         'label': 'Audio',
         'icon': Broken.music,
-        'color': Colors.orangeAccent,
+        'color': const Color(0xFFF59E0B), // Warm Amber
         'count': '${mediaProvider.audios.length} items',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.audios))),
       },
       {
         'label': 'Documents',
         'icon': Broken.document,
-        'color': Colors.blueAccent,
+        'color': const Color(0xFF3B82F6), // Premium Blue
         'count': '${mediaProvider.documents.length} items',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.documents))),
       },
       {
         'label': 'Archives',
         'icon': Broken.archive,
-        'color': Colors.tealAccent,
+        'color': const Color(0xFF10B981), // Clean Emerald
         'count': '${mediaProvider.archives.length} items',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.archives))),
       },
       {
         'label': 'Downloads',
         'icon': Broken.document_download,
-        'color': Colors.greenAccent,
+        'color': const Color(0xFF06B6D4), // Modern Cyan
         'count': '${mediaProvider.downloads.length} items',
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.downloads))),
       },
     ];
+
+    final bool isDark = theme.brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -86,7 +87,7 @@ class QuickCategoriesGrid extends StatelessWidget {
               crossAxisCount: 2,
               crossAxisSpacing: 10,
               mainAxisSpacing: 10,
-              childAspectRatio: 2.4,
+              childAspectRatio: 2.5,
             ),
             itemCount: categories.length,
             itemBuilder: (context, index) {
@@ -97,58 +98,74 @@ class QuickCategoriesGrid extends StatelessWidget {
               final count = cat['count'] as String;
               final action = cat['action'] as VoidCallback;
 
-              return Card(
-                elevation: 0,
-                color: color.withOpacity(0.08),
-                shape: RoundedRectangleBorder(
+              return Container(
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E1E2E) : Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(color: color.withOpacity(0.3), width: 1.2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isDark ? Colors.black.withOpacity(0.2) : Colors.black.withOpacity(0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                  border: Border.all(
+                    color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.withOpacity(0.15),
+                    width: 1,
+                  ),
                 ),
-                child: InkWell(
-                  onTap: action,
+                child: Material(
+                  color: Colors.transparent,
                   borderRadius: BorderRadius.circular(16),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 42,
-                          height: 42,
-                          decoration: BoxDecoration(
-                            color: color.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
+                  child: InkWell(
+                    onTap: action,
+                    borderRadius: BorderRadius.circular(16),
+                    splashColor: color.withOpacity(0.1),
+                    highlightColor: color.withOpacity(0.05),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: color.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(icon, color: color, size: 22),
                           ),
-                          child: Icon(icon, color: color, size: 22),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                label,
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13.5,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  label,
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13.5,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                count,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
-                                  fontSize: 11,
+                                const SizedBox(height: 2),
+                                Text(
+                                  count,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.textTheme.bodySmall?.color?.withOpacity(0.65),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
