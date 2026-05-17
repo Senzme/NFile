@@ -13,7 +13,7 @@ import 'audio_player/audio_player_screen.dart';
 import 'document_viewer_screen.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 
-enum MediaType { images, videos, audios, documents, archives, downloads }
+enum MediaType { images, videos, audios, documents, archives, downloads, apks, screenshots }
 
 class MediaCategoryScreen extends StatefulWidget {
   final MediaType mediaType;
@@ -62,6 +62,10 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
         return 'Archives';
       case MediaType.downloads:
         return 'Downloads';
+      case MediaType.apks:
+        return 'APKs';
+      case MediaType.screenshots:
+        return 'Screenshots';
     }
   }
 
@@ -79,18 +83,26 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
         return Broken.archive;
       case MediaType.downloads:
         return Broken.document_download;
+      case MediaType.apks:
+        return Broken.box;
+      case MediaType.screenshots:
+        return Broken.mobile;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isGenericFile = widget.mediaType == MediaType.archives ||
+        widget.mediaType == MediaType.downloads ||
+        widget.mediaType == MediaType.apks;
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(_title),
         actions: [
-          if (widget.mediaType != MediaType.documents && widget.mediaType != MediaType.archives && widget.mediaType != MediaType.downloads)
+          if (!isGenericFile && widget.mediaType != MediaType.documents)
             Consumer<MediaProvider>(
               builder: (context, provider, child) {
                 return PopupMenuButton<MediaSortOrder>(
@@ -141,10 +153,14 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
             return _buildVideoGrid(provider.videos, theme);
           } else if (widget.mediaType == MediaType.audios) {
             return _buildAudioList(provider.audios, theme);
+          } else if (widget.mediaType == MediaType.screenshots) {
+            return _buildImageGrid(provider.screenshots, theme);
           } else if (widget.mediaType == MediaType.archives) {
             return _buildGenericFileList(provider.archives, theme);
           } else if (widget.mediaType == MediaType.downloads) {
             return _buildGenericFileList(provider.downloads, theme);
+          } else if (widget.mediaType == MediaType.apks) {
+            return _buildGenericFileList(provider.apks, theme);
           } else {
             return _buildDocumentList(provider.documents, theme);
           }
