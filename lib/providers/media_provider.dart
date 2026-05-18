@@ -17,9 +17,30 @@ enum MediaSortOrder {
 class ThumbnailCache {
   static final Map<String, Uint8List?> _cache = {};
   static final Map<String, Future<Uint8List?>> _pending = {};
-  static const int _maxCacheSize = 1000;
+  static String? _cacheDir;
 
-  static Future<void> init() async {}
+  static Future<void> init() async {
+    if (_cacheDir != null) return;
+    try {
+      final dir = await getTemporaryDirectory();
+      final folder = Directory('${dir.path}/nfile_thumbnails');
+      if (!await folder.exists()) {
+        await folder.create(recursive: true);
+      }
+      _cacheDir = folder.path;
+      try {
+        final files = folder.listSync();
+        for (final f in files) {
+          if (f is File && f.path.endsWith('.thumb')) {
+            final key = f.path.split('/').last.split('\\').last.replaceAll('.thumb', '');
+            if (!_cache.containsKey(key)) {
+              _cache[key] = f.readAsBytesSync();
+            }
+          }
+        }
+      } catch (_) {}
+    } catch (_) {}
+  }
 
   static Future<Uint8List?> get(AssetEntity asset) async {
     final key = asset.id;
@@ -30,13 +51,29 @@ class ThumbnailCache {
     _pending[key] = completer.future;
 
     try {
-      final data = await asset.thumbnailDataWithSize(const ThumbnailSize.square(250));
-      if (data != null && data.isNotEmpty) {
-        if (_cache.length >= _maxCacheSize) {
-          final firstKey = _cache.keys.first;
-          _cache.remove(firstKey);
+      await init();
+      if (_cacheDir != null) {
+        final sanitizedKey = key.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+        final file = File('$_cacheDir/$sanitizedKey.thumb');
+        if (await file.exists()) {
+          final bytes = await file.readAsBytes();
+          if (bytes.isNotEmpty) {
+            _cache[key] = bytes;
+            _pending.remove(key);
+            completer.complete(bytes);
+            return bytes;
+          }
         }
+      }
+
+      final data = await asset.thumbnailDataWithSize(const ThumbnailSize.square(300));
+      if (data != null && data.isNotEmpty) {
         _cache[key] = data;
+        if (_cacheDir != null) {
+          final sanitizedKey = key.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+          final file = File('$_cacheDir/$sanitizedKey.thumb');
+          await file.writeAsBytes(data, flush: true);
+        }
       }
       _pending.remove(key);
       completer.complete(data);
@@ -54,6 +91,11 @@ class ThumbnailCache {
   static void clear() {
     _cache.clear();
     _pending.clear();
+    if (_cacheDir != null) {
+      try {
+        Directory(_cacheDir!).deleteSync(recursive: true);
+      } catch (_) {}
+    }
   }
 }
 

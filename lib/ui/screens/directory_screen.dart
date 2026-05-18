@@ -24,6 +24,7 @@ class DirectoryScreen extends StatefulWidget {
 
 class _DirectoryScreenState extends State<DirectoryScreen> {
   final ScrollController _scrollController = ScrollController();
+  final ValueNotifier<bool> _isDrawerOpen = ValueNotifier<bool>(false);
 
   @override
   void initState() {
@@ -35,6 +36,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
 
   @override
   void dispose() {
+    _isDrawerOpen.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -396,6 +398,9 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
             }
           },
           child: Scaffold(
+            onDrawerChanged: (isOpen) {
+              _isDrawerOpen.value = isOpen;
+            },
             drawer: NFileDrawer(
               toggleTheme: widget.toggleTheme,
               onNavigateTab: widget.onNavigateTab,
@@ -413,9 +418,9 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                           onPressed: () => _goBack(provider),
                         )
                       : Builder(
-                          builder: (context) => IconButton(
-                            icon: const Icon(Broken.menu),
-                            onPressed: () => Scaffold.of(context).openDrawer(),
+                          builder: (context) => _AnimatedDrawerButton(
+                            isDrawerOpenNotifier: _isDrawerOpen,
+                            onPressed: (ctx) => Scaffold.of(ctx).openDrawer(),
                           ),
                         ),
               actions: isSelectionMode
@@ -638,3 +643,114 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
     );
   }
 }
+
+class _AnimatedDrawerButton extends StatefulWidget {
+  final ValueNotifier<bool> isDrawerOpenNotifier;
+  final void Function(BuildContext context) onPressed;
+
+  const _AnimatedDrawerButton({
+    required this.isDrawerOpenNotifier,
+    required this.onPressed,
+  });
+
+  @override
+  State<_AnimatedDrawerButton> createState() => _AnimatedDrawerButtonState();
+}
+
+class _AnimatedDrawerButtonState extends State<_AnimatedDrawerButton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _rotationAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+
+    _scaleAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 0.85).chain(CurveTween(curve: Curves.easeOut)), weight: 30),
+      TweenSequenceItem(tween: Tween<double>(begin: 0.85, end: 1.0).chain(CurveTween(curve: Curves.elasticOut)), weight: 70),
+    ]).animate(_controller);
+
+    _rotationAnimation = Tween<double>(begin: 0.0, end: 0.5).chain(CurveTween(curve: Curves.easeInOutBack)).animate(_controller);
+
+    widget.isDrawerOpenNotifier.addListener(_onDrawerStateChanged);
+  }
+
+  void _onDrawerStateChanged() {
+    if (widget.isDrawerOpenNotifier.value) {
+      _controller.forward();
+    } else {
+      _controller.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.isDrawerOpenNotifier.removeListener(_onDrawerStateChanged);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Builder(
+      builder: (context) => GestureDetector(
+        onTap: () {
+          _controller.forward();
+          widget.onPressed(context);
+        },
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: _scaleAnimation.value,
+              child: Container(
+                margin: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: isDark
+                        ? [theme.colorScheme.primary.withValues(alpha: 0.25), theme.colorScheme.surface]
+                        : [theme.colorScheme.primary.withValues(alpha: 0.15), Colors.white],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.35),
+                    width: 1.2,
+                  ),
+                ),
+                child: Center(
+                  child: RotationTransition(
+                    turns: _rotationAnimation,
+                    child: AnimatedIcon(
+                      icon: AnimatedIcons.menu_close,
+                      progress: _controller,
+                      color: theme.colorScheme.primary,
+                      size: 24,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
