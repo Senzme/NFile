@@ -103,4 +103,12 @@ class PreferencesService {
   static Future<void> saveActiveCategories(List<String> list) async {
     await _prefs?.setStringList(_keyActiveCategories, list);
   }
+
+  static int getCategoryCount(String category) {
+    return _prefs?.getInt('cat_count_$category') ?? 0;
+  }
+
+  static Future<void> saveCategoryCount(String category, int count) async {
+    await _prefs?.setInt('cat_count_$category', count);
+  }
 }

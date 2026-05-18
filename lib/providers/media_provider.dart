@@ -28,6 +28,17 @@ class ThumbnailCache {
         await folder.create(recursive: true);
       }
       _cacheDir = folder.path;
+      try {
+        final files = folder.listSync();
+        for (final f in files) {
+          if (f is File && f.path.endsWith('.thumb')) {
+            final key = f.path.split('/').last.split('\\').last.replaceAll('.thumb', '');
+            if (!_cache.containsKey(key)) {
+              _cache[key] = f.readAsBytesSync();
+            }
+          }
+        }
+      } catch (_) {}
     } catch (_) {}
   }
 
@@ -175,6 +186,22 @@ class MediaProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  int getCategoryItemCount(String category) {
+    if (_isLoaded) {
+      switch (category) {
+        case 'Images': return _images.length;
+        case 'Videos': return _videos.length;
+        case 'Audio': return _audios.length;
+        case 'Documents': return _documents.length;
+        case 'Archives': return _archives.length;
+        case 'Downloads': return _downloads.length;
+        case 'APKs': return _apks.length;
+        case 'Screenshots': return _screenshots.length;
+      }
+    }
+    return PreferencesService.getCategoryCount(category);
+  }
+
   Future<void> _loadFromDiskCache() async {
     try {
       final dir = await getTemporaryDirectory();
@@ -293,6 +320,16 @@ class MediaProvider extends ChangeNotifier {
     await _saveCache();
 
     _applySort();
+
+    PreferencesService.saveCategoryCount('Images', _images.length);
+    PreferencesService.saveCategoryCount('Videos', _videos.length);
+    PreferencesService.saveCategoryCount('Audio', _audios.length);
+    PreferencesService.saveCategoryCount('Documents', _documents.length);
+    PreferencesService.saveCategoryCount('Archives', _archives.length);
+    PreferencesService.saveCategoryCount('Downloads', _downloads.length);
+    PreferencesService.saveCategoryCount('APKs', _apks.length);
+    PreferencesService.saveCategoryCount('Screenshots', _screenshots.length);
+
     _isLoading = false;
     _isLoaded = true;
     notifyListeners();
