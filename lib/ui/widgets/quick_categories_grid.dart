@@ -78,6 +78,30 @@ class QuickCategoriesGrid extends StatelessWidget {
         'isCustom': false,
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.screenshots))),
       },
+      'Android Data': {
+        'label': 'Android Data',
+        'icon': Broken.folder,
+        'color': isDark ? Colors.lightBlueAccent : const Color(0xFF0288D1),
+        'count': 'Restricted',
+        'isCustom': false,
+        'action': () {
+          final fileManager = context.read<FileManagerProvider>();
+          fileManager.loadDirectory('/storage/emulated/0/Android/data');
+          onNavigateTab(1);
+        },
+      },
+      'Android OBB': {
+        'label': 'Android OBB',
+        'icon': Broken.folder,
+        'color': isDark ? Colors.indigoAccent : const Color(0xFF303F9F),
+        'count': 'Restricted',
+        'isCustom': false,
+        'action': () {
+          final fileManager = context.read<FileManagerProvider>();
+          fileManager.loadDirectory('/storage/emulated/0/Android/obb');
+          onNavigateTab(1);
+        },
+      },
     };
 
     for (final cs in mediaProvider.customShortcuts) {

@@ -29,5 +29,22 @@ class FileItemModel {
     );
   }
 
+  factory FileItemModel.fromCustom({
+    required String path,
+    required bool isDirectory,
+    required int size,
+    required DateTime modified,
+  }) {
+    final entity = isDirectory ? Directory(path) : File(path);
+    return FileItemModel(
+      entity: entity,
+      name: path.split(Platform.pathSeparator).last,
+      path: path,
+      isDirectory: isDirectory,
+      size: size,
+      modified: modified,
+    );
+  }
+
   bool get isHidden => name.startsWith('.') && name != '.' && name != '..';
 }

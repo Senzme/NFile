@@ -17,6 +17,7 @@ import '../ui/widgets/extract_archive_dialog.dart';
 import '../core/utils.dart';
 import '../services/preferences_service.dart';
 import '../models/custom_shortcut_model.dart';
+import '../services/root_shizuku_service.dart';
 
 enum FileSortType {
   nameAsc,
@@ -347,6 +348,42 @@ class FileManagerProvider extends ChangeNotifier {
     await loadDirectory(_currentPath, showLoading: false);
   }
 
+  bool _isRestrictedMode = false;
+  bool _needsPermission = false;
+  bool _useRootMode = false;
+  bool _useShizukuMode = false;
+  bool _isRootAvailable = false;
+
+  bool get isRestrictedMode => _isRestrictedMode;
+  bool get needsPermission => _needsPermission;
+  bool get useRootMode => _useRootMode;
+  bool get useShizukuMode => _useShizukuMode;
+  bool get isRootAvailable => _isRootAvailable;
+
+  bool isRestrictedPath(String path) {
+    final lower = path.toLowerCase();
+    return lower.contains('/android/data') || lower.contains('/android/obb');
+  }
+
+  Future<void> enableRootMode() async {
+    _useRootMode = true;
+    _useShizukuMode = false;
+    _needsPermission = false;
+    notifyListeners();
+    await loadDirectory(_currentPath, showLoading: true);
+  }
+
+  Future<void> enableShizukuMode() async {
+    final granted = await RootShizukuService.requestShizukuPermission();
+    if (granted) {
+      _useShizukuMode = true;
+      _useRootMode = false;
+      _needsPermission = false;
+      notifyListeners();
+      await loadDirectory(_currentPath, showLoading: true);
+    }
+  }
+
   Future<void> loadDirectory(String path, {bool showLoading = true}) async {
     if (_storageVolumes.isEmpty) {
       _detectStorageVolumes();
@@ -356,6 +393,50 @@ class FileManagerProvider extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
     }
+
+    _isRestrictedMode = isRestrictedPath(path);
+
+    if (_isRestrictedMode) {
+      final status = await RootShizukuService.checkStatus();
+      _isRootAvailable = status.isRootAvailable;
+      if (status.isRootAvailable && (_useRootMode || !status.isShizukuAvailable)) {
+        _useRootMode = true;
+        _useShizukuMode = false;
+        _needsPermission = false;
+      } else if (status.isShizukuAvailable && status.shizukuPermissionGranted) {
+        _useShizukuMode = true;
+        _useRootMode = false;
+        _needsPermission = false;
+      } else {
+        _needsPermission = true;
+        _currentPath = path;
+        _currentFiles = [];
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+
+      try {
+        _currentPath = path;
+        final items = await RootShizukuService.listFiles(path, useRoot: _useRootMode, showHiddenFiles: _showHiddenFiles);
+        final folders = items.where((e) => e.isDirectory).toList();
+        final files = items.where((e) => !e.isDirectory).toList();
+
+        _sortList(folders);
+        _sortList(files);
+        _currentFiles = [...folders, ...files];
+      } catch (e) {
+        debugPrint('Error loading restricted directory: $e');
+        _currentFiles = [];
+      }
+      _isLoading = false;
+      notifyListeners();
+      return;
+    }
+
+    _needsPermission = false;
+    _useRootMode = false;
+    _useShizukuMode = false;
 
     try {
       final dir = Directory(path);
@@ -448,11 +529,15 @@ class FileManagerProvider extends ChangeNotifier {
 
     try {
       for (final path in _selectedPaths) {
-        final type = FileSystemEntity.typeSync(path);
-        if (type == FileSystemEntityType.directory) {
-          await Directory(path).delete(recursive: true);
+        if (isRestrictedPath(path)) {
+          await RootShizukuService.deleteItem(path, useRoot: _useRootMode);
         } else {
-          await File(path).delete();
+          final type = FileSystemEntity.typeSync(path);
+          if (type == FileSystemEntityType.directory) {
+            await Directory(path).delete(recursive: true);
+          } else {
+            await File(path).delete();
+          }
         }
       }
     } catch (e) {
@@ -469,24 +554,32 @@ class FileManagerProvider extends ChangeNotifier {
 
     try {
       for (final srcPath in _clipboardPaths) {
-        final sourceEntity = FileSystemEntity.typeSync(srcPath) == FileSystemEntityType.directory
-            ? Directory(srcPath)
-            : File(srcPath);
-            
         final fileName = p.basename(srcPath);
         final destinationPath = p.join(_currentPath, fileName);
 
-        if (sourceEntity is File) {
+        if (isRestrictedPath(srcPath) || isRestrictedPath(destinationPath)) {
           if (_isCut) {
-            await sourceEntity.rename(destinationPath);
+            await RootShizukuService.moveItem(srcPath, destinationPath, useRoot: _useRootMode);
           } else {
-            await sourceEntity.copy(destinationPath);
+            await RootShizukuService.copyItem(srcPath, destinationPath, useRoot: _useRootMode);
           }
-        } else if (sourceEntity is Directory) {
-          if (_isCut) {
-            await sourceEntity.rename(destinationPath);
-          } else {
-            await _copyDirectory(Directory(srcPath), Directory(destinationPath));
+        } else {
+          final sourceEntity = FileSystemEntity.typeSync(srcPath) == FileSystemEntityType.directory
+              ? Directory(srcPath)
+              : File(srcPath);
+
+          if (sourceEntity is File) {
+            if (_isCut) {
+              await sourceEntity.rename(destinationPath);
+            } else {
+              await sourceEntity.copy(destinationPath);
+            }
+          } else if (sourceEntity is Directory) {
+            if (_isCut) {
+              await sourceEntity.rename(destinationPath);
+            } else {
+              await _copyDirectory(Directory(srcPath), Directory(destinationPath));
+            }
           }
         }
       }
@@ -521,11 +614,15 @@ class FileManagerProvider extends ChangeNotifier {
 
   Future<void> deleteFile(String path) async {
     try {
-      final type = FileSystemEntity.typeSync(path);
-      if (type == FileSystemEntityType.directory) {
-        await Directory(path).delete(recursive: true);
+      if (isRestrictedPath(path)) {
+        await RootShizukuService.deleteItem(path, useRoot: _useRootMode);
       } else {
-        await File(path).delete();
+        final type = FileSystemEntity.typeSync(path);
+        if (type == FileSystemEntityType.directory) {
+          await Directory(path).delete(recursive: true);
+        } else {
+          await File(path).delete();
+        }
       }
       await loadDirectory(_currentPath, showLoading: false);
     } catch (e) {
@@ -535,12 +632,16 @@ class FileManagerProvider extends ChangeNotifier {
 
   Future<void> renameFile(String oldPath, String newName) async {
     try {
-      final newPath = p.join(p.dirname(oldPath), newName);
-      final type = FileSystemEntity.typeSync(oldPath);
-      if (type == FileSystemEntityType.directory) {
-        await Directory(oldPath).rename(newPath);
+      if (isRestrictedPath(oldPath)) {
+        await RootShizukuService.renameItem(oldPath, newName, useRoot: _useRootMode);
       } else {
-        await File(oldPath).rename(newPath);
+        final newPath = p.join(p.dirname(oldPath), newName);
+        final type = FileSystemEntity.typeSync(oldPath);
+        if (type == FileSystemEntityType.directory) {
+          await Directory(oldPath).rename(newPath);
+        } else {
+          await File(oldPath).rename(newPath);
+        }
       }
       await loadDirectory(_currentPath, showLoading: false);
     } catch (e) {
@@ -550,8 +651,12 @@ class FileManagerProvider extends ChangeNotifier {
 
   Future<void> createFolder(String name) async {
     try {
-      final newPath = p.join(_currentPath, name);
-      await Directory(newPath).create();
+      if (isRestrictedPath(_currentPath)) {
+        await RootShizukuService.createFolder(_currentPath, name, useRoot: _useRootMode);
+      } else {
+        final newPath = p.join(_currentPath, name);
+        await Directory(newPath).create();
+      }
       await loadDirectory(_currentPath, showLoading: false);
     } catch (e) {
       debugPrint('Error creating folder: $e');
@@ -560,8 +665,12 @@ class FileManagerProvider extends ChangeNotifier {
 
   Future<void> createFile(String name) async {
     try {
-      final newPath = p.join(_currentPath, name);
-      await File(newPath).create();
+      if (isRestrictedPath(_currentPath)) {
+        await RootShizukuService.createFile(_currentPath, name, useRoot: _useRootMode);
+      } else {
+        final newPath = p.join(_currentPath, name);
+        await File(newPath).create();
+      }
       await loadDirectory(_currentPath, showLoading: false);
     } catch (e) {
       debugPrint('Error creating file: $e');

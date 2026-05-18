@@ -13,6 +13,7 @@ import '../widgets/nfile_drawer.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import 'global_search_screen.dart';
 import 'internal_file_picker_screen.dart';
+import '../widgets/restricted_folder_banner.dart';
 
 class DirectoryScreen extends StatefulWidget {
   final VoidCallback toggleTheme;
@@ -670,7 +671,13 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
             ),
             body: provider.isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : CustomScrollView(
+                : provider.needsPermission
+                    ? RestrictedFolderBanner(
+                        onEnableRoot: () => provider.enableRootMode(),
+                        onEnableShizuku: () => provider.enableShizukuMode(),
+                        isRootAvailable: provider.isRootAvailable,
+                      )
+                    : CustomScrollView(
                     controller: _scrollController,
                     physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
                     slivers: [

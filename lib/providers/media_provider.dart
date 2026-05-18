@@ -106,10 +106,14 @@ class MediaProvider extends ChangeNotifier {
     final savedOrder = PreferencesService.getCategoryOrder();
     if (savedOrder != null && savedOrder.isNotEmpty) {
       _categoryOrder = savedOrder;
+      if (!_categoryOrder.contains('Android Data')) _categoryOrder.add('Android Data');
+      if (!_categoryOrder.contains('Android OBB')) _categoryOrder.add('Android OBB');
     }
     final savedActive = PreferencesService.getActiveCategories();
     if (savedActive != null && savedActive.isNotEmpty) {
       _activeCategories = savedActive;
+      if (!_activeCategories.contains('Android Data')) _activeCategories.add('Android Data');
+      if (!_activeCategories.contains('Android OBB')) _activeCategories.add('Android OBB');
     }
     final savedCustom = PreferencesService.getCustomShortcuts();
     if (savedCustom != null) {
@@ -136,6 +140,8 @@ class MediaProvider extends ChangeNotifier {
     'Downloads',
     'APKs',
     'Screenshots',
+    'Android Data',
+    'Android OBB',
   ];
 
   List<String> _activeCategories = [
@@ -147,7 +153,10 @@ class MediaProvider extends ChangeNotifier {
     'Downloads',
     'APKs',
     'Screenshots',
+    'Android Data',
+    'Android OBB',
   ];
+
 
   bool _isLoading = false;
   bool _isLoaded = false;
