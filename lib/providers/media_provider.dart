@@ -476,4 +476,26 @@ class MediaProvider extends ChangeNotifier {
     _downloads.sort(fileSort);
     _apks.sort(fileSort);
   }
+
+  Future<void> deleteMediaItems({
+    required List<String> filePaths,
+    required List<String> assetIds,
+  }) async {
+    if (assetIds.isNotEmpty) {
+      try {
+        await PhotoManager.editor.deleteWithIds(assetIds);
+      } catch (e) {
+        debugPrint('Error deleting assets: $e');
+      }
+    }
+    for (final path in filePaths) {
+      try {
+        final f = File(path);
+        if (f.existsSync()) {
+          f.deleteSync();
+        }
+      } catch (_) {}
+    }
+    await loadMedia(forceRefresh: true);
+  }
 }
