@@ -404,10 +404,18 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Storage Volumes', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                        Expanded(
+                          child: Text(
+                            'Storage Volumes',
+                            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                         TextButton.icon(
+                          style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
                           icon: const Icon(Broken.folder_add, size: 18),
-                          label: const Text('Add Shortcut'),
+                          label: const Text('Add Shortcut', style: TextStyle(fontSize: 14)),
                           onPressed: () async {
                             Navigator.pop(ctx);
                             final picked = await InternalFilePickerScreen.show(
