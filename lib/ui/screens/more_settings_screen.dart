@@ -218,14 +218,14 @@ class MoreSettingsScreen extends StatelessWidget {
   }) {
     return Card(
       elevation: 0,
-      margin: const EdgeInsets.symmetric(vertical: 4),
+      margin: const EdgeInsets.symmetric(vertical: 5),
       color: theme.colorScheme.surface.withOpacity(0.5),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: theme.colorScheme.outline.withOpacity(0.1)),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
@@ -234,8 +234,18 @@ class MoreSettingsScreen extends StatelessWidget {
           ),
           child: Icon(icon, color: theme.colorScheme.primary, size: 22),
         ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-        subtitle: Text(subtitle, style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withOpacity(0.6))),
+        titleAlignment: ListTileTitleAlignment.center,
+        title: Padding(
+          padding: const EdgeInsets.only(bottom: 4.0),
+          child: Text(
+            title, 
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5, height: 1.2),
+          ),
+        ),
+        subtitle: Text(
+          subtitle, 
+          style: TextStyle(fontSize: 12.5, height: 1.3, color: theme.colorScheme.onSurface.withOpacity(0.65)),
+        ),
         trailing: trailing,
         onTap: onTap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
