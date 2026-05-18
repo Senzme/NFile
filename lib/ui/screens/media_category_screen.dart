@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:on_audio_query/on_audio_query.dart';
@@ -248,6 +249,44 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
     await context.read<MediaProvider>().loadMedia(forceRefresh: true);
   }
 
+  Widget _buildCopyableRow(String label, String value, BuildContext ctx) {
+    if (value.isEmpty) return const SizedBox.shrink();
+    final theme = Theme.of(ctx);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: InkWell(
+        onTap: () {
+          Clipboard.setData(ClipboardData(text: value));
+          ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Copied $label to clipboard'), duration: const Duration(seconds: 1)));
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(6.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 3,
+                child: Text(label, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: theme.colorScheme.primary)),
+              ),
+              Expanded(
+                flex: 7,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: Text(value, style: const TextStyle(fontSize: 13), softWrap: true)),
+                    const SizedBox(width: 4),
+                    Icon(Broken.document_copy, size: 14, color: theme.colorScheme.onSurface.withOpacity(0.4)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _showPropertiesDialog({String? singleFilePath, String? singleAssetId, String? explicitName}) async {
     final filePaths = singleFilePath != null ? [singleFilePath] : _selectedFilePaths.toList();
     final assetIds = singleAssetId != null ? [singleAssetId] : _selectedAssetIds.toList();
@@ -256,6 +295,10 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
     int count = filePaths.length + assetIds.length;
     DateTime? lastMod;
     String nameDisplay = explicitName ?? '';
+    String fullPath = '';
+    String mimeType = '';
+    String dimensionsOrDuration = '';
+    String permissionsStr = '';
 
     if (assetIds.isNotEmpty) {
       final provider = context.read<MediaProvider>();
@@ -265,12 +308,26 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
         if (match != null) {
           final f = await match.file;
           if (f != null) {
+            if (count == 1) fullPath = f.path;
             if (count == 1 && nameDisplay.isEmpty) nameDisplay = f.path.split('/').last;
             try {
               final st = f.statSync();
               totalBytes += st.size;
-              lastMod = st.modified;
+              if (count == 1) {
+                lastMod = st.modified;
+                permissionsStr = '${(st.mode & 0x100) != 0 ? "R" : ""}${(st.mode & 0x80) != 0 ? "/W" : ""}';
+              }
             } catch (_) {}
+            if (count == 1) {
+              if (match.type == AssetType.image) {
+                dimensionsOrDuration = '${match.width} x ${match.height}';
+                mimeType = match.mimeType ?? 'image/${f.path.split('.').last}';
+              } else if (match.type == AssetType.video) {
+                final d = Duration(seconds: match.duration);
+                dimensionsOrDuration = '${match.width} x ${match.height} • ${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, "0")}';
+                mimeType = match.mimeType ?? 'video/${f.path.split('.').last}';
+              }
+            }
           }
         }
       }
@@ -278,45 +335,60 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
 
     for (final p in filePaths) {
       if (count == 1 && nameDisplay.isEmpty) nameDisplay = p.split('/').last;
+      if (count == 1) fullPath = p;
       try {
         final f = File(p);
         if (f.existsSync()) {
           final st = f.statSync();
           totalBytes += st.size;
-          lastMod = st.modified;
+          if (count == 1) {
+            lastMod = st.modified;
+            permissionsStr = '${(st.mode & 0x100) != 0 ? "R" : ""}${(st.mode & 0x80) != 0 ? "/W" : ""}';
+            final ext = p.contains('.') ? p.substring(p.lastIndexOf('.')).toLowerCase() : '';
+            if (widget.mediaType == MediaType.audios) mimeType = 'audio/$ext';
+            else if (widget.mediaType == MediaType.apks) mimeType = 'application/vnd.android.package-archive';
+            else if (widget.mediaType == MediaType.archives) mimeType = 'archive/$ext';
+            else mimeType = 'file/$ext';
+          }
         }
       } catch (_) {}
     }
 
     if (!mounted) return;
+    final theme = Theme.of(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Properties'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            if (count == 1 && nameDisplay.isNotEmpty) ...[
-              const Text('Name:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              Text(nameDisplay, style: const TextStyle(fontSize: 13)),
-              const SizedBox(height: 10),
-            ] else if (count > 1) ...[
-              const Text('Items Selected:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              Text('$count items', style: const TextStyle(fontSize: 13)),
-              const SizedBox(height: 10),
-            ],
-            const Text('Total Size:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-            Text(FileUtils.formatBytes(totalBytes, 2), style: const TextStyle(fontSize: 13)),
-            if (count == 1 && lastMod != null) ...[
-              const SizedBox(height: 10),
-              const Text('Last Modified:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              Text(FileUtils.formatDate(lastMod), style: const TextStyle(fontSize: 13)),
-            ],
+            Icon(Broken.info_circle, color: theme.colorScheme.primary),
+            const SizedBox(width: 10),
+            const Text('Properties', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           ],
         ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (count == 1) ...[
+                _buildCopyableRow('Name', nameDisplay, ctx),
+                _buildCopyableRow('Path', fullPath, ctx),
+                _buildCopyableRow('Size', '${FileUtils.formatBytes(totalBytes, 2)} ($totalBytes bytes)', ctx),
+                if (lastMod != null) _buildCopyableRow('Modified', FileUtils.formatDate(lastMod!), ctx),
+                if (mimeType.isNotEmpty && mimeType != 'file/') _buildCopyableRow('Type', mimeType, ctx),
+                if (dimensionsOrDuration.isNotEmpty) _buildCopyableRow('Media Info', dimensionsOrDuration, ctx),
+                if (permissionsStr.isNotEmpty) _buildCopyableRow('Permissions', permissionsStr, ctx),
+              ] else ...[
+                _buildCopyableRow('Items Selected', '$count items', ctx),
+                _buildCopyableRow('Total Size', '${FileUtils.formatBytes(totalBytes, 2)} ($totalBytes bytes)', ctx),
+              ],
+            ],
+          ),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+          FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Done')),
         ],
       ),
     );
