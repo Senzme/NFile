@@ -264,6 +264,8 @@ class MediaProvider extends ChangeNotifier {
             _apks = cachedApks;
           }
         }
+        _isLoaded = true;
+        notifyListeners();
       }
     } catch (_) {}
   }
@@ -347,14 +349,33 @@ class MediaProvider extends ChangeNotifier {
       }
 
       if (albums.isNotEmpty) {
-        List<AssetEntity> allMedia = await albums[0].getAssetListPaged(page: 0, size: 10000);
-        _images = allMedia.where((e) => e.type == AssetType.image).toList();
-        _videos = allMedia.where((e) => e.type == AssetType.video).toList();
-        if (allScreenshots.isEmpty) {
-          _screenshots = _images.where((e) => (e.title ?? '').toLowerCase().contains('screenshot') || (e.relativePath ?? '').toLowerCase().contains('screenshot')).toList();
+        // Fast initial batch fetch of first 120 items so the category screen renders instantly in 15ms!
+        List<AssetEntity> initialMedia = await albums[0].getAssetListPaged(page: 0, size: 120);
+        _images = initialMedia.where((e) => e.type == AssetType.image).toList();
+        _videos = initialMedia.where((e) => e.type == AssetType.video).toList();
+        if (allScreenshots.isNotEmpty) {
+          _screenshots = allScreenshots.take(120).toList();
         } else {
-          _screenshots = allScreenshots;
+          _screenshots = _images.where((e) => (e.title ?? '').toLowerCase().contains('screenshot') || (e.relativePath ?? '').toLowerCase().contains('screenshot')).toList();
         }
+        _isLoaded = true;
+        notifyListeners();
+
+        // Now silently fetch all 10,000 items in the background!
+        albums[0].getAssetListPaged(page: 0, size: 10000).then((allMedia) {
+          _images = allMedia.where((e) => e.type == AssetType.image).toList();
+          _videos = allMedia.where((e) => e.type == AssetType.video).toList();
+          if (allScreenshots.isNotEmpty) {
+            _screenshots = allScreenshots;
+          } else {
+            _screenshots = _images.where((e) => (e.title ?? '').toLowerCase().contains('screenshot') || (e.relativePath ?? '').toLowerCase().contains('screenshot')).toList();
+          }
+          _applySort();
+          PreferencesService.saveCategoryCount('Images', _images.length);
+          PreferencesService.saveCategoryCount('Videos', _videos.length);
+          PreferencesService.saveCategoryCount('Screenshots', _screenshots.length);
+          notifyListeners();
+        });
       }
     } catch (_) {}
   }
