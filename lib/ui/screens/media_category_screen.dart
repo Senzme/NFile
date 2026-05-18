@@ -702,7 +702,11 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
                 } else {
                   final file = await asset.file;
                   if (file != null && context.mounted) {
-                    Navigator.push(context, _slideRoute(ImageViewerScreen(imagePath: file.path)));
+                    Navigator.push(context, _slideRoute(ImageViewerScreen(
+                      imagePath: file.path,
+                      siblingAssets: images,
+                      initialAssetId: asset.id,
+                    )));
                   }
                 }
               },
