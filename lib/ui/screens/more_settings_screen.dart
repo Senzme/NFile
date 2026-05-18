@@ -87,6 +87,21 @@ class MoreSettingsScreen extends StatelessWidget {
               ),
               onTap: () => fileManager.toggleFolderFileCount(),
             ),
+            _buildSettingTile(
+              theme,
+              icon: Broken.menu,
+              title: 'Show Bottom Navigation Bar',
+              subtitle: 'Enable Prism-style bottom action bar on Browse screen',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.showBottomActionBar,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleBottomActionBar(),
+                ),
+              ),
+              onTap: () => fileManager.toggleBottomActionBar(),
+            ),
 
             const SizedBox(height: 24),
             _buildSectionHeader(theme, 'Appearance & Themes'),

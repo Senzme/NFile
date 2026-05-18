@@ -15,6 +15,7 @@ class PreferencesService {
   static const String _keyCategoryOrder = 'category_order';
   static const String _keyActiveCategories = 'active_categories';
   static const String _keyShowFolderFileCount = 'show_folder_file_count';
+  static const String _keyShowBottomActionBar = 'show_bottom_action_bar';
 
   static SharedPreferences? _prefs;
 
@@ -68,6 +69,14 @@ class PreferencesService {
 
   static Future<void> saveShowFolderFileCount(bool val) async {
     await _prefs?.setBool(_keyShowFolderFileCount, val);
+  }
+
+  static bool getShowBottomActionBar() {
+    return _prefs?.getBool(_keyShowBottomActionBar) ?? false;
+  }
+
+  static Future<void> saveShowBottomActionBar(bool val) async {
+    await _prefs?.setBool(_keyShowBottomActionBar, val);
   }
 
   static bool getIsGridView() {

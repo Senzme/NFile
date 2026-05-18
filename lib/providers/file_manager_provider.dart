@@ -44,6 +44,7 @@ class FileManagerProvider extends ChangeNotifier {
     _showFloatingAddButton = PreferencesService.getShowFloatingAddButton();
     _defaultToBrowseScreen = PreferencesService.getDefaultToBrowseScreen();
     _showFolderFileCount = PreferencesService.getShowFolderFileCount();
+    _showBottomActionBar = PreferencesService.getShowBottomActionBar();
     _accentColorOption = PreferencesService.getAccentColor();
     _folderIconOption = PreferencesService.getFolderIconStyle();
   }
@@ -175,6 +176,15 @@ class FileManagerProvider extends ChangeNotifier {
   void toggleFolderFileCount() {
     _showFolderFileCount = !_showFolderFileCount;
     PreferencesService.saveShowFolderFileCount(_showFolderFileCount);
+    notifyListeners();
+  }
+
+  bool _showBottomActionBar = false;
+  bool get showBottomActionBar => _showBottomActionBar;
+
+  void toggleBottomActionBar() {
+    _showBottomActionBar = !_showBottomActionBar;
+    PreferencesService.saveShowBottomActionBar(_showBottomActionBar);
     notifyListeners();
   }
 
