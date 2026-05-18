@@ -717,7 +717,11 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                       ),
                     ],
                   ),
-            floatingActionButtonLocation: isSelectionMode ? null : FloatingActionButtonLocation.centerDocked,
+            floatingActionButtonLocation: isSelectionMode
+                ? null
+                : provider.showBottomActionBar
+                    ? FloatingActionButtonLocation.centerDocked
+                    : FloatingActionButtonLocation.endFloat,
             floatingActionButton: provider.hasClipboard
                 ? FloatingActionButton.extended(
                     onPressed: () async {
@@ -735,11 +739,11 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                         backgroundColor: Theme.of(context).colorScheme.primary,
                         foregroundColor: Colors.white,
                         elevation: 4,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                        shape: provider.showBottomActionBar ? RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)) : null,
                         child: const Icon(Broken.add, size: 28),
                       )
                     : null,
-            bottomNavigationBar: isSelectionMode
+            bottomNavigationBar: (isSelectionMode || !provider.showBottomActionBar)
                 ? null
                 : BottomAppBar(
                     elevation: 8,
