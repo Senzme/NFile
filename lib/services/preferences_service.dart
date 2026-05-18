@@ -150,6 +150,24 @@ class PreferencesService {
     await _prefs?.setString(_keyCustomShortcuts, str);
   }
 
+  static const String _keyPinnedFolderShortcuts = 'pinned_folder_shortcuts';
+
+  static List<CustomShortcutModel> getPinnedFolderShortcuts() {
+    final str = _prefs?.getString(_keyPinnedFolderShortcuts);
+    if (str == null) return [];
+    try {
+      final list = jsonDecode(str) as List;
+      return list.map((e) => CustomShortcutModel.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static Future<void> savePinnedFolderShortcuts(List<CustomShortcutModel> list) async {
+    final str = jsonEncode(list.map((e) => e.toJson()).toList());
+    await _prefs?.setString(_keyPinnedFolderShortcuts, str);
+  }
+
   static const String _keyAccentColor = 'accent_color';
 
   static String getAccentColor() {

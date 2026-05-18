@@ -16,6 +16,7 @@ import '../services/apk_installer_service.dart';
 import '../ui/widgets/extract_archive_dialog.dart';
 import '../core/utils.dart';
 import '../services/preferences_service.dart';
+import '../models/custom_shortcut_model.dart';
 
 enum FileSortType {
   nameAsc,
@@ -47,6 +48,29 @@ class FileManagerProvider extends ChangeNotifier {
     _showBottomActionBar = PreferencesService.getShowBottomActionBar();
     _accentColorOption = PreferencesService.getAccentColor();
     _folderIconOption = PreferencesService.getFolderIconStyle();
+    _pinnedFolderShortcuts = PreferencesService.getPinnedFolderShortcuts();
+  }
+
+  List<CustomShortcutModel> _pinnedFolderShortcuts = [];
+  List<CustomShortcutModel> get pinnedFolderShortcuts => _pinnedFolderShortcuts;
+
+  void addPinnedFolderShortcut(String path, String label) {
+    if (_pinnedFolderShortcuts.any((e) => e.path == path)) return;
+    final shortcut = CustomShortcutModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      label: label,
+      path: path,
+      isDirectory: true,
+    );
+    _pinnedFolderShortcuts.add(shortcut);
+    PreferencesService.savePinnedFolderShortcuts(_pinnedFolderShortcuts);
+    notifyListeners();
+  }
+
+  void removePinnedFolderShortcut(String id) {
+    _pinnedFolderShortcuts.removeWhere((e) => e.id == id);
+    PreferencesService.savePinnedFolderShortcuts(_pinnedFolderShortcuts);
+    notifyListeners();
   }
 
   String _accentColorOption = 'blue';

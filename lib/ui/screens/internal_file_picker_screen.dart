@@ -9,13 +9,14 @@ import '../../providers/file_manager_provider.dart';
 
 class InternalFilePickerScreen extends StatefulWidget {
   final String rootPath;
+  final bool pickDirectory;
 
-  const InternalFilePickerScreen({super.key, required this.rootPath});
+  const InternalFilePickerScreen({super.key, required this.rootPath, this.pickDirectory = false});
 
-  static Future<List<String>?> show(BuildContext context, {required String rootPath}) {
+  static Future<List<String>?> show(BuildContext context, {required String rootPath, bool pickDirectory = false}) {
     return Navigator.push<List<String>>(
       context,
-      MaterialPageRoute(builder: (_) => InternalFilePickerScreen(rootPath: rootPath)),
+      MaterialPageRoute(builder: (_) => InternalFilePickerScreen(rootPath: rootPath, pickDirectory: pickDirectory)),
     );
   }
 
@@ -64,7 +65,7 @@ class _InternalFilePickerScreenState extends State<InternalFilePickerScreen> {
             final item = FileItemModel.fromEntity(entity);
             if (item.isDirectory) {
               folders.add(item);
-            } else {
+            } else if (!widget.pickDirectory) {
               files.add(item);
             }
           } catch (_) {}
@@ -140,7 +141,7 @@ class _InternalFilePickerScreenState extends State<InternalFilePickerScreen> {
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Select Files & Folders', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              Text(widget.pickDirectory ? 'Select & Pin Folders' : 'Select Files & Folders', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               Text(_currentPath, style: TextStyle(fontSize: 12, color: theme.colorScheme.primary)),
             ],
           ),
@@ -246,15 +247,31 @@ class _InternalFilePickerScreenState extends State<InternalFilePickerScreen> {
                       );
                     },
                   ),
-        floatingActionButton: _selectedPaths.isNotEmpty
-            ? FloatingActionButton.extended(
-                onPressed: () => Navigator.pop(context, _selectedPaths.toList()),
-                backgroundColor: theme.colorScheme.primary,
-                foregroundColor: theme.colorScheme.onPrimary,
-                icon: const Icon(Broken.add),
-                label: Text('Add Selected (${_selectedPaths.length})'),
-              )
-            : null,
+        floatingActionButton: widget.pickDirectory
+            ? _selectedPaths.isNotEmpty
+                ? FloatingActionButton.extended(
+                    onPressed: () => Navigator.pop(context, _selectedPaths.toList()),
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: theme.colorScheme.onPrimary,
+                    icon: const Icon(Broken.folder_add),
+                    label: Text('Pin Selected (${_selectedPaths.length})'),
+                  )
+                : FloatingActionButton.extended(
+                    onPressed: () => Navigator.pop(context, [_currentPath]),
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: theme.colorScheme.onPrimary,
+                    icon: const Icon(Broken.folder_add),
+                    label: const Text('Pin This Folder'),
+                  )
+            : _selectedPaths.isNotEmpty
+                ? FloatingActionButton.extended(
+                    onPressed: () => Navigator.pop(context, _selectedPaths.toList()),
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: theme.colorScheme.onPrimary,
+                    icon: const Icon(Broken.add),
+                    label: Text('Add Selected (${_selectedPaths.length})'),
+                  )
+                : null,
       ),
     );
   }

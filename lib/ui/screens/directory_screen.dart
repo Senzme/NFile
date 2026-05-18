@@ -12,6 +12,7 @@ import '../widgets/create_archive_dialog.dart';
 import '../widgets/nfile_drawer.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import 'global_search_screen.dart';
+import 'internal_file_picker_screen.dart';
 
 class DirectoryScreen extends StatefulWidget {
   final VoidCallback toggleTheme;
@@ -387,51 +388,122 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) {
         return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
-                ),
-                const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                  child: Text('Storage Volumes & SD Card', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                ),
-                const SizedBox(height: 16),
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: provider.storageVolumes.length,
-                  itemBuilder: (_, i) {
-                    final vol = provider.storageVolumes[i];
-                    final isSelected = provider.rootPath == vol.path;
-
-                    return ListTile(
-                      leading: Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: isSelected ? theme.colorScheme.primary.withOpacity(0.2) : theme.colorScheme.surfaceVariant,
-                          borderRadius: BorderRadius.circular(12),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Storage Volumes', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                        TextButton.icon(
+                          icon: const Icon(Broken.folder_add, size: 18),
+                          label: const Text('Add Shortcut'),
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            final picked = await InternalFilePickerScreen.show(
+                              context,
+                              rootPath: provider.storageVolumes.isNotEmpty ? provider.storageVolumes.first.path : '/storage/emulated/0',
+                              pickDirectory: true,
+                            );
+                            if (picked != null && picked.isNotEmpty) {
+                              for (final path in picked) {
+                                final label = p.basename(path).isEmpty ? path : p.basename(path);
+                                provider.addPinnedFolderShortcut(path, label);
+                              }
+                            }
+                          },
                         ),
-                        child: Icon(vol.isInternal ? Broken.folder_open : Icons.sd_storage_rounded, color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface, size: 24),
-                      ),
-                      title: Text(vol.name, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.w600, fontSize: 16)),
-                      subtitle: Text(vol.path, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6))),
-                      trailing: isSelected ? Icon(Icons.check_circle, color: theme.colorScheme.primary) : null,
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        provider.setRootPath(vol.path);
-                        provider.loadDirectory(vol.path);
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: provider.storageVolumes.length,
+                    itemBuilder: (_, i) {
+                      final vol = provider.storageVolumes[i];
+                      final isSelected = provider.rootPath == vol.path;
+
+                      return ListTile(
+                        leading: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: isSelected ? theme.colorScheme.primary.withOpacity(0.2) : theme.colorScheme.surfaceVariant,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(vol.isInternal ? Broken.folder_open : Icons.sd_storage_rounded, color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface, size: 24),
+                        ),
+                        title: Text(vol.name, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.w600, fontSize: 16)),
+                        subtitle: Text(vol.path, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6))),
+                        trailing: isSelected ? Icon(Icons.check_circle, color: theme.colorScheme.primary) : null,
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          provider.setRootPath(vol.path);
+                          provider.loadDirectory(vol.path);
+                        },
+                      );
+                    },
+                  ),
+                  if (provider.pinnedFolderShortcuts.isNotEmpty) ...[
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                      child: Divider(),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                      child: Text('Pinned Shortcuts', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
+                    ),
+                    const SizedBox(height: 8),
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: provider.pinnedFolderShortcuts.length,
+                      itemBuilder: (_, i) {
+                        final item = provider.pinnedFolderShortcuts[i];
+                        final isSelected = provider.rootPath == item.path || provider.currentPath == item.path;
+                        return ListTile(
+                          leading: Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: isSelected ? theme.colorScheme.primary.withOpacity(0.2) : theme.colorScheme.surfaceVariant,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(Broken.folder_favorite, color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface, size: 24),
+                          ),
+                          title: Text(item.label, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.w600, fontSize: 16)),
+                          subtitle: Text(item.path, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6))),
+                          trailing: IconButton(
+                            icon: const Icon(Broken.trash, size: 20, color: Colors.redAccent),
+                            onPressed: () {
+                              provider.removePinnedFolderShortcut(item.id);
+                              Navigator.pop(ctx);
+                              _showStorageVolumeModal(context, provider);
+                            },
+                          ),
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            provider.setRootPath(item.path);
+                            provider.loadDirectory(item.path);
+                          },
+                        );
                       },
-                    );
-                  },
-                ),
-              ],
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         );
