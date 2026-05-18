@@ -72,6 +72,21 @@ class MoreSettingsScreen extends StatelessWidget {
               ),
               onTap: () => fileManager.toggleHiddenFiles(),
             ),
+            _buildSettingTile(
+              theme,
+              icon: Broken.document_text_1,
+              title: 'Show Folder & File Count Header',
+              subtitle: 'Display total folders and files count under storage title bar',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.showFolderFileCount,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleFolderFileCount(),
+                ),
+              ),
+              onTap: () => fileManager.toggleFolderFileCount(),
+            ),
 
             const SizedBox(height: 24),
             _buildSectionHeader(theme, 'Appearance & Themes'),

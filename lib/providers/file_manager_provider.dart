@@ -27,6 +27,14 @@ enum FileSortType {
   type,
 }
 
+class StorageVolume {
+  final String name;
+  final String path;
+  final bool isInternal;
+
+  StorageVolume({required this.name, required this.path, required this.isInternal});
+}
+
 class FileManagerProvider extends ChangeNotifier {
   FileManagerProvider() {
     _sortType = PreferencesService.getSortType();
@@ -35,6 +43,7 @@ class FileManagerProvider extends ChangeNotifier {
     _showHiddenFiles = PreferencesService.getShowHiddenFiles();
     _showFloatingAddButton = PreferencesService.getShowFloatingAddButton();
     _defaultToBrowseScreen = PreferencesService.getDefaultToBrowseScreen();
+    _showFolderFileCount = PreferencesService.getShowFolderFileCount();
     _accentColorOption = PreferencesService.getAccentColor();
     _folderIconOption = PreferencesService.getFolderIconStyle();
   }
@@ -160,6 +169,15 @@ class FileManagerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool _showFolderFileCount = false;
+  bool get showFolderFileCount => _showFolderFileCount;
+
+  void toggleFolderFileCount() {
+    _showFolderFileCount = !_showFolderFileCount;
+    PreferencesService.saveShowFolderFileCount(_showFolderFileCount);
+    notifyListeners();
+  }
+
   List<FileItemModel> _currentFiles = [];
   List<FileItemModel> get currentFiles => _currentFiles;
 
@@ -221,6 +239,63 @@ class FileManagerProvider extends ChangeNotifier {
     return _scrollOffsets[path] ?? 0.0;
   }
 
+  List<StorageVolume> _storageVolumes = [];
+  List<StorageVolume> get storageVolumes => _storageVolumes;
+
+  void setRootPath(String path) {
+    _rootPath = path;
+    _currentPath = path;
+    notifyListeners();
+  }
+
+  Future<void> _detectStorageVolumes() async {
+    final volumes = <StorageVolume>[];
+    if (Platform.isAndroid) {
+      volumes.add(StorageVolume(name: 'Internal Storage', path: '/storage/emulated/0', isInternal: true));
+
+      try {
+        final extDirs = await getExternalStorageDirectories();
+        if (extDirs != null) {
+          for (final dir in extDirs) {
+            final path = dir.path;
+            if (path.contains('/Android/')) {
+              final root = path.substring(0, path.indexOf('/Android/'));
+              if (root != '/storage/emulated/0' && root != '/storage/emulated') {
+                final name = root.contains('-') ? 'SD Card (${p.basename(root)})' : 'SD Card / USB';
+                if (!volumes.any((v) => v.path == root)) {
+                  volumes.add(StorageVolume(name: name, path: root, isInternal: false));
+                }
+              }
+            }
+          }
+        }
+      } catch (_) {}
+
+      try {
+        final storageDir = Directory('/storage');
+        if (storageDir.existsSync()) {
+          final list = storageDir.listSync();
+          for (final entity in list) {
+            if (entity is Directory) {
+              final base = p.basename(entity.path);
+              if (base != 'emulated' && base != 'self' && base != 'enterprise') {
+                if (!volumes.any((v) => v.path == entity.path)) {
+                  final name = base.contains('-') ? 'SD Card ($base)' : 'SD Card / USB ($base)';
+                  volumes.add(StorageVolume(name: name, path: entity.path, isInternal: false));
+                }
+              }
+            }
+          }
+        }
+      } catch (_) {}
+    } else {
+      final dir = await getApplicationDocumentsDirectory();
+      volumes.add(StorageVolume(name: 'Documents', path: dir.path, isInternal: true));
+    }
+    _storageVolumes = volumes;
+    notifyListeners();
+  }
+
   Future<void> init() async {
     if (Platform.isAndroid) {
       _currentPath = '/storage/emulated/0';
@@ -234,10 +309,15 @@ class FileManagerProvider extends ChangeNotifier {
       _currentPath = dir.path;
       _rootPath = _currentPath;
     }
+    await _detectStorageVolumes();
     await loadDirectory(_currentPath, showLoading: false);
   }
 
   Future<void> loadDirectory(String path, {bool showLoading = true}) async {
+    if (_storageVolumes.isEmpty) {
+      _detectStorageVolumes();
+    }
+
     if (showLoading) {
       _isLoading = true;
       notifyListeners();

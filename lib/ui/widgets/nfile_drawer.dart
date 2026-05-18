@@ -15,6 +15,7 @@ class NFileDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final fileManager = context.watch<FileManagerProvider>();
 
     return Drawer(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -45,17 +46,19 @@ class NFileDrawer extends StatelessWidget {
                         onNavigateTab?.call(0);
                       },
                     ),
-                    _buildDrawerTile(
-                      context,
-                      icon: Broken.folder_open,
-                      title: 'Internal Storage',
-                      onTap: () {
-                        Navigator.pop(context);
-                        final provider = context.read<FileManagerProvider>();
-                        provider.loadDirectory(provider.rootPath);
-                        onNavigateTab?.call(1);
-                      },
-                    ),
+                    for (final vol in fileManager.storageVolumes)
+                      _buildDrawerTile(
+                        context,
+                        icon: vol.isInternal ? Broken.folder_open : Icons.sd_storage_rounded,
+                        title: vol.name,
+                        isSelected: fileManager.rootPath == vol.path,
+                        onTap: () {
+                          Navigator.pop(context);
+                          fileManager.setRootPath(vol.path);
+                          fileManager.loadDirectory(vol.path);
+                          onNavigateTab?.call(1);
+                        },
+                      ),
                     _buildDrawerTile(
                       context,
                       icon: Broken.search_normal,
@@ -197,12 +200,13 @@ class NFileDrawer extends StatelessWidget {
     required String title,
     required VoidCallback onTap,
     Widget? trailing,
+    bool isSelected = false,
   }) {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 2.0),
       child: Material(
-        color: Colors.transparent,
+        color: isSelected ? theme.colorScheme.primary.withOpacity(0.15) : Colors.transparent,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: onTap,
@@ -213,12 +217,12 @@ class NFileDrawer extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: trailing != null ? 4.0 : 12.0),
             child: Row(
               children: [
-                Icon(icon, size: 22, color: theme.colorScheme.onSurface.withOpacity(0.8)),
+                Icon(icon, size: 22, color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface.withOpacity(0.8)),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Text(
                     title,
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface.withOpacity(0.9)),
+                    style: TextStyle(fontSize: 15, fontWeight: isSelected ? FontWeight.bold : FontWeight.w600, color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface.withOpacity(0.9)),
                   ),
                 ),
                 if (trailing != null) trailing,

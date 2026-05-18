@@ -379,6 +379,66 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
     );
   }
 
+  void _showStorageVolumeModal(BuildContext context, FileManagerProvider provider) {
+    final theme = Theme.of(context);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
+                ),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                  child: Text('Storage Volumes & SD Card', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(height: 16),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: provider.storageVolumes.length,
+                  itemBuilder: (_, i) {
+                    final vol = provider.storageVolumes[i];
+                    final isSelected = provider.rootPath == vol.path;
+
+                    return ListTile(
+                      leading: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: isSelected ? theme.colorScheme.primary.withOpacity(0.2) : theme.colorScheme.surfaceVariant,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(vol.isInternal ? Broken.folder_open : Icons.sd_storage_rounded, color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface, size: 24),
+                      ),
+                      title: Text(vol.name, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.w600, fontSize: 16)),
+                      subtitle: Text(vol.path, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6))),
+                      trailing: isSelected ? Icon(Icons.check_circle, color: theme.colorScheme.primary) : null,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        provider.setRootPath(vol.path);
+                        provider.loadDirectory(vol.path);
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<FileManagerProvider>(
@@ -401,7 +461,31 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
               onNavigateTab: widget.onNavigateTab,
             ),
             appBar: AppBar(
-              title: Text(isSelectionMode ? '${provider.selectedPaths.length} selected' : 'Files'),
+              title: isSelectionMode
+                  ? Text('${provider.selectedPaths.length} selected')
+                  : InkWell(
+                      onTap: () => _showStorageVolumeModal(context, provider),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(provider.rootPath.contains('-') || provider.rootPath.toLowerCase().contains('sdcard') ? Icons.sd_storage_rounded : Broken.folder_open, size: 20, color: Theme.of(context).colorScheme.primary),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                p.basename(provider.currentPath).isEmpty || provider.currentPath == '/' || provider.currentPath == '/storage/emulated/0' ? 'Internal Storage' : p.basename(provider.currentPath),
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const Icon(Icons.arrow_drop_down, size: 22),
+                          ],
+                        ),
+                      ),
+                    ),
               leading: isSelectionMode
                   ? IconButton(
                       icon: const Icon(Broken.close_square),
@@ -515,6 +599,27 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                       CupertinoSliverRefreshControl(
                         onRefresh: () => provider.loadDirectory(provider.currentPath),
                       ),
+                      if (!isSelectionMode && provider.showFolderFileCount)
+                        SliverToBoxAdapter(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+                              border: Border(bottom: BorderSide(color: Theme.of(context).colorScheme.outline.withOpacity(0.1))),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Broken.folder, size: 16, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                                const SizedBox(width: 6),
+                                Text('folders: ${provider.currentFiles.where((e) => e.isDirectory).length}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8))),
+                                const SizedBox(width: 20),
+                                Icon(Broken.document, size: 16, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                                const SizedBox(width: 6),
+                                Text('files: ${provider.currentFiles.where((e) => !e.isDirectory).length}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8))),
+                              ],
+                            ),
+                          ),
+                        ),
                       SliverPadding(
                         padding: EdgeInsets.only(
                           bottom: 80,
@@ -612,6 +717,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                       ),
                     ],
                   ),
+            floatingActionButtonLocation: isSelectionMode ? null : FloatingActionButtonLocation.centerDocked,
             floatingActionButton: provider.hasClipboard
                 ? FloatingActionButton.extended(
                     onPressed: () async {
@@ -629,9 +735,48 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                         backgroundColor: Theme.of(context).colorScheme.primary,
                         foregroundColor: Colors.white,
                         elevation: 4,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                         child: const Icon(Broken.add, size: 28),
                       )
                     : null,
+            bottomNavigationBar: isSelectionMode
+                ? null
+                : BottomAppBar(
+                    elevation: 8,
+                    color: Theme.of(context).colorScheme.surface,
+                    shape: const CircularNotchedRectangle(),
+                    notchMargin: 8,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Broken.tick_square),
+                          tooltip: 'Select Mode',
+                          onPressed: () {
+                            if (provider.currentFiles.isNotEmpty) {
+                              provider.toggleSelection(provider.currentFiles.first.path);
+                            }
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Broken.search_normal),
+                          tooltip: 'Global Search',
+                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GlobalSearchScreen())),
+                        ),
+                        const SizedBox(width: 48), // Center dock slot for FAB
+                        IconButton(
+                          icon: const Icon(Broken.filter_edit),
+                          tooltip: 'View & Sort Options',
+                          onPressed: () => _showSortModal(context, provider),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.sd_storage_rounded),
+                          tooltip: 'Storage Volumes & SD Card',
+                          onPressed: () => _showStorageVolumeModal(context, provider),
+                        ),
+                      ],
+                    ),
+                  ),
           ),
         );
       },
