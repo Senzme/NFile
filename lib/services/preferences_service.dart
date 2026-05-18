@@ -6,6 +6,7 @@ class PreferencesService {
   static const String _keyThemeMode = 'theme_mode';
   static const String _keyShowHiddenFiles = 'show_hidden_files';
   static const String _keyShowFloatingAddButton = 'show_floating_add_button';
+  static const String _keyDefaultToBrowseScreen = 'default_to_browse_screen';
   static const String _keyIsGridView = 'is_grid_view';
   static const String _keyIconScale = 'icon_scale';
   static const String _keySortType = 'sort_type';
@@ -34,6 +35,14 @@ class PreferencesService {
   }
 
   // --- File Manager Settings ---
+  static bool getDefaultToBrowseScreen() {
+    return _prefs?.getBool(_keyDefaultToBrowseScreen) ?? false;
+  }
+
+  static Future<void> saveDefaultToBrowseScreen(bool val) async {
+    await _prefs?.setBool(_keyDefaultToBrowseScreen, val);
+  }
+
   static bool getShowHiddenFiles() {
     return _prefs?.getBool(_keyShowHiddenFiles) ?? false;
   }

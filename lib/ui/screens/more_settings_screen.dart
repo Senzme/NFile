@@ -28,6 +28,21 @@ class MoreSettingsScreen extends StatelessWidget {
             _buildSectionHeader(theme, 'Browser Experience'),
             _buildSettingTile(
               theme,
+              icon: Broken.folder_favorite,
+              title: 'Default to Browse Screen',
+              subtitle: 'Directly launch into the Browse storage explorer on app start',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.defaultToBrowseScreen,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleDefaultToBrowseScreen(),
+                ),
+              ),
+              onTap: () => fileManager.toggleDefaultToBrowseScreen(),
+            ),
+            _buildSettingTile(
+              theme,
               icon: Broken.add_square,
               title: "Show Floating '+' Button",
               subtitle: 'Enable quick creation (+) button at bottom of Browse screen',

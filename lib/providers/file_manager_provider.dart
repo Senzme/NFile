@@ -34,6 +34,7 @@ class FileManagerProvider extends ChangeNotifier {
     _iconScale = PreferencesService.getIconScale();
     _showHiddenFiles = PreferencesService.getShowHiddenFiles();
     _showFloatingAddButton = PreferencesService.getShowFloatingAddButton();
+    _defaultToBrowseScreen = PreferencesService.getDefaultToBrowseScreen();
   }
 
   FileSortType _sortType = FileSortType.nameAsc;
@@ -125,6 +126,15 @@ class FileManagerProvider extends ChangeNotifier {
   void toggleFloatingAddButton() {
     _showFloatingAddButton = !_showFloatingAddButton;
     PreferencesService.saveShowFloatingAddButton(_showFloatingAddButton);
+    notifyListeners();
+  }
+
+  bool _defaultToBrowseScreen = false;
+  bool get defaultToBrowseScreen => _defaultToBrowseScreen;
+
+  void toggleDefaultToBrowseScreen() {
+    _defaultToBrowseScreen = !_defaultToBrowseScreen;
+    PreferencesService.saveDefaultToBrowseScreen(_defaultToBrowseScreen);
     notifyListeners();
   }
 

@@ -22,6 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _currentIndex = context.read<FileManagerProvider>().defaultToBrowseScreen ? 1 : 0;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MediaProvider>().loadMedia();
     });
