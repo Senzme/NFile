@@ -35,6 +35,17 @@ class FileManagerProvider extends ChangeNotifier {
     _showHiddenFiles = PreferencesService.getShowHiddenFiles();
     _showFloatingAddButton = PreferencesService.getShowFloatingAddButton();
     _defaultToBrowseScreen = PreferencesService.getDefaultToBrowseScreen();
+    _accentColorOption = PreferencesService.getAccentColor();
+  }
+
+  String _accentColorOption = 'dynamic';
+  String get accentColorOption => _accentColorOption;
+
+  void setAccentColorOption(String val) {
+    if (_accentColorOption == val) return;
+    _accentColorOption = val;
+    PreferencesService.saveAccentColor(val);
+    notifyListeners();
   }
 
   FileSortType _sortType = FileSortType.nameAsc;

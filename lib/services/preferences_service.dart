@@ -111,4 +111,28 @@ class PreferencesService {
   static Future<void> saveCategoryCount(String category, int count) async {
     await _prefs?.setInt('cat_count_$category', count);
   }
+
+  static const String _keyAccentColor = 'accent_color';
+
+  static String getAccentColor() {
+    return _prefs?.getString(_keyAccentColor) ?? 'dynamic';
+  }
+
+  static Future<void> saveAccentColor(String val) async {
+    await _prefs?.setString(_keyAccentColor, val);
+  }
+
+  static Color getSeedColor(String name) {
+    switch (name) {
+      case 'orange': return const Color(0xFFFF6D00);
+      case 'purple': return const Color(0xFF8E24AA);
+      case 'green': return const Color(0xFF00C853);
+      case 'red': return const Color(0xFFD50000);
+      case 'gold': return const Color(0xFFFFD600);
+      case 'blue': return const Color(0xFF369FE7);
+      case 'dynamic':
+      default:
+        return const Color(0xFF369FE7);
+    }
+  }
 }

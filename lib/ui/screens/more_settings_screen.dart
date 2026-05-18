@@ -73,6 +73,16 @@ class MoreSettingsScreen extends StatelessWidget {
             ),
 
             const SizedBox(height: 24),
+            _buildSectionHeader(theme, 'Appearance & Themes'),
+            _buildSettingTile(
+              theme,
+              icon: Broken.colorfilter,
+              title: 'Accent Color / Dynamic Theme',
+              subtitle: _getAccentColorLabel(fileManager.accentColorOption),
+              onTap: () => _showThemePickerDialog(context, fileManager, theme),
+            ),
+
+            const SizedBox(height: 24),
             _buildSectionHeader(theme, 'Home Screen'),
             _buildSettingTile(
               theme,
@@ -84,6 +94,93 @@ class MoreSettingsScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  String _getAccentColorLabel(String option) {
+    switch (option) {
+      case 'dynamic': return 'Material You (Dynamic Wallpaper Colors)';
+      case 'orange': return 'Vibrant Orange';
+      case 'purple': return 'Royal Purple';
+      case 'green': return 'Emerald Green';
+      case 'red': return 'Crimson Red';
+      case 'gold': return 'Amber Gold';
+      case 'blue':
+      default:
+        return 'Signature Blue';
+    }
+  }
+
+  void _showThemePickerDialog(BuildContext context, FileManagerProvider fileManager, ThemeData theme) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) {
+        final current = fileManager.accentColorOption;
+        final options = [
+          {'key': 'dynamic', 'name': 'Material You (Dynamic Colors)', 'color': Colors.teal},
+          {'key': 'orange', 'name': 'Vibrant Orange', 'color': const Color(0xFFFF6D00)},
+          {'key': 'blue', 'name': 'Signature Blue', 'color': const Color(0xFF369FE7)},
+          {'key': 'purple', 'name': 'Royal Purple', 'color': const Color(0xFF8E24AA)},
+          {'key': 'green', 'name': 'Emerald Green', 'color': const Color(0xFF00C853)},
+          {'key': 'red', 'name': 'Crimson Red', 'color': const Color(0xFFD50000)},
+          {'key': 'gold', 'name': 'Amber Gold', 'color': const Color(0xFFFFD600)},
+        ];
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
+                ),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: Text('Choose Accent Theme', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(height: 16),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: options.length,
+                  itemBuilder: (_, i) {
+                    final opt = options[i];
+                    final key = opt['key'] as String;
+                    final name = opt['name'] as String;
+                    final color = opt['color'] as Color;
+                    final isSelected = current == key;
+
+                    return ListTile(
+                      leading: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: key == 'dynamic' ? theme.colorScheme.primary : color,
+                          shape: BoxShape.circle,
+                        ),
+                        child: key == 'dynamic' 
+                            ? const Icon(Broken.colorfilter, color: Colors.white, size: 20)
+                            : isSelected ? const Icon(Icons.check, color: Colors.white, size: 20) : null,
+                      ),
+                      title: Text(name, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                      trailing: isSelected ? Icon(Icons.radio_button_checked, color: theme.colorScheme.primary) : const Icon(Icons.radio_button_unchecked, color: Colors.grey),
+                      onTap: () {
+                        fileManager.setAccentColorOption(key);
+                        Navigator.pop(ctx);
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

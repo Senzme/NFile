@@ -12,6 +12,7 @@ import 'core/icon_fonts/broken_icons.dart';
 import 'package:media_kit/media_kit.dart';
 import 'providers/media_provider.dart';
 import 'services/preferences_service.dart';
+import 'package:dynamic_color/dynamic_color.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -121,32 +122,46 @@ class _NFileAppState extends State<NFileApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: navigatorKey,
-      title: 'NFile',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: _themeMode,
-      home: _hasPermission 
-          ? HomeScreen(toggleTheme: _toggleTheme)
-          : Scaffold(
-              body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Broken.folder_cross, size: 64, color: Colors.grey),
-                    const SizedBox(height: 16),
-                    const Text('Storage Permission Required', style: TextStyle(fontSize: 18)),
-                    const SizedBox(height: 16),
-                    FilledButton(
-                      onPressed: _requestPermission,
-                      child: const Text('Grant Permission'),
+    return Consumer<FileManagerProvider>(
+      builder: (context, fm, child) {
+        final option = fm.accentColorOption;
+        final seed = PreferencesService.getSeedColor(option);
+
+        return DynamicColorBuilder(
+          builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+            final activeLight = option == 'dynamic' ? lightDynamic : null;
+            final activeDark = option == 'dynamic' ? darkDynamic : null;
+
+            return MaterialApp(
+              navigatorKey: navigatorKey,
+              title: 'NFile',
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.getAppTheme(light: true, seed: seed, customScheme: activeLight),
+              darkTheme: AppTheme.getAppTheme(light: false, seed: seed, customScheme: activeDark),
+              themeMode: _themeMode,
+              home: _hasPermission 
+                  ? HomeScreen(toggleTheme: _toggleTheme)
+                  : Scaffold(
+                      body: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Broken.folder_cross, size: 64, color: Colors.grey),
+                            const SizedBox(height: 16),
+                            const Text('Storage Permission Required', style: TextStyle(fontSize: 18)),
+                            const SizedBox(height: 16),
+                            FilledButton(
+                              onPressed: _requestPermission,
+                              child: const Text('Grant Permission'),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ],
-                ),
-              ),
-            ),
+            );
+          },
+        );
+      },
     );
   }
 }
