@@ -4,6 +4,8 @@ import 'package:path/path.dart' as p;
 import '../../core/icon_fonts/broken_icons.dart';
 import '../../core/utils.dart';
 import '../../models/file_item_model.dart';
+import 'package:provider/provider.dart';
+import '../../providers/file_manager_provider.dart';
 
 class InternalFilePickerScreen extends StatefulWidget {
   final String rootPath;
@@ -200,7 +202,7 @@ class _InternalFilePickerScreenState extends State<InternalFilePickerScreen> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Icon(
-                                      isSelected ? Broken.tick_circle : (item.isDirectory ? Broken.folder : FileUtils.getIconForFile(item.name)),
+                                      isSelected ? Broken.tick_circle : (item.isDirectory ? FileUtils.getFolderIcon(context.watch<FileManagerProvider>().folderIconOption) : FileUtils.getIconForFile(item.name)),
                                       color: isSelected ? theme.colorScheme.onPrimary : iconColor,
                                       size: 28,
                                     ),

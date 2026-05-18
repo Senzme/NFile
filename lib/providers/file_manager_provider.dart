@@ -49,9 +49,8 @@ class FileManagerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  String _folderIconOption = 'folder';
+  String _folderIconOption = 'broken';
   String get folderIconOption => _folderIconOption;
-  IconData get folderIcon => PreferencesService.getFolderIconData(_folderIconOption);
 
   void setFolderIconOption(String val) {
     if (_folderIconOption == val) return;

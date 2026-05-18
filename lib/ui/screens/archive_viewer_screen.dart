@@ -475,7 +475,7 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Icon(
-                                        isSelected ? Broken.tick_circle : (item.isDirectory ? Broken.folder : FileUtils.getIconForFile(item.name)),
+                                        isSelected ? Broken.tick_circle : (item.isDirectory ? FileUtils.getFolderIcon(context.watch<FileManagerProvider>().folderIconOption) : FileUtils.getIconForFile(item.name)),
                                         color: isSelected ? theme.colorScheme.onPrimary : iconColor,
                                         size: 28,
                                       ),

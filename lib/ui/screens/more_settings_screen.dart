@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/file_manager_provider.dart';
 import '../../core/icon_fonts/broken_icons.dart';
+import '../../core/utils.dart';
 import '../widgets/quick_categories_grid.dart';
 
 class MoreSettingsScreen extends StatelessWidget {
@@ -83,7 +84,7 @@ class MoreSettingsScreen extends StatelessWidget {
             ),
             _buildSettingTile(
               theme,
-              icon: fileManager.folderIcon,
+              icon: FileUtils.getFolderIcon(fileManager.folderIconOption),
               title: 'Folder Icon Style',
               subtitle: _getFolderIconLabel(fileManager.folderIconOption),
               onTap: () => _showFolderIconPickerDialog(context, fileManager, theme),
@@ -120,91 +121,15 @@ class MoreSettingsScreen extends StatelessWidget {
 
   String _getFolderIconLabel(String option) {
     switch (option) {
-      case 'folder_2': return 'Premium Rounded';
-      case 'folder_open': return 'Explorer Open';
-      case 'folder_favorite': return 'Heart Favorite';
-      case 'folder_cloud': return 'Cloud Sync';
-      case 'folder':
+      case 'solid': return 'Classic Solid (Material)';
+      case 'rounded': return 'Modern Rounded (Material)';
+      case 'special': return 'Starred Special (Material)';
+      case 'snippet': return 'Snippet Document (Material)';
+      case 'outlined': return 'Minimal Outlined (Material)';
+      case 'broken':
       default:
-        return 'Standard Minimal';
+        return 'Namida Broken Outline (Default)';
     }
-  }
-
-  void _showFolderIconPickerDialog(BuildContext context, FileManagerProvider fileManager, ThemeData theme) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: theme.scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) {
-        final current = fileManager.folderIconOption;
-        final options = [
-          {'key': 'folder', 'name': 'Standard Minimal', 'icon': Broken.folder},
-          {'key': 'folder_2', 'name': 'Premium Rounded', 'icon': Broken.folder_2},
-          {'key': 'folder_open', 'name': 'Explorer Open', 'icon': Broken.folder_open},
-          {'key': 'folder_favorite', 'name': 'Heart Favorite', 'icon': Broken.folder_favorite},
-          {'key': 'folder_cloud', 'name': 'Cloud Sync', 'icon': Broken.folder_cloud},
-        ];
-
-        return SafeArea(
-          child: Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(ctx).viewInsets.bottom,
-            ),
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
-                    ),
-                    const SizedBox(height: 16),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Text('Choose Folder Icon Style', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                    ),
-                    const SizedBox(height: 16),
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: options.length,
-                      itemBuilder: (_, i) {
-                        final opt = options[i];
-                        final key = opt['key'] as String;
-                        final name = opt['name'] as String;
-                        final icon = opt['icon'] as IconData;
-                        final isSelected = current == key;
-
-                        return ListTile(
-                          leading: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: isSelected ? theme.colorScheme.primary.withOpacity(0.2) : theme.colorScheme.surface,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Icon(icon, color: isSelected ? theme.colorScheme.primary : theme.iconTheme.color, size: 24),
-                          ),
-                          title: Text(name, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
-                          trailing: isSelected ? Icon(Icons.radio_button_checked, color: theme.colorScheme.primary) : const Icon(Icons.radio_button_unchecked, color: Colors.grey),
-                          onTap: () {
-                            fileManager.setFolderIconOption(key);
-                            Navigator.pop(ctx);
-                          },
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
   }
 
   void _showThemePickerDialog(BuildContext context, FileManagerProvider fileManager, ThemeData theme) {
@@ -274,6 +199,85 @@ class MoreSettingsScreen extends StatelessWidget {
                           trailing: isSelected ? Icon(Icons.radio_button_checked, color: theme.colorScheme.primary) : const Icon(Icons.radio_button_unchecked, color: Colors.grey),
                           onTap: () {
                             fileManager.setAccentColorOption(key);
+                            Navigator.pop(ctx);
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showFolderIconPickerDialog(BuildContext context, FileManagerProvider fileManager, ThemeData theme) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) {
+        final current = fileManager.folderIconOption;
+        final options = [
+          {'key': 'broken', 'name': 'Namida Broken Outline (Default)', 'icon': Broken.folder},
+          {'key': 'rounded', 'name': 'Modern Rounded (Material)', 'icon': Icons.folder_rounded},
+          {'key': 'solid', 'name': 'Classic Solid (Material)', 'icon': Icons.folder},
+          {'key': 'special', 'name': 'Starred Special (Material)', 'icon': Icons.folder_special_rounded},
+          {'key': 'snippet', 'name': 'Snippet Document (Material)', 'icon': Icons.snippet_folder_rounded},
+          {'key': 'outlined', 'name': 'Minimal Outlined (Material)', 'icon': Icons.folder_outlined},
+        ];
+
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
+            ),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
+                    ),
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Text('Choose Folder Icon Style', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(height: 16),
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: options.length,
+                      itemBuilder: (_, i) {
+                        final opt = options[i];
+                        final key = opt['key'] as String;
+                        final name = opt['name'] as String;
+                        final icon = opt['icon'] as IconData;
+                        final isSelected = current == key;
+
+                        return ListTile(
+                          leading: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: isSelected ? theme.colorScheme.primary : theme.colorScheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(icon, color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.primary, size: 20),
+                          ),
+                          title: Text(name, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                          trailing: isSelected ? Icon(Icons.radio_button_checked, color: theme.colorScheme.primary) : const Icon(Icons.radio_button_unchecked, color: Colors.grey),
+                          onTap: () {
+                            fileManager.setFolderIconOption(key);
                             Navigator.pop(ctx);
                           },
                         );

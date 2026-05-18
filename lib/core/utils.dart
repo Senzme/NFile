@@ -83,4 +83,17 @@ class FileUtils {
 
     return Theme.of(context).colorScheme.primary;
   }
+
+  static IconData getFolderIcon(String option) {
+    switch (option) {
+      case 'solid': return Icons.folder;
+      case 'rounded': return Icons.folder_rounded;
+      case 'special': return Icons.folder_special_rounded;
+      case 'snippet': return Icons.snippet_folder_rounded;
+      case 'outlined': return Icons.folder_outlined;
+      case 'broken':
+      default:
+        return Broken.folder;
+    }
+  }
 }
