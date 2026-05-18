@@ -512,22 +512,24 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
             return _buildShimmerLoading(theme);
           }
 
+          final isDateWise = provider.sortOrder == MediaSortOrder.dateWise;
+
           if (widget.mediaType == MediaType.images) {
-            return _buildImageGrid(provider.images, theme);
+            return _buildImageGrid(provider.images, theme, isDateWise);
           } else if (widget.mediaType == MediaType.videos) {
-            return _buildVideoGrid(provider.videos, theme);
+            return _buildVideoGrid(provider.videos, theme, isDateWise);
           } else if (widget.mediaType == MediaType.audios) {
-            return _buildAudioList(provider.audios, theme);
+            return _buildAudioList(provider.audios, theme, isDateWise);
           } else if (widget.mediaType == MediaType.screenshots) {
-            return _buildImageGrid(provider.screenshots, theme);
+            return _buildImageGrid(provider.screenshots, theme, isDateWise);
           } else if (widget.mediaType == MediaType.archives) {
-            return _buildGenericFileList(provider.archives, theme);
+            return _buildGenericFileList(provider.archives, theme, isDateWise);
           } else if (widget.mediaType == MediaType.downloads) {
-            return _buildGenericFileList(provider.downloads, theme);
+            return _buildGenericFileList(provider.downloads, theme, isDateWise);
           } else if (widget.mediaType == MediaType.apks) {
-            return _buildGenericFileList(provider.apks, theme);
+            return _buildGenericFileList(provider.apks, theme, isDateWise);
           } else {
-            return _buildDocumentList(provider.documents, theme);
+            return _buildDocumentList(provider.documents, theme, isDateWise);
           }
         },
       ),
@@ -604,7 +606,7 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
     );
   }
 
-  Widget _buildImageGrid(List<AssetEntity> images, ThemeData theme) {
+  Widget _buildImageGrid(List<AssetEntity> images, ThemeData theme, bool isDateWise) {
     if (images.isEmpty) return _buildEmptyState(theme);
     return GridView.builder(
       padding: const EdgeInsets.all(6),
@@ -617,6 +619,7 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
         final dateStr = FileUtils.formatDate(asset.createDateTime);
 
         return Stack(
+          key: ValueKey(asset.id),
           fit: StackFit.expand,
           children: [
             _CachedImageTile(
@@ -633,18 +636,19 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
               },
               onLongPress: () => _toggleSelection(null, asset.id),
             ),
-            Positioned(
-              bottom: 4,
-              left: 4,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(4)),
-                child: Text(
-                  dateStr.split(',').first,
-                  style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600),
+            if (isDateWise)
+              Positioned(
+                bottom: 4,
+                left: 4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(4)),
+                  child: Text(
+                    dateStr.split(',').first,
+                    style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
-            ),
             if (_isSelectionMode || isSelected)
               Positioned(
                 top: 6,
@@ -679,7 +683,7 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
     );
   }
 
-  Widget _buildVideoGrid(List<AssetEntity> videos, ThemeData theme) {
+  Widget _buildVideoGrid(List<AssetEntity> videos, ThemeData theme, bool isDateWise) {
     if (videos.isEmpty) return _buildEmptyState(theme);
     return GridView.builder(
       padding: const EdgeInsets.all(6),
@@ -692,6 +696,7 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
         final dateStr = FileUtils.formatDate(asset.createDateTime);
 
         return Stack(
+          key: ValueKey(asset.id),
           fit: StackFit.expand,
           children: [
             _CachedVideoTile(
@@ -708,18 +713,19 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
               },
               onLongPress: () => _toggleSelection(null, asset.id),
             ),
-            Positioned(
-              bottom: 4,
-              left: 4,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(4)),
-                child: Text(
-                  dateStr.split(',').first,
-                  style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600),
+            if (isDateWise)
+              Positioned(
+                bottom: 4,
+                left: 4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(4)),
+                  child: Text(
+                    dateStr.split(',').first,
+                    style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
-            ),
             if (_isSelectionMode || isSelected)
               Positioned(
                 top: 6,
@@ -754,7 +760,7 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
     );
   }
 
-  Widget _buildAudioList(List<SongModel> audios, ThemeData theme) {
+  Widget _buildAudioList(List<SongModel> audios, ThemeData theme, bool isDateWise) {
     if (audios.isEmpty) return _buildEmptyState(theme);
     return ListView.builder(
       physics: const BouncingScrollPhysics(),
@@ -770,6 +776,7 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
         final dateStr = modified != null ? FileUtils.formatDate(modified) : 'Unknown Date';
 
         return ListTile(
+          key: ValueKey(path),
           onTap: () {
             if (_isSelectionMode) {
               _toggleSelection(path, null);
@@ -822,7 +829,14 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
             ],
           ),
           title: Text(audio.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-          subtitle: Text('${audio.artist ?? "Unknown Artist"} • $dateStr', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.55), fontSize: 11)),
+          subtitle: Text(
+            isDateWise
+                ? '${audio.artist ?? "Unknown Artist"} • $dateStr'
+                : audio.artist ?? "Unknown Artist",
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.55), fontSize: 11),
+          ),
           trailing: _isSelectionMode
               ? null
               : IconButton(
@@ -834,7 +848,7 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
     );
   }
 
-  Widget _buildDocumentList(List<FileSystemEntity> documents, ThemeData theme) {
+  Widget _buildDocumentList(List<FileSystemEntity> documents, ThemeData theme, bool isDateWise) {
     if (documents.isEmpty) return _buildEmptyState(theme);
     return ListView.builder(
       physics: const BouncingScrollPhysics(),
@@ -858,6 +872,7 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
         } catch (_) {}
 
         return ListTile(
+          key: ValueKey(path),
           onTap: () {
             if (_isSelectionMode) {
               _toggleSelection(path, null);
@@ -886,7 +901,12 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
             ],
           ),
           title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w500)),
-          subtitle: Text('${FileUtils.formatBytes(size, 1)} • ${FileUtils.formatDate(modified)}', style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6), fontSize: 11)),
+          subtitle: Text(
+            isDateWise
+                ? '${FileUtils.formatBytes(size, 1)} • ${FileUtils.formatDate(modified)}'
+                : FileUtils.formatBytes(size, 1),
+            style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6), fontSize: 11),
+          ),
           trailing: _isSelectionMode
               ? null
               : IconButton(
@@ -898,7 +918,7 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
     );
   }
 
-  Widget _buildGenericFileList(List<FileSystemEntity> files, ThemeData theme) {
+  Widget _buildGenericFileList(List<FileSystemEntity> files, ThemeData theme, bool isDateWise) {
     if (files.isEmpty) return _buildEmptyState(theme);
     return ListView.builder(
       physics: const BouncingScrollPhysics(),
@@ -920,6 +940,7 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
         final iconColor = FileUtils.getColorForFile(name, context);
 
         return ListTile(
+          key: ValueKey(path),
           onTap: () {
             if (_isSelectionMode) {
               _toggleSelection(path, null);
@@ -948,7 +969,12 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
             ],
           ),
           title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w500)),
-          subtitle: Text('${FileUtils.formatBytes(size, 1)} • ${FileUtils.formatDate(modified)}', style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6), fontSize: 11)),
+          subtitle: Text(
+            isDateWise
+                ? '${FileUtils.formatBytes(size, 1)} • ${FileUtils.formatDate(modified)}'
+                : FileUtils.formatBytes(size, 1),
+            style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6), fontSize: 11),
+          ),
           trailing: _isSelectionMode
               ? null
               : IconButton(
@@ -1088,6 +1114,16 @@ class _CachedImageTileState extends State<_CachedImageTile> {
   }
 
   @override
+  void didUpdateWidget(covariant _CachedImageTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.asset.id != widget.asset.id) {
+      _loaded = false;
+      _thumbnail = null;
+      _loadThumbnail();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: widget.onTap,
@@ -1157,6 +1193,16 @@ class _CachedVideoTileState extends State<_CachedVideoTile> {
     final m = d.inMinutes;
     final s = d.inSeconds % 60;
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  void didUpdateWidget(covariant _CachedVideoTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.asset.id != widget.asset.id) {
+      _loaded = false;
+      _thumbnail = null;
+      _loadThumbnail();
+    }
   }
 
   @override
