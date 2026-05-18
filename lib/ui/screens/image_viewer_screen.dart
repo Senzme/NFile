@@ -2,8 +2,19 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:photo_view/photo_view.dart';
+import 'package:photo_view/photo_view_gallery.dart';
 import 'package:mime/mime.dart';
 import 'package:photo_manager/photo_manager.dart';
+import '../../providers/media_provider.dart';
+
+final Uint8List _kTransparentImage = Uint8List.fromList([
+  0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
+  0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+  0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
+  0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+  0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
+  0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+]);
 
 class ImageViewerScreen extends StatefulWidget {
   final String imagePath;
@@ -26,6 +37,7 @@ class ImageViewerScreen extends StatefulWidget {
 class _ImageViewerScreenState extends State<ImageViewerScreen> {
   late PageController _pageController;
   List<String> _imageList = [];
+  final Map<int, File?> _fileCache = {};
   int _currentIndex = 0;
   bool _showUI = true;
   bool _isZoomed = false;
@@ -35,6 +47,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
     super.initState();
     _findSiblings();
     _pageController = PageController(initialPage: _currentIndex);
+    _preloadAdjacent(_currentIndex);
   }
 
   void _findSiblings() {
@@ -74,6 +87,25 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
     } catch (_) {
       _imageList = [widget.imagePath];
       _currentIndex = 0;
+    }
+  }
+
+  void _preloadAdjacent(int index) {
+    if (widget.siblingAssets == null) return;
+    _loadAssetFile(index);
+    _loadAssetFile(index - 1);
+    _loadAssetFile(index + 1);
+  }
+
+  Future<void> _loadAssetFile(int index) async {
+    if (index < 0 || index >= widget.siblingAssets!.length) return;
+    if (_fileCache.containsKey(index) && _fileCache[index] != null) return;
+    final asset = widget.siblingAssets![index];
+    final file = await asset.file;
+    if (mounted && file != null) {
+      setState(() {
+        _fileCache[index] = file;
+      });
     }
   }
 
@@ -144,60 +176,63 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
             DismissDirection.down: 0.2,
             DismissDirection.up: 0.2,
           },
-          child: PageView.builder(
-            controller: _pageController,
-            physics: _isZoomed ? const NeverScrollableScrollPhysics() : const BouncingScrollPhysics(),
-            itemCount: totalCount,
-            onPageChanged: (index) {
+          child: GestureDetector(
+            onTap: () {
               setState(() {
-                _currentIndex = index;
+                _showUI = !_showUI;
               });
             },
-            itemBuilder: (context, index) {
-              if (widget.siblingAssets != null) {
-                final asset = widget.siblingAssets![index];
-                return FutureBuilder<File?>(
-                  future: asset.file,
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData || snapshot.data == null) {
-                      return const Center(child: CircularProgressIndicator(color: Colors.white));
-                    }
-                    return _buildPhotoView(snapshot.data!.path);
+            child: PhotoViewGallery.builder(
+              scrollPhysics: _isZoomed ? const NeverScrollableScrollPhysics() : const BouncingScrollPhysics(),
+              pageController: _pageController,
+              itemCount: totalCount,
+              onPageChanged: (index) {
+                setState(() {
+                  _currentIndex = index;
+                });
+                _preloadAdjacent(index);
+              },
+              scaleStateChangedCallback: (state) {
+                setState(() {
+                  _isZoomed = state != PhotoViewScaleState.initial;
+                });
+              },
+              builder: (context, index) {
+                File? imgFile;
+                Uint8List? thumbData;
+                String tagKey = 'img_$index';
+
+                if (widget.siblingAssets != null) {
+                  final asset = widget.siblingAssets![index];
+                  tagKey = asset.id;
+                  imgFile = _fileCache[index];
+                  thumbData = ThumbnailCache.getCached(asset.id);
+                } else {
+                  final path = _imageList[index];
+                  tagKey = path;
+                  imgFile = File(path);
+                }
+
+                final ImageProvider provider = (imgFile != null && imgFile.existsSync())
+                    ? FileImage(imgFile) as ImageProvider
+                    : (thumbData != null ? MemoryImage(thumbData) : MemoryImage(_kTransparentImage));
+
+                return PhotoViewGalleryPageOptions(
+                  imageProvider: provider,
+                  initialScale: PhotoViewComputedScale.contained,
+                  minScale: PhotoViewComputedScale.contained,
+                  maxScale: PhotoViewComputedScale.covered * 4,
+                  heroAttributes: PhotoViewHeroAttributes(tag: tagKey),
+                  onTapUp: (_, __, ___) {
+                    setState(() {
+                      _showUI = !_showUI;
+                    });
                   },
                 );
-              } else {
-                final path = _imageList[index];
-                return _buildPhotoView(path);
-              }
-            },
+              },
+            ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildPhotoView(String path) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _showUI = !_showUI;
-        });
-      },
-      child: PhotoView(
-        imageProvider: FileImage(File(path)),
-        minScale: PhotoViewComputedScale.contained,
-        maxScale: PhotoViewComputedScale.covered * 4,
-        heroAttributes: PhotoViewHeroAttributes(tag: path),
-        scaleStateChangedCallback: (state) {
-          setState(() {
-            _isZoomed = state != PhotoViewScaleState.initial;
-          });
-        },
-        onTapUp: (_, __, ___) {
-          setState(() {
-            _showUI = !_showUI;
-          });
-        },
       ),
     );
   }
