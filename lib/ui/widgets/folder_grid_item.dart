@@ -12,6 +12,7 @@ class FolderGridItem extends StatelessWidget {
   final Function(String) onAction;
   final bool isSelected;
   final double iconScale;
+  final double itemPaddingMultiplier;
 
   const FolderGridItem({
     super.key,
@@ -21,6 +22,7 @@ class FolderGridItem extends StatelessWidget {
     required this.onAction,
     this.isSelected = false,
     this.iconScale = 1.0,
+    this.itemPaddingMultiplier = 1.0,
   });
 
   @override
@@ -47,21 +49,27 @@ class FolderGridItem extends StatelessWidget {
               child: SingleChildScrollView(
                 physics: const NeverScrollableScrollPhysics(),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: (8.0 * itemPaddingMultiplier).clamp(2.0, 16.0),
+                    vertical: (8.0 * itemPaddingMultiplier).clamp(2.0, 16.0),
+                  ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Container(
-                        width: 48 * iconScale,
-                        height: 48 * iconScale,
-                        decoration: BoxDecoration(
-                          color: isSelected ? theme.colorScheme.primary : theme.colorScheme.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Icon(
-                          isSelected ? Broken.tick_circle : FileUtils.getFolderIcon(context.watch<FileManagerProvider>().folderIconOption),
-                          color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.primary,
-                          size: 28 * iconScale,
+                      GestureDetector(
+                        onTap: onLongPress,
+                        child: Container(
+                          width: 48 * iconScale,
+                          height: 48 * iconScale,
+                          decoration: BoxDecoration(
+                            color: isSelected ? theme.colorScheme.primary : theme.colorScheme.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Icon(
+                            isSelected ? Broken.tick_circle : FileUtils.getFolderIcon(context.watch<FileManagerProvider>().folderIconOption),
+                            color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.primary,
+                            size: 28 * iconScale,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 8),

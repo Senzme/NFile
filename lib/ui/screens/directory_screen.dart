@@ -9,6 +9,7 @@ import '../widgets/file_grid_item.dart';
 import '../widgets/folder_grid_item.dart';
 import '../widgets/file_action_dialogs.dart';
 import '../widgets/create_archive_dialog.dart';
+import '../widgets/selection_action_bar.dart';
 import '../widgets/nfile_drawer.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import 'global_search_screen.dart';
@@ -242,6 +243,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
 
   void _showSortModal(BuildContext context, FileManagerProvider provider) {
     final theme = Theme.of(context);
+    bool isAppearanceExpanded = false;
     showModalBottomSheet(
       context: context,
       backgroundColor: theme.colorScheme.surface,
@@ -322,24 +324,63 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                       ],
                     ),
                     const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Icon & Folder Size', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-                        Text('${(provider.iconScale * 100).round()}%', style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Slider(
-                      value: provider.iconScale,
-                      min: 0.7,
-                      max: 1.5,
-                      divisions: 8,
-                      activeColor: theme.colorScheme.primary,
-                      onChanged: (val) {
-                        provider.setIconScale(val);
-                        setStateModal(() {});
-                      },
+                    Theme(
+                      data: theme.copyWith(dividerColor: Colors.transparent),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
+                        ),
+                        child: ExpansionTile(
+                          initiallyExpanded: isAppearanceExpanded,
+                          onExpansionChanged: (exp) {
+                            isAppearanceExpanded = exp;
+                          },
+                          leading: Icon(Broken.setting_2, color: theme.colorScheme.primary),
+                          title: Text('Size & Padding Options', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                          childrenPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Icon & Folder Size', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                                Text('${(provider.iconScale * 100).round()}%', style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
+                              ],
+                            ),
+                            Slider(
+                              value: provider.iconScale,
+                              min: 0.7,
+                              max: 1.5,
+                              divisions: 8,
+                              activeColor: theme.colorScheme.primary,
+                              onChanged: (val) {
+                                provider.setIconScale(val);
+                                setStateModal(() {});
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Item Padding & Spacing', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                                Text('${(provider.itemPaddingMultiplier * 100).round()}%', style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
+                              ],
+                            ),
+                            Slider(
+                              value: provider.itemPaddingMultiplier,
+                              min: 0.4,
+                              max: 2.0,
+                              divisions: 16,
+                              activeColor: theme.colorScheme.primary,
+                              onChanged: (val) {
+                                provider.setItemPaddingMultiplier(val);
+                                setStateModal(() {});
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Text('Sort By', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
@@ -566,66 +607,74 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                           ),
                         ),
               actions: isSelectionMode
-                  ? [
-                      IconButton(
-                        icon: const Icon(Broken.tick_square),
-                        tooltip: 'Select All',
-                        onPressed: () => provider.selectAll(),
-                      ),
-                      IconButton(
-                        icon: const Icon(Broken.document_copy),
-                        tooltip: 'Copy',
-                        onPressed: () {
-                          provider.copySelected();
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied selected items')));
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Broken.scissor),
-                        tooltip: 'Cut',
-                        onPressed: () {
-                          provider.cutSelected();
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cut selected items')));
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Broken.box_add),
-                        tooltip: 'Create Archive',
-                        onPressed: () async {
-                          final res = await CreateArchiveDialog.show(
-                            context,
-                            initialName: p.basename(provider.currentPath).isEmpty ? 'archive' : p.basename(provider.currentPath),
-                            isMultiSelection: provider.selectedPaths.length > 1,
-                          );
-                          if (res != null) {
-                            await provider.createArchive(
-                              archiveName: res.archiveName,
-                              format: res.format,
-                              compressionLevel: res.compressionLevel,
-                              password: res.password,
-                              splitSizeMB: res.splitSizeMB,
-                              deleteSource: res.deleteSource,
-                              separateArchives: res.separateArchives,
-                              targetPaths: provider.selectedPaths.toList(),
-                            );
-                          }
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Broken.trash, color: Colors.redAccent),
-                        tooltip: 'Delete Selected',
-                        onPressed: () async {
-                          final confirm = await FileActionDialogs.showConfirmDialog(
-                            context,
-                            title: 'Delete Selected',
-                            content: 'Are you sure you want to delete ${provider.selectedPaths.length} items? This cannot be undone.',
-                          );
-                          if (confirm) {
-                            await provider.deleteSelected();
-                          }
-                        },
-                      ),
-                    ]
+                  ? provider.showBottomActionBar
+                      ? [
+                          IconButton(
+                            icon: const Icon(Broken.tick_square),
+                            tooltip: 'Select All',
+                            onPressed: () => provider.selectAll(),
+                          ),
+                        ]
+                      : [
+                          IconButton(
+                            icon: const Icon(Broken.tick_square),
+                            tooltip: 'Select All',
+                            onPressed: () => provider.selectAll(),
+                          ),
+                          IconButton(
+                            icon: const Icon(Broken.document_copy),
+                            tooltip: 'Copy',
+                            onPressed: () {
+                              provider.copySelected();
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied selected items')));
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Broken.scissor),
+                            tooltip: 'Cut',
+                            onPressed: () {
+                              provider.cutSelected();
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cut selected items')));
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Broken.box_add),
+                            tooltip: 'Create Archive',
+                            onPressed: () async {
+                              final res = await CreateArchiveDialog.show(
+                                context,
+                                initialName: p.basename(provider.currentPath).isEmpty ? 'archive' : p.basename(provider.currentPath),
+                                isMultiSelection: provider.selectedPaths.length > 1,
+                              );
+                              if (res != null) {
+                                await provider.createArchive(
+                                  archiveName: res.archiveName,
+                                  format: res.format,
+                                  compressionLevel: res.compressionLevel,
+                                  password: res.password,
+                                  splitSizeMB: res.splitSizeMB,
+                                  deleteSource: res.deleteSource,
+                                  separateArchives: res.separateArchives,
+                                  targetPaths: provider.selectedPaths.toList(),
+                                );
+                              }
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Broken.trash, color: Colors.redAccent),
+                            tooltip: 'Delete Selected',
+                            onPressed: () async {
+                              final confirm = await FileActionDialogs.showConfirmDialog(
+                                context,
+                                title: 'Delete Selected',
+                                content: 'Are you sure you want to delete ${provider.selectedPaths.length} items? This cannot be undone.',
+                              );
+                              if (confirm) {
+                                await provider.deleteSelected();
+                              }
+                            },
+                          ),
+                        ]
                   : provider.showBottomActionBar
                       ? [
                           PopupMenuButton<String>(
@@ -716,8 +765,8 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                             ? SliverGrid(
                                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                                   crossAxisCount: (MediaQuery.of(context).size.width / (110 * provider.iconScale)).floor().clamp(2, 6),
-                                  mainAxisSpacing: 12,
-                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: (12 * provider.itemPaddingMultiplier).clamp(4.0, 24.0),
+                                  crossAxisSpacing: (12 * provider.itemPaddingMultiplier).clamp(4.0, 24.0),
                                   childAspectRatio: 0.75,
                                 ),
                                 delegate: SliverChildBuilderDelegate(
@@ -729,6 +778,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                                         folder: item,
                                         isSelected: isSelected,
                                         iconScale: provider.iconScale,
+                                        itemPaddingMultiplier: provider.itemPaddingMultiplier,
                                         onTap: () {
                                           if (isSelectionMode) {
                                             provider.toggleSelection(item.path);
@@ -744,6 +794,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                                         file: item,
                                         isSelected: isSelected,
                                         iconScale: provider.iconScale,
+                                        itemPaddingMultiplier: provider.itemPaddingMultiplier,
                                         onTap: () {
                                           if (isSelectionMode) {
                                             provider.toggleSelection(item.path);
@@ -769,6 +820,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                                         folder: item,
                                         isSelected: isSelected,
                                         iconScale: provider.iconScale,
+                                        itemPaddingMultiplier: provider.itemPaddingMultiplier,
                                         onTap: () {
                                           if (isSelectionMode) {
                                             provider.toggleSelection(item.path);
@@ -784,6 +836,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                                         file: item,
                                         isSelected: isSelected,
                                         iconScale: provider.iconScale,
+                                        itemPaddingMultiplier: provider.itemPaddingMultiplier,
                                         onTap: () {
                                           if (isSelectionMode) {
                                             provider.toggleSelection(item.path);
@@ -828,9 +881,11 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                         child: const Icon(Broken.add, size: 28),
                       )
                     : null,
-            bottomNavigationBar: (isSelectionMode || !provider.showBottomActionBar)
-                ? null
-                : BottomAppBar(
+            bottomNavigationBar: (isSelectionMode && provider.showBottomActionBar)
+                ? SelectionActionBar(provider: provider)
+                : !provider.showBottomActionBar
+                    ? null
+                    : BottomAppBar(
                     elevation: 8,
                     color: Theme.of(context).colorScheme.surface,
                     shape: const CircularNotchedRectangle(),

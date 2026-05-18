@@ -42,6 +42,7 @@ class FileManagerProvider extends ChangeNotifier {
     _sortType = PreferencesService.getSortType();
     _isGridView = PreferencesService.getIsGridView();
     _iconScale = PreferencesService.getIconScale();
+    _itemPaddingMultiplier = PreferencesService.getItemPaddingMultiplier();
     _showHiddenFiles = PreferencesService.getShowHiddenFiles();
     _showFloatingAddButton = PreferencesService.getShowFloatingAddButton();
     _defaultToBrowseScreen = PreferencesService.getDefaultToBrowseScreen();
@@ -133,6 +134,17 @@ class FileManagerProvider extends ChangeNotifier {
     if (_iconScale == clamped) return;
     _iconScale = clamped;
     PreferencesService.saveIconScale(_iconScale);
+    notifyListeners();
+  }
+
+  double _itemPaddingMultiplier = 1.0;
+  double get itemPaddingMultiplier => _itemPaddingMultiplier;
+
+  void setItemPaddingMultiplier(double mult) {
+    final clamped = mult.clamp(0.4, 2.0);
+    if (_itemPaddingMultiplier == clamped) return;
+    _itemPaddingMultiplier = clamped;
+    PreferencesService.saveItemPaddingMultiplier(_itemPaddingMultiplier);
     notifyListeners();
   }
 

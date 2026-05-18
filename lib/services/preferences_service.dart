@@ -11,6 +11,7 @@ class PreferencesService {
   static const String _keyDefaultToBrowseScreen = 'default_to_browse_screen';
   static const String _keyIsGridView = 'is_grid_view';
   static const String _keyIconScale = 'icon_scale';
+  static const String _keyItemPaddingMultiplier = 'item_padding_multiplier';
   static const String _keySortType = 'sort_type';
   static const String _keyCategoryOrder = 'category_order';
   static const String _keyActiveCategories = 'active_categories';
@@ -93,6 +94,14 @@ class PreferencesService {
 
   static Future<void> saveIconScale(double val) async {
     await _prefs?.setDouble(_keyIconScale, val);
+  }
+
+  static double getItemPaddingMultiplier() {
+    return _prefs?.getDouble(_keyItemPaddingMultiplier) ?? 1.0;
+  }
+
+  static Future<void> saveItemPaddingMultiplier(double val) async {
+    await _prefs?.setDouble(_keyItemPaddingMultiplier, val);
   }
 
   static FileSortType getSortType() {

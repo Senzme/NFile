@@ -10,6 +10,7 @@ class FileItem extends StatelessWidget {
   final Function(String) onAction;
   final bool isSelected;
   final double iconScale;
+  final double itemPaddingMultiplier;
 
   const FileItem({
     super.key,
@@ -19,6 +20,7 @@ class FileItem extends StatelessWidget {
     required this.onAction,
     this.isSelected = false,
     this.iconScale = 1.0,
+    this.itemPaddingMultiplier = 1.0,
   });
 
   @override
@@ -28,7 +30,10 @@ class FileItem extends StatelessWidget {
     final isArchive = FileUtils.isArchive(file.path);
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      margin: EdgeInsets.symmetric(
+        horizontal: (16 * itemPaddingMultiplier).clamp(4.0, 32.0),
+        vertical: (4 * itemPaddingMultiplier).clamp(1.0, 16.0),
+      ),
       color: isSelected ? theme.colorScheme.primaryContainer.withOpacity(0.4) : theme.colorScheme.surface,
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -43,20 +48,23 @@ class FileItem extends StatelessWidget {
         onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(12.0),
+          padding: EdgeInsets.all((12.0 * itemPaddingMultiplier).clamp(4.0, 24.0)),
           child: Row(
             children: [
-              Container(
-                width: 48 * iconScale,
-                height: 48 * iconScale,
-                decoration: BoxDecoration(
-                  color: isSelected ? theme.colorScheme.primary : iconColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  isSelected ? Broken.tick_circle : FileUtils.getIconForFile(file.path),
-                  color: isSelected ? theme.colorScheme.onPrimary : iconColor,
-                  size: 28 * iconScale,
+              GestureDetector(
+                onTap: onLongPress,
+                child: Container(
+                  width: 48 * iconScale,
+                  height: 48 * iconScale,
+                  decoration: BoxDecoration(
+                    color: isSelected ? theme.colorScheme.primary : iconColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    isSelected ? Broken.tick_circle : FileUtils.getIconForFile(file.path),
+                    color: isSelected ? theme.colorScheme.onPrimary : iconColor,
+                    size: 28 * iconScale,
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
