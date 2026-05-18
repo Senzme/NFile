@@ -420,7 +420,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
               ),
             ),
           ),
-          // Namida Style Floating Particles
+          // Floating Particles
           AudioParticlesWidget(isPlaying: isPlaying, accentColor: accent),
           // Main Layout Matching Screenshot 2
           SafeArea(
@@ -552,7 +552,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
                             },
                           ),
                         ),
-                        // Namida Compact Playback Controls & Bottom Utilities
+                        // Compact Playback Controls & Bottom Utilities
                         AudioControlsWidget(
                           isPlaying: isPlaying,
                           position: position,

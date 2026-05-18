@@ -128,7 +128,7 @@ class MoreSettingsScreen extends StatelessWidget {
       case 'outlined': return 'Minimal Outlined (Material)';
       case 'broken':
       default:
-        return 'Namida Broken Outline (Default)';
+        return 'NFile Broken Outline (Default)';
     }
   }
 
@@ -223,7 +223,7 @@ class MoreSettingsScreen extends StatelessWidget {
       builder: (ctx) {
         final current = fileManager.folderIconOption;
         final options = [
-          {'key': 'broken', 'name': 'Namida Broken Outline (Default)', 'icon': Broken.folder},
+          {'key': 'broken', 'name': 'NFile Broken Outline (Default)', 'icon': Broken.folder},
           {'key': 'rounded', 'name': 'Modern Rounded (Material)', 'icon': Icons.folder_rounded},
           {'key': 'solid', 'name': 'Classic Solid (Material)', 'icon': Icons.folder},
           {'key': 'special', 'name': 'Starred Special (Material)', 'icon': Icons.folder_special_rounded},

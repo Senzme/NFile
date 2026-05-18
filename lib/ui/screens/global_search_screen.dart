@@ -265,7 +265,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
       ),
       body: Column(
         children: [
-          // Filter Chips Row (Namida style)
+          // Filter Chips Row (NFile style)
           Container(
             height: 56,
             padding: const EdgeInsets.symmetric(vertical: 8),
