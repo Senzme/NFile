@@ -2,21 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import '../../providers/media_provider.dart';
+import '../../providers/file_manager_provider.dart';
 import '../screens/media_category_screen.dart';
+import '../screens/internal_file_picker_screen.dart';
 
 class QuickCategoriesGrid extends StatelessWidget {
   final Function(int) onNavigateTab;
 
   const QuickCategoriesGrid({super.key, required this.onNavigateTab});
 
-  static Map<String, Map<String, dynamic>> getAllCategoriesMap(BuildContext context, bool isDark) {
+  static Map<String, Map<String, dynamic>> getAllCategoriesMap(BuildContext context, bool isDark, Function(int) onNavigateTab) {
     final mediaProvider = Provider.of<MediaProvider>(context, listen: false);
-    return {
+    final map = <String, Map<String, dynamic>>{
       'Images': {
         'label': 'Images',
         'icon': Broken.image,
         'color': isDark ? Colors.purpleAccent : Colors.purple,
         'count': '${mediaProvider.getCategoryItemCount("Images")}',
+        'isCustom': false,
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.images))),
       },
       'Videos': {
@@ -24,6 +27,7 @@ class QuickCategoriesGrid extends StatelessWidget {
         'icon': Broken.video,
         'color': isDark ? Colors.redAccent : const Color(0xFFD32F2F),
         'count': '${mediaProvider.getCategoryItemCount("Videos")}',
+        'isCustom': false,
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.videos))),
       },
       'Audio': {
@@ -31,6 +35,7 @@ class QuickCategoriesGrid extends StatelessWidget {
         'icon': Broken.music,
         'color': isDark ? Colors.orangeAccent : const Color(0xFFE65100),
         'count': '${mediaProvider.getCategoryItemCount("Audio")}',
+        'isCustom': false,
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.audios))),
       },
       'Documents': {
@@ -38,6 +43,7 @@ class QuickCategoriesGrid extends StatelessWidget {
         'icon': Broken.document,
         'color': isDark ? Colors.blueAccent : const Color(0xFF1976D2),
         'count': '${mediaProvider.getCategoryItemCount("Documents")}',
+        'isCustom': false,
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.documents))),
       },
       'Archives': {
@@ -45,6 +51,7 @@ class QuickCategoriesGrid extends StatelessWidget {
         'icon': Broken.archive,
         'color': isDark ? Colors.tealAccent : const Color(0xFF00796B),
         'count': '${mediaProvider.getCategoryItemCount("Archives")}',
+        'isCustom': false,
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.archives))),
       },
       'Downloads': {
@@ -52,6 +59,7 @@ class QuickCategoriesGrid extends StatelessWidget {
         'icon': Broken.document_download,
         'color': isDark ? Colors.greenAccent : const Color(0xFF2E7D32),
         'count': '${mediaProvider.getCategoryItemCount("Downloads")}',
+        'isCustom': false,
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.downloads))),
       },
       'APKs': {
@@ -59,6 +67,7 @@ class QuickCategoriesGrid extends StatelessWidget {
         'icon': Broken.box,
         'color': isDark ? Colors.amber : const Color(0xFFF57C00),
         'count': '${mediaProvider.getCategoryItemCount("APKs")}',
+        'isCustom': false,
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.apks))),
       },
       'Screenshots': {
@@ -66,22 +75,46 @@ class QuickCategoriesGrid extends StatelessWidget {
         'icon': Broken.mobile,
         'color': isDark ? Colors.pinkAccent : const Color(0xFFC2185B),
         'count': '${mediaProvider.getCategoryItemCount("Screenshots")}',
+        'isCustom': false,
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.screenshots))),
       },
     };
+
+    for (final cs in mediaProvider.customShortcuts) {
+      map[cs.id] = {
+        'label': cs.label,
+        'icon': cs.isDirectory ? Broken.folder : Broken.document,
+        'color': isDark ? Colors.cyanAccent : Colors.cyan,
+        'count': cs.isDirectory ? 'Folder' : 'File',
+        'isCustom': true,
+        'path': cs.path,
+        'action': () {
+          if (cs.isDirectory) {
+            final fileManager = context.read<FileManagerProvider>();
+            fileManager.loadDirectory(cs.path);
+            onNavigateTab(1);
+          } else {
+            final fileManager = context.read<FileManagerProvider>();
+            fileManager.openFile(context, cs.path);
+          }
+        },
+      };
+    }
+
+    return map;
   }
 
-  static void showCustomizeDialog(BuildContext context) {
+  static void showCustomizeDialog(BuildContext context, [Function(int)? onNavigateTab]) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final categoriesMap = getAllCategoriesMap(context, isDark);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: theme.scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) {
-        return _CustomizeCategoriesSheet(categoriesMap: categoriesMap);
+        return _CustomizeCategoriesSheet(onNavigateTab: onNavigateTab ?? (index) {
+          Navigator.popUntil(context, (route) => route.isFirst);
+        });
       },
     );
   }
@@ -92,7 +125,7 @@ class QuickCategoriesGrid extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final mediaProvider = context.watch<MediaProvider>();
 
-    final allCategoriesMap = getAllCategoriesMap(context, isDark);
+    final allCategoriesMap = getAllCategoriesMap(context, isDark, onNavigateTab);
 
     final activeList = mediaProvider.categoryOrder
         .where((label) => mediaProvider.activeCategories.contains(label) && allCategoriesMap.containsKey(label))
@@ -112,7 +145,7 @@ class QuickCategoriesGrid extends StatelessWidget {
                 style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, fontSize: 18),
               ),
               InkWell(
-                onTap: () => showCustomizeDialog(context),
+                onTap: () => showCustomizeDialog(context, onNavigateTab),
                 borderRadius: BorderRadius.circular(16),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
@@ -217,24 +250,26 @@ class QuickCategoriesGrid extends StatelessWidget {
 }
 
 class _CustomizeCategoriesSheet extends StatelessWidget {
-  final Map<String, Map<String, dynamic>> categoriesMap;
+  final Function(int) onNavigateTab;
 
-  const _CustomizeCategoriesSheet({required this.categoriesMap});
+  const _CustomizeCategoriesSheet({required this.onNavigateTab});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return DraggableScrollableSheet(
-      initialChildSize: 0.65,
+      initialChildSize: 0.7,
       minChildSize: 0.4,
-      maxChildSize: 0.9,
+      maxChildSize: 0.95,
       expand: false,
       builder: (context, scrollController) {
         return Consumer<MediaProvider>(
           builder: (context, provider, child) {
             final activeCats = provider.activeCategories;
             final order = provider.categoryOrder;
+            final categoriesMap = QuickCategoriesGrid.getAllCategoriesMap(context, isDark, onNavigateTab);
 
             return Column(
               children: [
@@ -247,7 +282,7 @@ class _CustomizeCategoriesSheet extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text('Customize Shortcuts', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Done')),
+                      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Done', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
                     ],
                   ),
                 ),
@@ -257,10 +292,34 @@ class _CustomizeCategoriesSheet extends StatelessWidget {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Drag items by the handle (=) to reorder icons on the Home Screen.',
-                      style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.5), fontSize: 12),
+                      style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6), fontSize: 13),
                     ),
                   ),
                 ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Broken.add, size: 20),
+                    label: const Text('Add Folder / File Shortcut', style: TextStyle(fontWeight: FontWeight.bold)),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(46),
+                      foregroundColor: theme.colorScheme.primary,
+                      side: BorderSide(color: theme.colorScheme.primary.withOpacity(0.5)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    onPressed: () async {
+                      final fileManager = context.read<FileManagerProvider>();
+                      final paths = await InternalFilePickerScreen.show(context, rootPath: fileManager.rootPath);
+                      if (paths != null && paths.isNotEmpty) {
+                        for (final p in paths) {
+                          provider.addCustomShortcut(p);
+                        }
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(height: 8),
                 const Divider(),
                 Expanded(
                   child: ReorderableListView.builder(
@@ -276,19 +335,29 @@ class _CustomizeCategoriesSheet extends StatelessWidget {
                       final icon = cat['icon'] as IconData;
                       final color = cat['color'] as Color;
                       final isEnabled = activeCats.contains(label);
+                      final isCustom = cat['isCustom'] == true;
 
                       return ListTile(
                         key: ValueKey(label),
                         leading: Container(
-                          width: 40,
-                          height: 40,
+                          width: 42,
+                          height: 42,
                           decoration: BoxDecoration(color: color.withOpacity(0.15), shape: BoxShape.circle),
-                          child: Icon(icon, color: color, size: 20),
+                          child: Icon(icon, color: color, size: 22),
                         ),
-                        title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+                        title: Text(cat['label'] as String, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                        subtitle: isCustom ? Text(cat['path'] as String, style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface.withOpacity(0.5)), maxLines: 1, overflow: TextOverflow.ellipsis) : null,
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            if (isCustom) ...[
+                              IconButton(
+                                icon: const Icon(Broken.trash, color: Colors.redAccent, size: 20),
+                                tooltip: 'Delete Shortcut',
+                                onPressed: () => provider.removeCustomShortcut(label),
+                              ),
+                              const SizedBox(width: 4),
+                            ],
                             Switch(
                               value: isEnabled,
                               activeColor: theme.colorScheme.primary,

@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/file_manager_provider.dart';
+import '../models/custom_shortcut_model.dart';
 
 class PreferencesService {
   static const String _keyThemeMode = 'theme_mode';
@@ -110,6 +112,24 @@ class PreferencesService {
 
   static Future<void> saveCategoryCount(String category, int count) async {
     await _prefs?.setInt('cat_count_$category', count);
+  }
+
+  static const String _keyCustomShortcuts = 'custom_shortcuts';
+
+  static List<CustomShortcutModel>? getCustomShortcuts() {
+    final str = _prefs?.getString(_keyCustomShortcuts);
+    if (str == null) return null;
+    try {
+      final list = jsonDecode(str) as List;
+      return list.map((e) => CustomShortcutModel.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> saveCustomShortcuts(List<CustomShortcutModel> list) async {
+    final str = jsonEncode(list.map((e) => e.toJson()).toList());
+    await _prefs?.setString(_keyCustomShortcuts, str);
   }
 
   static const String _keyAccentColor = 'accent_color';

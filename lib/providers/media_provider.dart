@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 import '../services/preferences_service.dart';
+import '../models/custom_shortcut_model.dart';
 
 enum MediaSortOrder {
   newest,
@@ -109,6 +111,10 @@ class MediaProvider extends ChangeNotifier {
     if (savedActive != null && savedActive.isNotEmpty) {
       _activeCategories = savedActive;
     }
+    final savedCustom = PreferencesService.getCustomShortcuts();
+    if (savedCustom != null) {
+      _customShortcuts = savedCustom;
+    }
   }
 
   List<AssetEntity> _images = [];
@@ -119,6 +125,7 @@ class MediaProvider extends ChangeNotifier {
   List<FileSystemEntity> _downloads = [];
   List<FileSystemEntity> _apks = [];
   List<AssetEntity> _screenshots = [];
+  List<CustomShortcutModel> _customShortcuts = [];
 
   List<String> _categoryOrder = [
     'Images',
@@ -154,6 +161,7 @@ class MediaProvider extends ChangeNotifier {
   List<FileSystemEntity> get downloads => _downloads;
   List<FileSystemEntity> get apks => _apks;
   List<AssetEntity> get screenshots => _screenshots;
+  List<CustomShortcutModel> get customShortcuts => _customShortcuts;
   List<String> get categoryOrder => _categoryOrder;
   List<String> get activeCategories => _activeCategories;
   bool get isLoading => _isLoading;
@@ -182,6 +190,36 @@ class MediaProvider extends ChangeNotifier {
     final item = _categoryOrder.removeAt(oldIndex);
     _categoryOrder.insert(newIndex, item);
     PreferencesService.saveCategoryOrder(_categoryOrder);
+    _saveCache();
+    notifyListeners();
+  }
+
+  void addCustomShortcut(String path) {
+    final label = p.basename(path);
+    final id = 'custom_$path';
+    if (_categoryOrder.contains(id)) return;
+
+    final isDir = FileSystemEntity.isDirectorySync(path);
+    final cs = CustomShortcutModel(id: id, label: label, path: path, isDirectory: isDir);
+    _customShortcuts.add(cs);
+    _categoryOrder.add(id);
+    _activeCategories.add(id);
+
+    PreferencesService.saveCustomShortcuts(_customShortcuts);
+    PreferencesService.saveCategoryOrder(_categoryOrder);
+    PreferencesService.saveActiveCategories(_activeCategories);
+    _saveCache();
+    notifyListeners();
+  }
+
+  void removeCustomShortcut(String id) {
+    _customShortcuts.removeWhere((cs) => cs.id == id);
+    _categoryOrder.remove(id);
+    _activeCategories.remove(id);
+
+    PreferencesService.saveCustomShortcuts(_customShortcuts);
+    PreferencesService.saveCategoryOrder(_categoryOrder);
+    PreferencesService.saveActiveCategories(_activeCategories);
     _saveCache();
     notifyListeners();
   }
