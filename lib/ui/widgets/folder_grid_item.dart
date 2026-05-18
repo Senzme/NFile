@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/file_manager_provider.dart';
 import '../../models/file_item_model.dart';
 import '../../core/utils.dart';
 import '../../core/icon_fonts/broken_icons.dart';
@@ -24,6 +26,7 @@ class FolderGridItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final folderIcon = context.watch<FileManagerProvider>().folderIcon;
 
     return Card(
       color: isSelected ? theme.colorScheme.primaryContainer.withOpacity(0.4) : theme.colorScheme.surface,
@@ -57,7 +60,7 @@ class FolderGridItem extends StatelessWidget {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Icon(
-                          isSelected ? Broken.tick_circle : Broken.folder,
+                          isSelected ? Broken.tick_circle : folderIcon,
                           color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.primary,
                           size: 28 * iconScale,
                         ),

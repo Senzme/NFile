@@ -1,26 +1,34 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const Color seedColor = Color(0xFF369FE7); // Namida signature blue
+  static const Color seedColor = Color(0xFF369FE7);
   
   static ThemeData getAppTheme({required bool light, bool pitchBlack = false, Color? seed, ColorScheme? customScheme}) {
-    final color = seed ?? seedColor;
+    final rawColor = seed ?? seedColor;
     final brightness = light ? Brightness.light : Brightness.dark;
 
-    final ColorScheme colorScheme = customScheme?.copyWith(brightness: brightness) ?? ColorScheme.fromSeed(
-      seedColor: color,
-      brightness: brightness,
-      contrastLevel: 0.05,
-      dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
-    );
+    ColorScheme colorScheme;
+    if (customScheme != null) {
+      colorScheme = customScheme.copyWith(brightness: brightness);
+    } else {
+      final baseScheme = ColorScheme.fromSeed(
+        seedColor: rawColor,
+        brightness: brightness,
+        contrastLevel: 0.05,
+        dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
+      );
+      colorScheme = baseScheme.copyWith(
+        primary: rawColor,
+      );
+    }
 
-    final primary = colorScheme.primary;
+    final effectivePrimary = colorScheme.primary;
     final mainColorMultiplier = pitchBlack ? 0.1 : 0.8;
     final pitchGrey = pitchBlack ? const Color.fromARGB(255, 20, 20, 20) : const Color.fromARGB(255, 35, 35, 35);
     final pitchBlackColor = pitchBlack ? const Color.fromARGB(255, 0, 0, 0) : null;
 
     int getColorAlpha(int a) => (a * mainColorMultiplier).round();
-    Color getMainColorWithAlpha(int a) => primary.withAlpha(getColorAlpha(a));
+    Color getMainColorWithAlpha(int a) => effectivePrimary.withAlpha(getColorAlpha(a));
 
     final cardColor = Color.alphaBlend(
       getMainColorWithAlpha(35),
@@ -33,7 +41,7 @@ class AppTheme {
       colorScheme: colorScheme,
       fontFamily: 'LexendDeca',
       fontFamilyFallback: const ['sans-serif', 'Roboto'],
-      scaffoldBackgroundColor: pitchBlackColor ?? (light ? Color.alphaBlend(primary.withAlpha(10), Colors.white) : null),
+      scaffoldBackgroundColor: pitchBlackColor ?? (light ? Color.alphaBlend(effectivePrimary.withAlpha(10), Colors.white) : null),
       splashColor: Colors.transparent,
       highlightColor: light ? Colors.black.withAlpha(20) : Colors.white.withAlpha(pitchBlackColor == null ? 10 : 25),
       disabledColor: light ? const Color.fromARGB(200, 160, 160, 160) : const Color.fromARGB(200, 60, 60, 60),
@@ -42,7 +50,7 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
-        backgroundColor: pitchBlackColor ?? (light ? Color.alphaBlend(primary.withAlpha(25), Colors.white) : null),
+        backgroundColor: pitchBlackColor ?? (light ? Color.alphaBlend(effectivePrimary.withAlpha(25), Colors.white) : null),
         actionsIconTheme: IconThemeData(
           color: light ? const Color.fromARGB(200, 40, 40, 40) : const Color.fromARGB(200, 233, 233, 233),
         ),

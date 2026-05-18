@@ -81,6 +81,13 @@ class MoreSettingsScreen extends StatelessWidget {
               subtitle: _getAccentColorLabel(fileManager.accentColorOption),
               onTap: () => _showThemePickerDialog(context, fileManager, theme),
             ),
+            _buildSettingTile(
+              theme,
+              icon: fileManager.folderIcon,
+              title: 'Folder Icon Style',
+              subtitle: _getFolderIconLabel(fileManager.folderIconOption),
+              onTap: () => _showFolderIconPickerDialog(context, fileManager, theme),
+            ),
 
             const SizedBox(height: 24),
             _buildSectionHeader(theme, 'Home Screen'),
@@ -109,6 +116,95 @@ class MoreSettingsScreen extends StatelessWidget {
       default:
         return 'Original Default (Signature Blue)';
     }
+  }
+
+  String _getFolderIconLabel(String option) {
+    switch (option) {
+      case 'folder_2': return 'Premium Rounded';
+      case 'folder_open': return 'Explorer Open';
+      case 'folder_favorite': return 'Heart Favorite';
+      case 'folder_cloud': return 'Cloud Sync';
+      case 'folder':
+      default:
+        return 'Standard Minimal';
+    }
+  }
+
+  void _showFolderIconPickerDialog(BuildContext context, FileManagerProvider fileManager, ThemeData theme) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) {
+        final current = fileManager.folderIconOption;
+        final options = [
+          {'key': 'folder', 'name': 'Standard Minimal', 'icon': Broken.folder},
+          {'key': 'folder_2', 'name': 'Premium Rounded', 'icon': Broken.folder_2},
+          {'key': 'folder_open', 'name': 'Explorer Open', 'icon': Broken.folder_open},
+          {'key': 'folder_favorite', 'name': 'Heart Favorite', 'icon': Broken.folder_favorite},
+          {'key': 'folder_cloud', 'name': 'Cloud Sync', 'icon': Broken.folder_cloud},
+        ];
+
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
+            ),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
+                    ),
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Text('Choose Folder Icon Style', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(height: 16),
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: options.length,
+                      itemBuilder: (_, i) {
+                        final opt = options[i];
+                        final key = opt['key'] as String;
+                        final name = opt['name'] as String;
+                        final icon = opt['icon'] as IconData;
+                        final isSelected = current == key;
+
+                        return ListTile(
+                          leading: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: isSelected ? theme.colorScheme.primary.withOpacity(0.2) : theme.colorScheme.surface,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(icon, color: isSelected ? theme.colorScheme.primary : theme.iconTheme.color, size: 24),
+                          ),
+                          title: Text(name, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                          trailing: isSelected ? Icon(Icons.radio_button_checked, color: theme.colorScheme.primary) : const Icon(Icons.radio_button_unchecked, color: Colors.grey),
+                          onTap: () {
+                            fileManager.setFolderIconOption(key);
+                            Navigator.pop(ctx);
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _showThemePickerDialog(BuildContext context, FileManagerProvider fileManager, ThemeData theme) {
@@ -218,14 +314,14 @@ class MoreSettingsScreen extends StatelessWidget {
   }) {
     return Card(
       elevation: 0,
-      margin: const EdgeInsets.symmetric(vertical: 5),
+      margin: const EdgeInsets.symmetric(vertical: 4),
       color: theme.colorScheme.surface.withOpacity(0.5),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: theme.colorScheme.outline.withOpacity(0.1)),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
@@ -234,18 +330,8 @@ class MoreSettingsScreen extends StatelessWidget {
           ),
           child: Icon(icon, color: theme.colorScheme.primary, size: 22),
         ),
-        titleAlignment: ListTileTitleAlignment.center,
-        title: Padding(
-          padding: const EdgeInsets.only(bottom: 4.0),
-          child: Text(
-            title, 
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5, height: 1.2),
-          ),
-        ),
-        subtitle: Text(
-          subtitle, 
-          style: TextStyle(fontSize: 12.5, height: 1.3, color: theme.colorScheme.onSurface.withOpacity(0.65)),
-        ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+        subtitle: Text(subtitle, style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withOpacity(0.6))),
         trailing: trailing,
         onTap: onTap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

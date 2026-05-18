@@ -36,6 +36,7 @@ class FileManagerProvider extends ChangeNotifier {
     _showFloatingAddButton = PreferencesService.getShowFloatingAddButton();
     _defaultToBrowseScreen = PreferencesService.getDefaultToBrowseScreen();
     _accentColorOption = PreferencesService.getAccentColor();
+    _folderIconOption = PreferencesService.getFolderIconStyle();
   }
 
   String _accentColorOption = 'blue';
@@ -45,6 +46,17 @@ class FileManagerProvider extends ChangeNotifier {
     if (_accentColorOption == val) return;
     _accentColorOption = val;
     PreferencesService.saveAccentColor(val);
+    notifyListeners();
+  }
+
+  String _folderIconOption = 'folder';
+  String get folderIconOption => _folderIconOption;
+  IconData get folderIcon => PreferencesService.getFolderIconData(_folderIconOption);
+
+  void setFolderIconOption(String val) {
+    if (_folderIconOption == val) return;
+    _folderIconOption = val;
+    PreferencesService.saveFolderIconStyle(val);
     notifyListeners();
   }
 

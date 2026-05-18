@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/file_manager_provider.dart';
+import '../core/icon_fonts/broken_icons.dart';
 
 class PreferencesService {
   static const String _keyThemeMode = 'theme_mode';
@@ -133,6 +134,28 @@ class PreferencesService {
       case 'dynamic':
       default:
         return const Color(0xFF369FE7);
+    }
+  }
+
+  static const String _keyFolderIcon = 'folder_icon_style';
+
+  static String getFolderIconStyle() {
+    return _prefs?.getString(_keyFolderIcon) ?? 'folder';
+  }
+
+  static Future<void> saveFolderIconStyle(String val) async {
+    await _prefs?.setString(_keyFolderIcon, val);
+  }
+
+  static IconData getFolderIconData(String val) {
+    switch (val) {
+      case 'folder_2': return Broken.folder_2;
+      case 'folder_open': return Broken.folder_open;
+      case 'folder_favorite': return Broken.folder_favorite;
+      case 'folder_cloud': return Broken.folder_cloud;
+      case 'folder':
+      default:
+        return Broken.folder;
     }
   }
 }
