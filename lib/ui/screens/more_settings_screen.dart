@@ -114,6 +114,7 @@ class MoreSettingsScreen extends StatelessWidget {
   void _showThemePickerDialog(BuildContext context, FileManagerProvider fileManager, ThemeData theme) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: theme.scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) {
@@ -130,53 +131,61 @@ class MoreSettingsScreen extends StatelessWidget {
 
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
-                ),
-                const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                  child: Text('Choose Accent Theme', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                ),
-                const SizedBox(height: 16),
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: options.length,
-                  itemBuilder: (_, i) {
-                    final opt = options[i];
-                    final key = opt['key'] as String;
-                    final name = opt['name'] as String;
-                    final color = opt['color'] as Color;
-                    final isSelected = current == key;
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
+            ),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
+                    ),
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Text('Choose Accent Theme', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(height: 16),
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: options.length,
+                      itemBuilder: (_, i) {
+                        final opt = options[i];
+                        final key = opt['key'] as String;
+                        final name = opt['name'] as String;
+                        final color = opt['color'] as Color;
+                        final isSelected = current == key;
 
-                    return ListTile(
-                      leading: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: key == 'dynamic' ? theme.colorScheme.primary : color,
-                          shape: BoxShape.circle,
-                        ),
-                        child: key == 'dynamic' 
-                            ? const Icon(Broken.colorfilter, color: Colors.white, size: 20)
-                            : isSelected ? const Icon(Icons.check, color: Colors.white, size: 20) : null,
-                      ),
-                      title: Text(name, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
-                      trailing: isSelected ? Icon(Icons.radio_button_checked, color: theme.colorScheme.primary) : const Icon(Icons.radio_button_unchecked, color: Colors.grey),
-                      onTap: () {
-                        fileManager.setAccentColorOption(key);
-                        Navigator.pop(ctx);
+                        return ListTile(
+                          leading: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: key == 'dynamic' ? theme.colorScheme.primary : color,
+                              shape: BoxShape.circle,
+                            ),
+                            child: key == 'dynamic' 
+                                ? const Icon(Broken.colorfilter, color: Colors.white, size: 20)
+                                : isSelected ? const Icon(Icons.check, color: Colors.white, size: 20) : null,
+                          ),
+                          title: Text(name, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                          trailing: isSelected ? Icon(Icons.radio_button_checked, color: theme.colorScheme.primary) : const Icon(Icons.radio_button_unchecked, color: Colors.grey),
+                          onTap: () {
+                            fileManager.setAccentColorOption(key);
+                            Navigator.pop(ctx);
+                          },
+                        );
                       },
-                    );
-                  },
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         );
