@@ -169,7 +169,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
               )
             : null,
         body: Dismissible(
-          key: ValueKey(_currentIndex),
+          key: const ValueKey('image_viewer_dismissible'),
           direction: _isZoomed ? DismissDirection.none : DismissDirection.vertical,
           onDismissed: (_) => Navigator.pop(context),
           dismissThresholds: const {
