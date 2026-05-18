@@ -385,74 +385,56 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: theme.scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) {
         return SafeArea(
           child: SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Center(
-                    child: Container(width: 48, height: 5, decoration: BoxDecoration(color: theme.colorScheme.onSurface.withOpacity(0.2), borderRadius: BorderRadius.circular(3))),
+                    child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
                   ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Storage & Shortcuts',
-                              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.5),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Quickly jump between drives and pinned folders',
-                              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.6)),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Storage Volumes',
+                            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: theme.colorScheme.primaryContainer,
-                          foregroundColor: theme.colorScheme.onPrimaryContainer,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        ),
-                        icon: const Icon(Broken.folder_add, size: 20),
-                        label: const Text('Pin Folder', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                        onPressed: () async {
-                          Navigator.pop(ctx);
-                          final picked = await InternalFilePickerScreen.show(
-                            context,
-                            rootPath: provider.storageVolumes.isNotEmpty ? provider.storageVolumes.first.path : '/storage/emulated/0',
-                            pickDirectory: true,
-                          );
-                          if (picked != null && picked.isNotEmpty) {
-                            for (final path in picked) {
-                              final label = p.basename(path).isEmpty ? path : p.basename(path);
-                              provider.addPinnedFolderShortcut(path, label);
+                        TextButton.icon(
+                          style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
+                          icon: const Icon(Broken.folder_add, size: 18),
+                          label: const Text('Add Shortcut', style: TextStyle(fontSize: 14)),
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            final picked = await InternalFilePickerScreen.show(
+                              context,
+                              rootPath: provider.storageVolumes.isNotEmpty ? provider.storageVolumes.first.path : '/storage/emulated/0',
+                              pickDirectory: true,
+                            );
+                            if (picked != null && picked.isNotEmpty) {
+                              for (final path in picked) {
+                                final label = p.basename(path).isEmpty ? path : p.basename(path);
+                                provider.addPinnedFolderShortcut(path, label);
+                              }
                             }
-                          }
-                        },
-                      ),
-                    ],
+                          },
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 24),
-                  Text('STORAGE VOLUMES', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2, color: theme.colorScheme.primary)),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -461,51 +443,37 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                       final vol = provider.storageVolumes[i];
                       final isSelected = provider.rootPath == vol.path;
 
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        decoration: BoxDecoration(
-                          color: isSelected ? theme.colorScheme.primaryContainer.withOpacity(0.4) : theme.colorScheme.surfaceVariant.withOpacity(0.4),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: isSelected ? theme.colorScheme.primary : theme.dividerColor.withOpacity(0.1),
-                            width: isSelected ? 2 : 1,
+                      return ListTile(
+                        leading: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: isSelected ? theme.colorScheme.primary.withOpacity(0.2) : theme.colorScheme.surfaceVariant,
+                            borderRadius: BorderRadius.circular(12),
                           ),
+                          child: Icon(vol.isInternal ? Broken.folder_open : Icons.sd_storage_rounded, color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface, size: 24),
                         ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                          leading: Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              gradient: isSelected ? LinearGradient(colors: [theme.colorScheme.primary, theme.colorScheme.secondary]) : null,
-                              color: isSelected ? null : theme.colorScheme.surfaceVariant,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: isSelected ? [BoxShadow(color: theme.colorScheme.primary.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))] : null,
-                            ),
-                            child: Icon(vol.isInternal ? Broken.folder_open : Icons.sd_storage_rounded, color: isSelected ? Colors.white : theme.colorScheme.onSurface, size: 24),
-                          ),
-                          title: Text(vol.name, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.w600, fontSize: 16)),
-                          subtitle: Text(vol.path, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6))),
-                          trailing: isSelected ? Icon(Icons.check_circle_rounded, color: theme.colorScheme.primary, size: 26) : null,
-                          onTap: () {
-                            Navigator.pop(ctx);
-                            provider.setRootPath(vol.path);
-                            provider.loadDirectory(vol.path);
-                          },
-                        ),
+                        title: Text(vol.name, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.w600, fontSize: 16)),
+                        subtitle: Text(vol.path, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6))),
+                        trailing: isSelected ? Icon(Icons.check_circle, color: theme.colorScheme.primary) : null,
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          provider.setRootPath(vol.path);
+                          provider.loadDirectory(vol.path);
+                        },
                       );
                     },
                   ),
                   if (provider.pinnedFolderShortcuts.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Icon(Broken.heart, color: theme.colorScheme.primary, size: 18),
-                        const SizedBox(width: 8),
-                        Text('PINNED SHORTCUTS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2, color: theme.colorScheme.primary)),
-                      ],
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                      child: Divider(),
                     ),
-                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                      child: Text('Pinned Shortcuts', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
+                    ),
+                    const SizedBox(height: 8),
                     ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -513,49 +481,31 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                       itemBuilder: (_, i) {
                         final item = provider.pinnedFolderShortcuts[i];
                         final isSelected = provider.rootPath == item.path || provider.currentPath == item.path;
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          decoration: BoxDecoration(
-                            color: isSelected ? theme.colorScheme.primaryContainer.withOpacity(0.4) : theme.colorScheme.surfaceVariant.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: isSelected ? theme.colorScheme.primary : theme.dividerColor.withOpacity(0.1),
-                              width: isSelected ? 2 : 1,
+                        return ListTile(
+                          leading: Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: isSelected ? theme.colorScheme.primary.withOpacity(0.2) : theme.colorScheme.surfaceVariant,
+                              borderRadius: BorderRadius.circular(12),
                             ),
+                            child: Icon(Broken.folder_favorite, color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface, size: 24),
                           ),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                            leading: Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                gradient: isSelected ? LinearGradient(colors: [theme.colorScheme.primary, theme.colorScheme.secondary]) : null,
-                                color: isSelected ? null : theme.colorScheme.surfaceVariant,
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: isSelected ? [BoxShadow(color: theme.colorScheme.primary.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))] : null,
-                              ),
-                              child: Icon(Broken.folder_favorite, color: isSelected ? Colors.white : theme.colorScheme.onSurface, size: 24),
-                            ),
-                            title: Text(item.label, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.w600, fontSize: 16)),
-                            subtitle: Text(item.path, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6))),
-                            trailing: Container(
-                              decoration: BoxDecoration(color: Colors.redAccent.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                              child: IconButton(
-                                icon: const Icon(Broken.trash, size: 20, color: Colors.redAccent),
-                                tooltip: 'Unpin shortcut',
-                                onPressed: () {
-                                  provider.removePinnedFolderShortcut(item.id);
-                                  Navigator.pop(ctx);
-                                  _showStorageVolumeModal(context, provider);
-                                },
-                              ),
-                            ),
-                            onTap: () {
+                          title: Text(item.label, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.w600, fontSize: 16)),
+                          subtitle: Text(item.path, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6))),
+                          trailing: IconButton(
+                            icon: const Icon(Broken.trash, size: 20, color: Colors.redAccent),
+                            onPressed: () {
+                              provider.removePinnedFolderShortcut(item.id);
                               Navigator.pop(ctx);
-                              provider.setRootPath(item.path);
-                              provider.loadDirectory(item.path);
+                              _showStorageVolumeModal(context, provider);
                             },
                           ),
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            provider.setRootPath(item.path);
+                            provider.loadDirectory(item.path);
+                          },
                         );
                       },
                     ),
@@ -603,17 +553,19 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(provider.rootPath.contains('-') || provider.rootPath.toLowerCase().contains('sdcard') ? Icons.sd_storage_rounded : Broken.folder_open, size: 20, color: Theme.of(context).colorScheme.primary),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: Text(
-                                p.basename(provider.currentPath).isEmpty || provider.currentPath == '/' || provider.currentPath == '/storage/emulated/0' ? 'Internal Storage' : p.basename(provider.currentPath),
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                            const Text(
+                              'Files',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22, letterSpacing: -0.5),
                             ),
-                            const Icon(Icons.arrow_drop_down, size: 22),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(Broken.arrow_down_2, size: 16, color: Theme.of(context).colorScheme.primary),
+                            ),
                           ],
                         ),
                       ),
