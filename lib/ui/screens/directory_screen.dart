@@ -461,13 +461,15 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
               onNavigateTab: widget.onNavigateTab,
             ),
             appBar: AppBar(
+              titleSpacing: 0,
+              centerTitle: false,
               title: isSelectionMode
                   ? Text('${provider.selectedPaths.length} selected')
                   : InkWell(
                       onTap: () => _showStorageVolumeModal(context, provider),
                       borderRadius: BorderRadius.circular(12),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -563,32 +565,48 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                         },
                       ),
                     ]
-                  : [
-                      IconButton(
-                        icon: const Icon(Broken.search_normal),
-                        onPressed: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => const GlobalSearchScreen()));
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Broken.filter_edit),
-                        tooltip: 'View & Sort Options',
-                        onPressed: () => _showSortModal(context, provider),
-                      ),
-                      PopupMenuButton<String>(
-                        icon: const Icon(Broken.add_square, size: 26),
-                        tooltip: 'Create New',
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        position: PopupMenuPosition.under,
-                        elevation: 8,
-                        onSelected: (val) => _handleMenuAction(context, val, provider),
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(value: 'file', child: Row(children: [Icon(Broken.document, size: 20), SizedBox(width: 12), Text('New File', style: TextStyle(fontWeight: FontWeight.w600))])),
-                          const PopupMenuItem(value: 'folder', child: Row(children: [Icon(Broken.folder, size: 20), SizedBox(width: 12), Text('New Folder', style: TextStyle(fontWeight: FontWeight.w600))])),
-                          const PopupMenuItem(value: 'archive', child: Row(children: [Icon(Broken.archive, size: 20), SizedBox(width: 12), Text('New Archive', style: TextStyle(fontWeight: FontWeight.w600))])),
+                  : provider.showBottomActionBar
+                      ? [
+                          PopupMenuButton<String>(
+                            icon: const Icon(Broken.add_square, size: 26),
+                            tooltip: 'Create New',
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            position: PopupMenuPosition.under,
+                            elevation: 8,
+                            onSelected: (val) => _handleMenuAction(context, val, provider),
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(value: 'file', child: Row(children: [Icon(Broken.document, size: 20), SizedBox(width: 12), Text('New File', style: TextStyle(fontWeight: FontWeight.w600))])),
+                              const PopupMenuItem(value: 'folder', child: Row(children: [Icon(Broken.folder, size: 20), SizedBox(width: 12), Text('New Folder', style: TextStyle(fontWeight: FontWeight.w600))])),
+                              const PopupMenuItem(value: 'archive', child: Row(children: [Icon(Broken.archive, size: 20), SizedBox(width: 12), Text('New Archive', style: TextStyle(fontWeight: FontWeight.w600))])),
+                            ],
+                          ),
+                        ]
+                      : [
+                          IconButton(
+                            icon: const Icon(Broken.search_normal),
+                            onPressed: () {
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => const GlobalSearchScreen()));
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Broken.filter_edit),
+                            tooltip: 'View & Sort Options',
+                            onPressed: () => _showSortModal(context, provider),
+                          ),
+                          PopupMenuButton<String>(
+                            icon: const Icon(Broken.add_square, size: 26),
+                            tooltip: 'Create New',
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            position: PopupMenuPosition.under,
+                            elevation: 8,
+                            onSelected: (val) => _handleMenuAction(context, val, provider),
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(value: 'file', child: Row(children: [Icon(Broken.document, size: 20), SizedBox(width: 12), Text('New File', style: TextStyle(fontWeight: FontWeight.w600))])),
+                              const PopupMenuItem(value: 'folder', child: Row(children: [Icon(Broken.folder, size: 20), SizedBox(width: 12), Text('New Folder', style: TextStyle(fontWeight: FontWeight.w600))])),
+                              const PopupMenuItem(value: 'archive', child: Row(children: [Icon(Broken.archive, size: 20), SizedBox(width: 12), Text('New Archive', style: TextStyle(fontWeight: FontWeight.w600))])),
+                            ],
+                          ),
                         ],
-                      ),
-                    ],
             ),
             body: provider.isLoading
                 ? const Center(child: CircularProgressIndicator())
