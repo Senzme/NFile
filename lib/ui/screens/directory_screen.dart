@@ -545,30 +545,8 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
               centerTitle: false,
               title: isSelectionMode
                   ? Text('${provider.selectedPaths.length} selected')
-                  : InkWell(
+                  : _AnimatedTitleButton(
                       onTap: () => _showStorageVolumeModal(context, provider),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              'Files',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22, letterSpacing: -0.5),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(Broken.arrow_down_2, size: 16, color: Theme.of(context).colorScheme.primary),
-                            ),
-                          ],
-                        ),
-                      ),
                     ),
               leading: isSelectionMode
                   ? IconButton(
@@ -884,6 +862,78 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+class _AnimatedTitleButton extends StatefulWidget {
+  final VoidCallback onTap;
+  const _AnimatedTitleButton({required this.onTap});
+
+  @override
+  State<_AnimatedTitleButton> createState() => _AnimatedTitleButtonState();
+}
+
+class _AnimatedTitleButtonState extends State<_AnimatedTitleButton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 100));
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.94).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) => Transform.scale(
+        scale: _scaleAnimation.value,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            splashColor: theme.colorScheme.primary.withOpacity(0.3),
+            highlightColor: theme.colorScheme.primary.withOpacity(0.15),
+            onTapDown: (_) => _controller.forward(),
+            onTapCancel: () => _controller.reverse(),
+            onTap: () {
+              _controller.reverse();
+              widget.onTap();
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Files',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22, letterSpacing: -0.5),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Broken.arrow_down_2, size: 16, color: theme.colorScheme.primary),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
