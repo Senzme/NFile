@@ -115,7 +115,7 @@ class PreferencesService {
   static const String _keyAccentColor = 'accent_color';
 
   static String getAccentColor() {
-    return _prefs?.getString(_keyAccentColor) ?? 'dynamic';
+    return _prefs?.getString(_keyAccentColor) ?? 'blue';
   }
 
   static Future<void> saveAccentColor(String val) async {

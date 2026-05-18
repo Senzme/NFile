@@ -38,7 +38,7 @@ class FileManagerProvider extends ChangeNotifier {
     _accentColorOption = PreferencesService.getAccentColor();
   }
 
-  String _accentColorOption = 'dynamic';
+  String _accentColorOption = 'blue';
   String get accentColorOption => _accentColorOption;
 
   void setAccentColorOption(String val) {

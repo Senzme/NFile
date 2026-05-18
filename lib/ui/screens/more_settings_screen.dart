@@ -107,7 +107,7 @@ class MoreSettingsScreen extends StatelessWidget {
       case 'gold': return 'Amber Gold';
       case 'blue':
       default:
-        return 'Signature Blue';
+        return 'Original Default (Signature Blue)';
     }
   }
 
@@ -119,9 +119,9 @@ class MoreSettingsScreen extends StatelessWidget {
       builder: (ctx) {
         final current = fileManager.accentColorOption;
         final options = [
-          {'key': 'dynamic', 'name': 'Material You (Dynamic Colors)', 'color': Colors.teal},
+          {'key': 'blue', 'name': 'Original Default (Signature Blue)', 'color': const Color(0xFF369FE7)},
+          {'key': 'dynamic', 'name': 'Material You (Dynamic Wallpaper Colors)', 'color': Colors.teal},
           {'key': 'orange', 'name': 'Vibrant Orange', 'color': const Color(0xFFFF6D00)},
-          {'key': 'blue', 'name': 'Signature Blue', 'color': const Color(0xFF369FE7)},
           {'key': 'purple', 'name': 'Royal Purple', 'color': const Color(0xFF8E24AA)},
           {'key': 'green', 'name': 'Emerald Green', 'color': const Color(0xFF00C853)},
           {'key': 'red', 'name': 'Crimson Red', 'color': const Color(0xFFD50000)},
