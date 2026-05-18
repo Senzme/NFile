@@ -11,12 +11,14 @@ import 'core/icon_fonts/broken_icons.dart';
 
 import 'package:media_kit/media_kit.dart';
 import 'providers/media_provider.dart';
+import 'services/preferences_service.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
+  await PreferencesService.init();
   runApp(
     MultiProvider(
       providers: [
@@ -43,6 +45,7 @@ class _NFileAppState extends State<NFileApp> {
   @override
   void initState() {
     super.initState();
+    _themeMode = PreferencesService.getThemeMode();
     _requestPermission().then((_) {
       if (_hasPermission) {
         _initSharingIntent();
@@ -113,6 +116,7 @@ class _NFileAppState extends State<NFileApp> {
     setState(() {
       _themeMode = _themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
     });
+    PreferencesService.saveThemeMode(_themeMode);
   }
 
   @override

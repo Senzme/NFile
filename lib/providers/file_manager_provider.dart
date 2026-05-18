@@ -15,6 +15,7 @@ import '../services/archive_service.dart';
 import '../services/apk_installer_service.dart';
 import '../ui/widgets/extract_archive_dialog.dart';
 import '../core/utils.dart';
+import '../services/preferences_service.dart';
 
 enum FileSortType {
   nameAsc,
@@ -27,12 +28,21 @@ enum FileSortType {
 }
 
 class FileManagerProvider extends ChangeNotifier {
+  FileManagerProvider() {
+    _sortType = PreferencesService.getSortType();
+    _isGridView = PreferencesService.getIsGridView();
+    _iconScale = PreferencesService.getIconScale();
+    _showHiddenFiles = PreferencesService.getShowHiddenFiles();
+    _showFloatingAddButton = PreferencesService.getShowFloatingAddButton();
+  }
+
   FileSortType _sortType = FileSortType.nameAsc;
   FileSortType get sortType => _sortType;
 
   void setSortType(FileSortType type) {
     if (_sortType == type) return;
     _sortType = type;
+    PreferencesService.saveSortType(_sortType);
     final folders = _currentFiles.where((e) => e.isDirectory).toList();
     final files = _currentFiles.where((e) => !e.isDirectory).toList();
     _sortList(folders);
@@ -47,11 +57,13 @@ class FileManagerProvider extends ChangeNotifier {
   void setGridView(bool value) {
     if (_isGridView == value) return;
     _isGridView = value;
+    PreferencesService.saveIsGridView(_isGridView);
     notifyListeners();
   }
 
   void toggleViewMode() {
     _isGridView = !_isGridView;
+    PreferencesService.saveIsGridView(_isGridView);
     notifyListeners();
   }
 
@@ -62,6 +74,7 @@ class FileManagerProvider extends ChangeNotifier {
     final clamped = scale.clamp(0.7, 1.5);
     if (_iconScale == clamped) return;
     _iconScale = clamped;
+    PreferencesService.saveIconScale(_iconScale);
     notifyListeners();
   }
 
@@ -99,6 +112,7 @@ class FileManagerProvider extends ChangeNotifier {
 
   void toggleHiddenFiles() {
     _showHiddenFiles = !_showHiddenFiles;
+    PreferencesService.saveShowHiddenFiles(_showHiddenFiles);
     notifyListeners();
     if (_currentPath.isNotEmpty) {
       loadDirectory(_currentPath, showLoading: false);
@@ -110,6 +124,7 @@ class FileManagerProvider extends ChangeNotifier {
 
   void toggleFloatingAddButton() {
     _showFloatingAddButton = !_showFloatingAddButton;
+    PreferencesService.saveShowFloatingAddButton(_showFloatingAddButton);
     notifyListeners();
   }
 

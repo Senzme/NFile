@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:path_provider/path_provider.dart';
+import '../services/preferences_service.dart';
 
 enum MediaSortOrder {
   newest,
@@ -88,6 +89,17 @@ class ThumbnailCache {
 }
 
 class MediaProvider extends ChangeNotifier {
+  MediaProvider() {
+    final savedOrder = PreferencesService.getCategoryOrder();
+    if (savedOrder != null && savedOrder.isNotEmpty) {
+      _categoryOrder = savedOrder;
+    }
+    final savedActive = PreferencesService.getActiveCategories();
+    if (savedActive != null && savedActive.isNotEmpty) {
+      _activeCategories = savedActive;
+    }
+  }
+
   List<AssetEntity> _images = [];
   List<AssetEntity> _videos = [];
   List<SongModel> _audios = [];
@@ -147,6 +159,7 @@ class MediaProvider extends ChangeNotifier {
     } else {
       _activeCategories.add(label);
     }
+    PreferencesService.saveActiveCategories(_activeCategories);
     _saveCache();
     notifyListeners();
   }
@@ -157,6 +170,7 @@ class MediaProvider extends ChangeNotifier {
     }
     final item = _categoryOrder.removeAt(oldIndex);
     _categoryOrder.insert(newIndex, item);
+    PreferencesService.saveCategoryOrder(_categoryOrder);
     _saveCache();
     notifyListeners();
   }
