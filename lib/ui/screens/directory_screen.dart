@@ -784,105 +784,148 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                             ),
                           ),
                         ),
-                      SliverPadding(
-                        padding: EdgeInsets.only(
-                          bottom: 80,
-                          left: provider.isGridView ? 16 : 0,
-                          right: provider.isGridView ? 16 : 0,
-                          top: 8,
-                        ),
-                        sliver: provider.isGridView
-                            ? SliverGrid(
-                                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: (MediaQuery.of(context).size.width / (110 * provider.iconScale)).floor().clamp(2, 6),
-                                  mainAxisSpacing: (12 * provider.itemPaddingMultiplier).clamp(4.0, 24.0),
-                                  crossAxisSpacing: (12 * provider.itemPaddingMultiplier).clamp(4.0, 24.0),
-                                  childAspectRatio: 0.75,
-                                ),
-                                delegate: SliverChildBuilderDelegate(
-                                  (context, index) {
-                                    final item = provider.currentFiles[index];
-                                    final isSelected = provider.selectedPaths.contains(item.path);
-                                    if (item.isDirectory) {
-                                      return FolderGridItem(
-                                        folder: item,
-                                        isSelected: isSelected,
-                                        iconScale: provider.iconScale,
-                                        itemPaddingMultiplier: provider.itemPaddingMultiplier,
-                                        onTap: () {
-                                          if (isSelectionMode) {
-                                            provider.toggleSelection(item.path);
-                                          } else {
-                                            _openFolder(provider, item.path);
-                                          }
-                                        },
-                                        onLongPress: () => provider.toggleSelection(item.path),
-                                        onAction: (action) => _handleAction(context, action, item.path),
-                                      );
-                                    } else {
-                                      return FileGridItem(
-                                        file: item,
-                                        isSelected: isSelected,
-                                        iconScale: provider.iconScale,
-                                        itemPaddingMultiplier: provider.itemPaddingMultiplier,
-                                        onTap: () {
-                                          if (isSelectionMode) {
-                                            provider.toggleSelection(item.path);
-                                          } else {
-                                            provider.openFile(context, item.path);
-                                          }
-                                        },
-                                        onLongPress: () => provider.toggleSelection(item.path),
-                                        onAction: (action) => _handleAction(context, action, item.path),
-                                      );
-                                    }
-                                  },
-                                  childCount: provider.currentFiles.length,
-                                ),
-                              )
-                            : SliverList(
-                                delegate: SliverChildBuilderDelegate(
-                                  (context, index) {
-                                    final item = provider.currentFiles[index];
-                                    final isSelected = provider.selectedPaths.contains(item.path);
-                                    if (item.isDirectory) {
-                                      return FolderItem(
-                                        folder: item,
-                                        isSelected: isSelected,
-                                        iconScale: provider.iconScale,
-                                        itemPaddingMultiplier: provider.itemPaddingMultiplier,
-                                        onTap: () {
-                                          if (isSelectionMode) {
-                                            provider.toggleSelection(item.path);
-                                          } else {
-                                            _openFolder(provider, item.path);
-                                          }
-                                        },
-                                        onLongPress: () => provider.toggleSelection(item.path),
-                                        onAction: (action) => _handleAction(context, action, item.path),
-                                      );
-                                    } else {
-                                      return FileItem(
-                                        file: item,
-                                        isSelected: isSelected,
-                                        iconScale: provider.iconScale,
-                                        itemPaddingMultiplier: provider.itemPaddingMultiplier,
-                                        onTap: () {
-                                          if (isSelectionMode) {
-                                            provider.toggleSelection(item.path);
-                                          } else {
-                                            provider.openFile(context, item.path);
-                                          }
-                                        },
-                                        onLongPress: () => provider.toggleSelection(item.path),
-                                        onAction: (action) => _handleAction(context, action, item.path),
-                                      );
-                                    }
-                                  },
-                                  childCount: provider.currentFiles.length,
-                                ),
+                      if (provider.currentFiles.isEmpty)
+                        SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(24),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Broken.folder_open,
+                                      size: 72,
+                                      color: Theme.of(context).colorScheme.primary.withOpacity(0.6),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  Text(
+                                    'Empty Folder',
+                                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: Theme.of(context).colorScheme.onSurface,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'This directory does not contain any files or subfolders.',
+                                    textAlign: TextAlign.center,
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
+                                        ),
+                                  ),
+                                ],
                               ),
-                      ),
+                            ),
+                          ),
+                        )
+                      else
+                        SliverPadding(
+                          padding: EdgeInsets.only(
+                            bottom: 80,
+                            left: provider.isGridView ? 16 : 0,
+                            right: provider.isGridView ? 16 : 0,
+                            top: 8,
+                          ),
+                          sliver: provider.isGridView
+                              ? SliverGrid(
+                                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: (MediaQuery.of(context).size.width / (110 * provider.iconScale)).floor().clamp(2, 6),
+                                    mainAxisSpacing: (12 * provider.itemPaddingMultiplier).clamp(4.0, 24.0),
+                                    crossAxisSpacing: (12 * provider.itemPaddingMultiplier).clamp(4.0, 24.0),
+                                    childAspectRatio: 0.75,
+                                  ),
+                                  delegate: SliverChildBuilderDelegate(
+                                    (context, index) {
+                                      final item = provider.currentFiles[index];
+                                      final isSelected = provider.selectedPaths.contains(item.path);
+                                      if (item.isDirectory) {
+                                        return FolderGridItem(
+                                          folder: item,
+                                          isSelected: isSelected,
+                                          iconScale: provider.iconScale,
+                                          itemPaddingMultiplier: provider.itemPaddingMultiplier,
+                                          onTap: () {
+                                            if (isSelectionMode) {
+                                              provider.toggleSelection(item.path);
+                                            } else {
+                                              _openFolder(provider, item.path);
+                                            }
+                                          },
+                                          onLongPress: () => provider.toggleSelection(item.path),
+                                          onAction: (action) => _handleAction(context, action, item.path),
+                                        );
+                                      } else {
+                                        return FileGridItem(
+                                          file: item,
+                                          isSelected: isSelected,
+                                          iconScale: provider.iconScale,
+                                          itemPaddingMultiplier: provider.itemPaddingMultiplier,
+                                          onTap: () {
+                                            if (isSelectionMode) {
+                                              provider.toggleSelection(item.path);
+                                            } else {
+                                              provider.openFile(context, item.path);
+                                            }
+                                          },
+                                          onLongPress: () => provider.toggleSelection(item.path),
+                                          onAction: (action) => _handleAction(context, action, item.path),
+                                        );
+                                      }
+                                    },
+                                    childCount: provider.currentFiles.length,
+                                  ),
+                                )
+                              : SliverList(
+                                  delegate: SliverChildBuilderDelegate(
+                                    (context, index) {
+                                      final item = provider.currentFiles[index];
+                                      final isSelected = provider.selectedPaths.contains(item.path);
+                                      if (item.isDirectory) {
+                                        return FolderItem(
+                                          folder: item,
+                                          isSelected: isSelected,
+                                          iconScale: provider.iconScale,
+                                          itemPaddingMultiplier: provider.itemPaddingMultiplier,
+                                          onTap: () {
+                                            if (isSelectionMode) {
+                                              provider.toggleSelection(item.path);
+                                            } else {
+                                              _openFolder(provider, item.path);
+                                            }
+                                          },
+                                          onLongPress: () => provider.toggleSelection(item.path),
+                                          onAction: (action) => _handleAction(context, action, item.path),
+                                        );
+                                      } else {
+                                        return FileItem(
+                                          file: item,
+                                          isSelected: isSelected,
+                                          iconScale: provider.iconScale,
+                                          itemPaddingMultiplier: provider.itemPaddingMultiplier,
+                                          onTap: () {
+                                            if (isSelectionMode) {
+                                              provider.toggleSelection(item.path);
+                                            } else {
+                                              provider.openFile(context, item.path);
+                                            }
+                                          },
+                                          onLongPress: () => provider.toggleSelection(item.path),
+                                          onAction: (action) => _handleAction(context, action, item.path),
+                                        );
+                                      }
+                                    },
+                                    childCount: provider.currentFiles.length,
+                                  ),
+                                ),
+                        ),
                     ],
                   ),
             floatingActionButtonLocation: isSelectionMode
