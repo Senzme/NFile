@@ -117,6 +117,21 @@ class MoreSettingsScreen extends StatelessWidget {
               ),
               onTap: () => fileManager.toggleMediaPreviews(),
             ),
+            _buildSettingTile(
+              theme,
+              icon: Broken.send,
+              title: 'Auto Hide Bottom Bar',
+              subtitle: 'Hide bottom navigation bar on scroll down and show on scroll up',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.autoHideBottomBar,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleAutoHideBottomBar(),
+                ),
+              ),
+              onTap: () => fileManager.toggleAutoHideBottomBar(),
+            ),
 
             const SizedBox(height: 24),
             _buildSectionHeader(theme, 'Appearance & Themes'),

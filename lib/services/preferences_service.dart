@@ -90,6 +90,16 @@ class PreferencesService {
     await _prefs?.setBool(_keyShowMediaPreviews, val);
   }
 
+  static const String _keyAutoHideBottomBar = 'auto_hide_bottom_bar';
+
+  static bool getAutoHideBottomBar() {
+    return _prefs?.getBool(_keyAutoHideBottomBar) ?? true;
+  }
+
+  static Future<void> saveAutoHideBottomBar(bool val) async {
+    await _prefs?.setBool(_keyAutoHideBottomBar, val);
+  }
+
   static bool getIsGridView() {
     return _prefs?.getBool(_keyIsGridView) ?? false;
   }

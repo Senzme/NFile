@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/rendering.dart';
 import '../../providers/file_manager_provider.dart';
 import '../../providers/media_provider.dart';
 import '../../core/icon_fonts/broken_icons.dart';
@@ -18,6 +19,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  bool _isBottomBarVisible = true;
 
   @override
   void initState() {
@@ -30,32 +32,72 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final fileManager = context.watch<FileManagerProvider>();
+    final autoHide = fileManager.autoHideBottomBar;
+
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: [
-          _buildHomeTab(),
-          DirectoryScreen(
-            toggleTheme: widget.toggleTheme,
-            onNavigateTab: (index) => setState(() => _currentIndex = index),
-          ),
-        ],
+      body: NotificationListener<UserScrollNotification>(
+        onNotification: (notification) {
+          if (!autoHide) return false;
+          final direction = notification.direction;
+          if (direction == ScrollDirection.reverse) {
+            if (_isBottomBarVisible) {
+              setState(() => _isBottomBarVisible = false);
+            }
+          } else if (direction == ScrollDirection.forward) {
+            if (!_isBottomBarVisible) {
+              setState(() => _isBottomBarVisible = true);
+            }
+          }
+          return false;
+        },
+        child: IndexedStack(
+          index: _currentIndex,
+          children: [
+            _buildHomeTab(),
+            DirectoryScreen(
+              toggleTheme: widget.toggleTheme,
+              onNavigateTab: (index) {
+                setState(() {
+                  _currentIndex = index;
+                  _isBottomBarVisible = true;
+                });
+              },
+            ),
+          ],
+        ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) => setState(() => _currentIndex = index),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Broken.home),
-            selectedIcon: Icon(Broken.home_1),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Broken.folder),
-            selectedIcon: Icon(Broken.folder_open),
-            label: 'Browse',
-          ),
-        ],
+      bottomNavigationBar: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.fastOutSlowIn,
+        height: (!autoHide || _isBottomBarVisible)
+            ? (80.0 + MediaQuery.of(context).padding.bottom)
+            : 0,
+        child: Wrap(
+          children: [
+            NavigationBar(
+              selectedIndex: _currentIndex,
+              onDestinationSelected: (index) {
+                setState(() {
+                  _currentIndex = index;
+                  _isBottomBarVisible = true;
+                });
+              },
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Broken.home),
+                  selectedIcon: Icon(Broken.home_1),
+                  label: 'Home',
+                ),
+                NavigationDestination(
+                  icon: Icon(Broken.folder),
+                  selectedIcon: Icon(Broken.folder_open),
+                  label: 'Browse',
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
