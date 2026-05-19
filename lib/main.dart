@@ -4,15 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
-import 'core/theme.dart';
-import 'providers/file_manager_provider.dart';
-import 'ui/screens/home_screen.dart';
-import 'core/icon_fonts/broken_icons.dart';
-
 import 'package:media_kit/media_kit.dart';
+import 'package:dynamic_color/dynamic_color.dart';
+
+import 'core/theme.dart';
+import 'core/icon_fonts/broken_icons.dart';
+import 'providers/file_manager_provider.dart';
 import 'providers/media_provider.dart';
 import 'services/preferences_service.dart';
-import 'package:dynamic_color/dynamic_color.dart';
+import 'ui/screens/home_screen.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -20,6 +20,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
   await PreferencesService.init();
+
   runApp(
     MultiProvider(
       providers: [
@@ -41,76 +42,82 @@ class NFileApp extends StatefulWidget {
 class _NFileAppState extends State<NFileApp> {
   ThemeMode _themeMode = ThemeMode.system;
   bool _hasPermission = false;
-  StreamSubscription? _intentDataStreamSubscription;
+  StreamSubscription<List<SharedMediaFile>>? _sharingIntentSubscription;
 
   @override
   void initState() {
     super.initState();
     _themeMode = PreferencesService.getThemeMode();
-    _requestPermission().then((_) {
-      if (_hasPermission) {
-        _initSharingIntent();
-      }
-    });
+    _initializeApplication();
   }
 
   @override
   void dispose() {
-    _intentDataStreamSubscription?.cancel();
+    _sharingIntentSubscription?.cancel();
     super.dispose();
   }
 
-  void _initSharingIntent() {
-    // For sharing or opening files when app is in memory
-    _intentDataStreamSubscription =
-        ReceiveSharingIntent.instance.getMediaStream().listen((List<SharedMediaFile> value) {
-      if (value.isNotEmpty) {
-        _handleOpenedMedia(value.first.path);
-      }
-    }, onError: (err) {});
-
-    // For sharing or opening files when app is closed
-    ReceiveSharingIntent.instance.getInitialMedia().then((List<SharedMediaFile> value) {
-      if (value.isNotEmpty) {
-        _handleOpenedMedia(value.first.path);
-        ReceiveSharingIntent.instance.reset();
-      }
-    });
+  Future<void> _initializeApplication() async {
+    await _requestStoragePermission();
+    if (_hasPermission) {
+      _setupSharingIntentObserver();
+    }
   }
 
-  void _handleOpenedMedia(String path) {
-    if (path.isEmpty) return;
+  Future<void> _requestStoragePermission() async {
+    if (Platform.isAndroid) {
+      final manageStorageGranted = await Permission.manageExternalStorage.request().isGranted;
+      final standardStorageGranted = await Permission.storage.request().isGranted;
+
+      if (manageStorageGranted || standardStorageGranted) {
+        if (mounted) {
+          setState(() => _hasPermission = true);
+        }
+      }
+    } else {
+      if (mounted) {
+        setState(() => _hasPermission = true);
+      }
+    }
+  }
+
+  void _setupSharingIntentObserver() {
+    _sharingIntentSubscription = ReceiveSharingIntent.instance.getMediaStream().listen(
+      (List<SharedMediaFile> incomingFiles) {
+        if (incomingFiles.isNotEmpty) {
+          _dispatchExternalMediaOpen(incomingFiles.first.path);
+        }
+      },
+      onError: (_) {},
+    );
+
+    ReceiveSharingIntent.instance.getInitialMedia().then(
+      (List<SharedMediaFile> initialFiles) {
+        if (initialFiles.isNotEmpty) {
+          _dispatchExternalMediaOpen(initialFiles.first.path);
+          ReceiveSharingIntent.instance.reset();
+        }
+      },
+      onError: (_) {},
+    );
+  }
+
+  void _dispatchExternalMediaOpen(String absoluteFilePath) {
+    if (absoluteFilePath.isEmpty) return;
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final navContext = navigatorKey.currentContext;
-      if (navContext != null && navContext.mounted) {
-        navContext.read<FileManagerProvider>().openFile(navContext, path);
+      final primaryContext = navigatorKey.currentContext;
+      if (primaryContext != null && primaryContext.mounted) {
+        primaryContext.read<FileManagerProvider>().openFile(primaryContext, absoluteFilePath);
       } else {
-        // If navigator is not fully mounted yet, retry after a short delay
         Future.delayed(const Duration(milliseconds: 500), () {
-          final retryContext = navigatorKey.currentContext;
-          if (retryContext != null && retryContext.mounted) {
-            retryContext.read<FileManagerProvider>().openFile(retryContext, path);
+          final fallbackContext = navigatorKey.currentContext;
+          if (fallbackContext != null && fallbackContext.mounted) {
+            fallbackContext.read<FileManagerProvider>().openFile(fallbackContext, absoluteFilePath);
           }
         });
       }
     });
-  }
-
-  Future<void> _requestPermission() async {
-    if (Platform.isAndroid) {
-      if (await Permission.manageExternalStorage.request().isGranted ||
-          await Permission.storage.request().isGranted) {
-        setState(() {
-          _hasPermission = true;
-        });
-      } else {
-        // Handle permission denied
-      }
-    } else {
-      setState(() {
-        _hasPermission = true;
-      });
-    }
   }
 
   void _toggleTheme() {
@@ -123,45 +130,79 @@ class _NFileAppState extends State<NFileApp> {
   @override
   Widget build(BuildContext context) {
     return Consumer<FileManagerProvider>(
-      builder: (context, fm, child) {
-        final option = fm.accentColorOption;
-        final seed = PreferencesService.getSeedColor(option);
+      builder: (context, fileManager, _) {
+        final currentAccentOption = fileManager.accentColorOption;
+        final baseSeedColor = PreferencesService.getSeedColor(currentAccentOption);
 
         return DynamicColorBuilder(
-          builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
-            final activeLight = option == 'dynamic' ? lightDynamic : null;
-            final activeDark = option == 'dynamic' ? darkDynamic : null;
+          builder: (ColorScheme? dynamicLight, ColorScheme? dynamicDark) {
+            final activeLightScheme = currentAccentOption == 'dynamic' ? dynamicLight : null;
+            final activeDarkScheme = currentAccentOption == 'dynamic' ? dynamicDark : null;
 
             return MaterialApp(
               navigatorKey: navigatorKey,
               title: 'NFile',
               debugShowCheckedModeBanner: false,
-              theme: AppTheme.getAppTheme(light: true, seed: seed, customScheme: activeLight),
-              darkTheme: AppTheme.getAppTheme(light: false, seed: seed, customScheme: activeDark),
+              theme: AppTheme.getAppTheme(light: true, seed: baseSeedColor, customScheme: activeLightScheme),
+              darkTheme: AppTheme.getAppTheme(light: false, seed: baseSeedColor, customScheme: activeDarkScheme),
               themeMode: _themeMode,
-              home: _hasPermission 
+              home: _hasPermission
                   ? HomeScreen(toggleTheme: _toggleTheme)
-                  : Scaffold(
-                      body: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Broken.folder_cross, size: 64, color: Colors.grey),
-                            const SizedBox(height: 16),
-                            const Text('Storage Permission Required', style: TextStyle(fontSize: 18)),
-                            const SizedBox(height: 16),
-                            FilledButton(
-                              onPressed: _requestPermission,
-                              child: const Text('Grant Permission'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                  : _StoragePermissionShield(onRequestPermission: _requestStoragePermission),
             );
           },
         );
       },
+    );
+  }
+}
+
+class _StoragePermissionShield extends StatelessWidget {
+  final VoidCallback onRequestPermission;
+
+  const _StoragePermissionShield({required this.onRequestPermission});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Broken.folder_cross,
+                  size: 72,
+                  color: Theme.of(context).colorScheme.error.withOpacity(0.8),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Storage Access Required',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'NFile requires storage permission to manage, organize, and display your media files seamlessly.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                ),
+                const SizedBox(height: 32),
+                FilledButton.icon(
+                  onPressed: onRequestPermission,
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  icon: const Icon(Broken.shield_tick),
+                  label: const Text('Grant Permission', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
