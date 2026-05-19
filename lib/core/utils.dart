@@ -51,6 +51,20 @@ class FileUtils {
     return mime != null && mime.startsWith('text/');
   }
 
+  static bool isImage(String path) {
+    final mimeType = lookupMimeType(path);
+    if (mimeType != null && mimeType.startsWith('image/')) return true;
+    final lower = path.toLowerCase();
+    return lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png') || lower.endsWith('.webp') || lower.endsWith('.gif') || lower.endsWith('.bmp');
+  }
+
+  static bool isVideo(String path) {
+    final mimeType = lookupMimeType(path);
+    if (mimeType != null && mimeType.startsWith('video/')) return true;
+    final lower = path.toLowerCase();
+    return lower.endsWith('.mp4') || lower.endsWith('.mkv') || lower.endsWith('.webm') || lower.endsWith('.avi') || lower.endsWith('.mov') || lower.endsWith('.flv');
+  }
+
   static IconData getIconForFile(String path) {
     if (isArchive(path)) return Broken.archive;
     if (isTextOrCode(path)) return Broken.document_code;

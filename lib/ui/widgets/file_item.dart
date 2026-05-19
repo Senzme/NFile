@@ -1,7 +1,12 @@
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:photo_manager/photo_manager.dart';
 import '../../models/file_item_model.dart';
 import '../../core/utils.dart';
 import '../../core/icon_fonts/broken_icons.dart';
+import '../../providers/media_provider.dart';
 
 class FileItem extends StatelessWidget {
   final FileItemModel file;
@@ -60,10 +65,14 @@ class FileItem extends StatelessWidget {
                     color: isSelected ? theme.colorScheme.primary : iconColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(
-                    isSelected ? Broken.tick_circle : FileUtils.getIconForFile(file.path),
-                    color: isSelected ? theme.colorScheme.onPrimary : iconColor,
-                    size: 28 * iconScale,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: _MediaThumbnail(
+                      file: file,
+                      iconScale: iconScale,
+                      isSelected: isSelected,
+                      iconColor: iconColor,
+                    ),
                   ),
                 ),
               ),
@@ -125,6 +134,99 @@ class FileItem extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _MediaThumbnail extends StatefulWidget {
+  final FileItemModel file;
+  final double iconScale;
+  final bool isSelected;
+  final Color iconColor;
+
+  const _MediaThumbnail({
+    required this.file,
+    required this.iconScale,
+    required this.isSelected,
+    required this.iconColor,
+  });
+
+  @override
+  State<_MediaThumbnail> createState() => _MediaThumbnailState();
+}
+
+class _MediaThumbnailState extends State<_MediaThumbnail> {
+  Uint8List? _videoThumb;
+  bool _isLoadingVideo = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (FileUtils.isVideo(widget.file.path)) {
+      _loadVideoThumb();
+    }
+  }
+
+  Future<void> _loadVideoThumb() async {
+    if (!mounted) return;
+    setState(() => _isLoadingVideo = true);
+    final mediaProvider = context.read<MediaProvider>();
+    final match = mediaProvider.videos.where((v) => v.title == widget.file.name || '${v.title}.${v.mimeType?.split("/").last}' == widget.file.name).firstOrNull;
+    if (match != null) {
+      final thumb = await ThumbnailCache.get(match);
+      if (mounted && thumb != null) {
+        setState(() {
+          _videoThumb = thumb;
+          _isLoadingVideo = false;
+        });
+      } else {
+        if (mounted) setState(() => _isLoadingVideo = false);
+      }
+    } else {
+      if (mounted) setState(() => _isLoadingVideo = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isImg = FileUtils.isImage(widget.file.path);
+    final isVid = FileUtils.isVideo(widget.file.path);
+
+    if (widget.isSelected) {
+      return Icon(Broken.tick_circle, color: Theme.of(context).colorScheme.onPrimary, size: 28 * widget.iconScale);
+    }
+
+    if (isImg) {
+      return Image.file(
+        File(widget.file.path),
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        cacheWidth: 160,
+        errorBuilder: (_, __, ___) => Icon(Broken.image, color: widget.iconColor, size: 28 * widget.iconScale),
+      );
+    }
+
+    if (isVid && _videoThumb != null) {
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.memory(_videoThumb!, fit: BoxFit.cover, width: double.infinity, height: double.infinity),
+          Center(
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), shape: BoxShape.circle),
+              child: Icon(Broken.video, color: Colors.white, size: 16 * widget.iconScale),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Icon(
+      FileUtils.getIconForFile(widget.file.path),
+      color: widget.iconColor,
+      size: 28 * widget.iconScale,
     );
   }
 }
