@@ -19,7 +19,13 @@ import '../widgets/restricted_folder_banner.dart';
 class DirectoryScreen extends StatefulWidget {
   final VoidCallback toggleTheme;
   final Function(int)? onNavigateTab;
-  const DirectoryScreen({super.key, required this.toggleTheme, this.onNavigateTab});
+  final bool isBottomBarVisible;
+  const DirectoryScreen({
+    super.key,
+    required this.toggleTheme,
+    this.onNavigateTab,
+    this.isBottomBarVisible = true,
+  });
 
   @override
   State<DirectoryScreen> createState() => _DirectoryScreenState();
@@ -860,67 +866,86 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                 : provider.showBottomActionBar
                     ? FloatingActionButtonLocation.centerDocked
                     : FloatingActionButtonLocation.endFloat,
-            floatingActionButton: provider.hasClipboard
-                ? FloatingActionButton.extended(
-                    onPressed: () async {
-                      await provider.pasteFile();
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pasted successfully')));
-                      }
-                    },
-                    icon: const Icon(Broken.clipboard),
-                    label: const Text('Paste Here'),
-                  )
-                : (!isSelectionMode && provider.showFloatingAddButton)
-                    ? FloatingActionButton(
-                        onPressed: () => _showAddBottomSheet(context, provider),
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        foregroundColor: Colors.white,
-                        elevation: 4,
-                        shape: provider.showBottomActionBar ? RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)) : null,
-                        child: const Icon(Broken.add, size: 28),
-                      )
-                    : null,
-            bottomNavigationBar: (isSelectionMode && provider.showBottomActionBar)
-                ? SelectionActionBar(provider: provider)
-                : !provider.showBottomActionBar
-                    ? null
-                    : BottomAppBar(
-                    elevation: 8,
-                    color: Theme.of(context).colorScheme.surface,
-                    shape: const CircularNotchedRectangle(),
-                    notchMargin: 8,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Broken.tick_square),
-                          tooltip: 'Select Mode',
-                          onPressed: () {
-                            if (provider.currentFiles.isNotEmpty) {
-                              provider.toggleSelection(provider.currentFiles.first.path);
-                            }
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Broken.search_normal),
-                          tooltip: 'Global Search',
-                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GlobalSearchScreen())),
-                        ),
-                        const SizedBox(width: 48), // Center dock slot for FAB
-                        IconButton(
-                          icon: const Icon(Broken.filter_edit),
-                          tooltip: 'View & Sort Options',
-                          onPressed: () => _showSortModal(context, provider),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.sd_storage_rounded),
-                          tooltip: 'Storage Volumes & SD Card',
-                          onPressed: () => _showStorageVolumeModal(context, provider),
-                        ),
-                      ],
+            floatingActionButton: AnimatedScale(
+              scale: (!provider.autoHideBottomBar || widget.isBottomBarVisible) ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              child: provider.hasClipboard
+                  ? FloatingActionButton.extended(
+                      onPressed: () async {
+                        await provider.pasteFile();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pasted successfully')));
+                        }
+                      },
+                      icon: const Icon(Broken.clipboard),
+                      label: const Text('Paste Here'),
+                    )
+                  : (!isSelectionMode && provider.showFloatingAddButton)
+                      ? FloatingActionButton(
+                          onPressed: () => _showAddBottomSheet(context, provider),
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 4,
+                          shape: provider.showBottomActionBar ? RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)) : null,
+                          child: const Icon(Broken.add, size: 28),
+                        )
+                      : null,
+            ),
+            bottomNavigationBar: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.fastOutSlowIn,
+              height: (!provider.autoHideBottomBar || widget.isBottomBarVisible)
+                  ? ((isSelectionMode && provider.showBottomActionBar)
+                      ? (80.0 + MediaQuery.of(context).padding.bottom)
+                      : !provider.showBottomActionBar
+                          ? 0.0
+                          : (80.0 + MediaQuery.of(context).padding.bottom))
+                  : 0.0,
+              child: Wrap(
+                children: [
+                  if (isSelectionMode && provider.showBottomActionBar)
+                    SelectionActionBar(provider: provider)
+                  else if (provider.showBottomActionBar)
+                    BottomAppBar(
+                      elevation: 8,
+                      color: Theme.of(context).colorScheme.surface,
+                      shape: const CircularNotchedRectangle(),
+                      notchMargin: 8,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Broken.tick_square),
+                            tooltip: 'Select Mode',
+                            onPressed: () {
+                              if (provider.currentFiles.isNotEmpty) {
+                                provider.toggleSelection(provider.currentFiles.first.path);
+                              }
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Broken.search_normal),
+                            tooltip: 'Global Search',
+                            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GlobalSearchScreen())),
+                          ),
+                          const SizedBox(width: 48), // Center dock slot for FAB
+                          IconButton(
+                            icon: const Icon(Broken.filter_edit),
+                            tooltip: 'View & Sort Options',
+                            onPressed: () => _showSortModal(context, provider),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.sd_storage_rounded),
+                            tooltip: 'Storage Volumes & SD Card',
+                            onPressed: () => _showStorageVolumeModal(context, provider),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                ],
+              ),
+            ),
           ),
         );
       },

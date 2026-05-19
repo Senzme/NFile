@@ -36,17 +36,25 @@ class _HomeScreenState extends State<HomeScreen> {
     final autoHide = fileManager.autoHideBottomBar;
 
     return Scaffold(
-      body: NotificationListener<UserScrollNotification>(
+      body: NotificationListener<ScrollNotification>(
         onNotification: (notification) {
           if (!autoHide) return false;
-          final direction = notification.direction;
-          if (direction == ScrollDirection.reverse) {
-            if (_isBottomBarVisible) {
-              setState(() => _isBottomBarVisible = false);
-            }
-          } else if (direction == ScrollDirection.forward) {
+          if (notification.metrics.pixels <= 0) {
             if (!_isBottomBarVisible) {
               setState(() => _isBottomBarVisible = true);
+            }
+            return false;
+          }
+          if (notification is UserScrollNotification) {
+            final direction = notification.direction;
+            if (direction == ScrollDirection.reverse) {
+              if (_isBottomBarVisible) {
+                setState(() => _isBottomBarVisible = false);
+              }
+            } else if (direction == ScrollDirection.forward) {
+              if (!_isBottomBarVisible) {
+                setState(() => _isBottomBarVisible = true);
+              }
             }
           }
           return false;
@@ -57,6 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _buildHomeTab(),
             DirectoryScreen(
               toggleTheme: widget.toggleTheme,
+              isBottomBarVisible: _isBottomBarVisible,
               onNavigateTab: (index) {
                 setState(() {
                   _currentIndex = index;
