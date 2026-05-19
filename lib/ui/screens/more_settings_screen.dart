@@ -117,6 +117,21 @@ class MoreSettingsScreen extends StatelessWidget {
               ),
               onTap: () => fileManager.toggleMediaPreviews(),
             ),
+            _buildSettingTile(
+              theme,
+              icon: Broken.category,
+              title: 'Enable Multiple Tabs',
+              subtitle: 'Allow opening multiple folders in separate tabs for quick navigation',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.enableMultipleTabs,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleMultipleTabs(),
+                ),
+              ),
+              onTap: () => fileManager.toggleMultipleTabs(),
+            ),
 
             const SizedBox(height: 24),
             _buildSectionHeader(theme, 'Appearance & Themes'),

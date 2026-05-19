@@ -50,6 +50,7 @@ class FileManagerProvider extends ChangeNotifier {
     _showFolderFileCount = PreferencesService.getShowFolderFileCount();
     _showBottomActionBar = PreferencesService.getShowBottomActionBar();
     _showMediaPreviews = PreferencesService.getShowMediaPreviews();
+    _enableMultipleTabs = PreferencesService.getEnableMultipleTabs();
     _accentColorOption = PreferencesService.getAccentColor();
     _folderIconOption = PreferencesService.getFolderIconStyle();
     _pinnedFolderShortcuts = PreferencesService.getPinnedFolderShortcuts();
@@ -236,6 +237,18 @@ class FileManagerProvider extends ChangeNotifier {
   void toggleMediaPreviews() {
     _showMediaPreviews = !_showMediaPreviews;
     PreferencesService.saveShowMediaPreviews(_showMediaPreviews);
+    notifyListeners();
+  }
+
+  bool _enableMultipleTabs = false;
+  bool get enableMultipleTabs => _enableMultipleTabs;
+
+  void toggleMultipleTabs() {
+    _enableMultipleTabs = !_enableMultipleTabs;
+    PreferencesService.saveEnableMultipleTabs(_enableMultipleTabs);
+    if (!_enableMultipleTabs) {
+      closeOtherTabs();
+    }
     notifyListeners();
   }
 

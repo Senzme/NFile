@@ -591,7 +591,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                   : _AnimatedTitleButton(
                       onTap: () => _showStorageVolumeModal(context, provider),
                     ),
-              bottom: isSelectionMode ? null : DirectoryTabBar(provider: provider),
+              bottom: (isSelectionMode || !provider.enableMultipleTabs) ? null : DirectoryTabBar(provider: provider),
               leading: isSelectionMode
                   ? IconButton(
                       icon: const Icon(Broken.close_square),
