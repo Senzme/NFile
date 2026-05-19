@@ -376,7 +376,7 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
                 _buildCopyableRow('Name', nameDisplay, ctx),
                 _buildCopyableRow('Path', fullPath, ctx),
                 _buildCopyableRow('Size', '${FileUtils.formatBytes(totalBytes, 2)} ($totalBytes bytes)', ctx),
-                if (lastMod != null) _buildCopyableRow('Modified', FileUtils.formatDate(lastMod!), ctx),
+                if (lastMod != null) _buildCopyableRow('Modified', FileUtils.formatDate(lastMod), ctx),
                 if (mimeType.isNotEmpty && mimeType != 'file/') _buildCopyableRow('Type', mimeType, ctx),
                 if (dimensionsOrDuration.isNotEmpty) _buildCopyableRow('Media Info', dimensionsOrDuration, ctx),
                 if (permissionsStr.isNotEmpty) _buildCopyableRow('Permissions', permissionsStr, ctx),

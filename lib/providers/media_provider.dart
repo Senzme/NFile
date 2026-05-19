@@ -443,9 +443,7 @@ class MediaProvider extends ChangeNotifier {
         try {
           await for (final entity in dir.list(recursive: true)) {
             if (entity is File) {
-              final ext = entity.path
-                  .substring(entity.path.lastIndexOf('.'))
-                  .toLowerCase();
+              final ext = p.extension(entity.path).toLowerCase();
               if (_docExtensions.contains(ext)) {
                 docs.add(entity);
               }
@@ -496,7 +494,7 @@ class MediaProvider extends ChangeNotifier {
         try {
           await for (final entity in dir.list(recursive: true)) {
             if (entity is File) {
-              final ext = entity.path.contains('.') ? entity.path.substring(entity.path.lastIndexOf('.')).toLowerCase() : '';
+              final ext = p.extension(entity.path).toLowerCase();
               if (_archiveExtensions.contains(ext)) {
                 arch.add(entity);
               } else if (_apkExtensions.contains(ext)) {

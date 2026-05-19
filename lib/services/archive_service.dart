@@ -59,7 +59,6 @@ class ArchiveService {
     final destinationPath = args['destinationPath'] as String;
     final format = args['format'] as String;
     final level = args['level'] as int;
-    final password = args['password'] as String?;
     final splitSizeMB = args['splitSizeMB'] as int?;
 
     final archive = Archive();
@@ -92,14 +91,10 @@ class ArchiveService {
       encodedBytes = TarEncoder().encode(archive);
     } else if (format == 'tar.gz') {
       final tarBytes = TarEncoder().encode(archive);
-      if (tarBytes != null) {
-        encodedBytes = GZipEncoder().encode(tarBytes);
-      }
+      encodedBytes = GZipEncoder().encode(tarBytes);
     } else if (format == 'tar.bz2') {
       final tarBytes = TarEncoder().encode(archive);
-      if (tarBytes != null) {
-        encodedBytes = BZip2Encoder().encode(tarBytes);
-      }
+      encodedBytes = BZip2Encoder().encode(tarBytes);
     }
 
     if (encodedBytes != null) {
@@ -166,7 +161,7 @@ class ArchiveService {
 
       final file = File(archivePath);
       final bytes = file.readAsBytesSync();
-      Archive? archive;
+      late Archive archive;
 
       final lowerPath = archivePath.toLowerCase();
 
@@ -199,17 +194,15 @@ class ArchiveService {
         archive = ZipDecoder().decodeBytes(bytes, password: password != null && password.isNotEmpty ? password : null);
       }
 
-      if (archive != null) {
-        for (final file in archive) {
-          final filename = file.name;
-          if (file.isFile) {
-            final data = file.content as List<int>;
-            final destFile = File(p.join(destinationDir, filename));
-            destFile.createSync(recursive: true);
-            destFile.writeAsBytesSync(data);
-          } else {
-            Directory(p.join(destinationDir, filename)).createSync(recursive: true);
-          }
+      for (final file in archive) {
+        final filename = file.name;
+        if (file.isFile) {
+          final data = file.content as List<int>;
+          final destFile = File(p.join(destinationDir, filename));
+          destFile.createSync(recursive: true);
+          destFile.writeAsBytesSync(data);
+        } else {
+          Directory(p.join(destinationDir, filename)).createSync(recursive: true);
         }
       }
     } finally {
@@ -328,10 +321,10 @@ class ArchiveService {
         newArchiveBytes = TarEncoder().encode(archive);
       } else if (isGz) {
         final tarBytes = TarEncoder().encode(archive);
-        if (tarBytes != null) newArchiveBytes = GZipEncoder().encode(tarBytes);
+        newArchiveBytes = GZipEncoder().encode(tarBytes);
       } else if (isBz2) {
         final tarBytes = TarEncoder().encode(archive);
-        if (tarBytes != null) newArchiveBytes = BZip2Encoder().encode(tarBytes);
+        newArchiveBytes = BZip2Encoder().encode(tarBytes);
       } else {
         newArchiveBytes = ZipEncoder().encode(archive);
       }
@@ -367,7 +360,7 @@ class ArchiveService {
 
       final bytes = archiveFile.readAsBytesSync();
       final lowerPath = archivePath.toLowerCase();
-      Archive? archive;
+      late Archive archive;
       bool isGz = false;
       bool isBz2 = false;
 
@@ -390,8 +383,6 @@ class ArchiveService {
       } catch (_) {
         return false;
       }
-
-      if (archive == null) return false;
 
       final newArchive = Archive();
       for (final f in archive.files) {
@@ -420,10 +411,10 @@ class ArchiveService {
         newArchiveBytes = TarEncoder().encode(newArchive);
       } else if (isGz) {
         final tarBytes = TarEncoder().encode(newArchive);
-        if (tarBytes != null) newArchiveBytes = GZipEncoder().encode(tarBytes);
+        newArchiveBytes = GZipEncoder().encode(tarBytes);
       } else if (isBz2) {
         final tarBytes = TarEncoder().encode(newArchive);
-        if (tarBytes != null) newArchiveBytes = BZip2Encoder().encode(tarBytes);
+        newArchiveBytes = BZip2Encoder().encode(tarBytes);
       } else {
         newArchiveBytes = ZipEncoder().encode(newArchive);
       }

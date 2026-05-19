@@ -2,7 +2,6 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:photo_manager/photo_manager.dart';
 import '../../models/file_item_model.dart';
 import '../../core/utils.dart';
 import '../../core/icon_fonts/broken_icons.dart';
@@ -188,7 +187,6 @@ class _MediaThumbnail extends StatefulWidget {
 
 class _MediaThumbnailState extends State<_MediaThumbnail> {
   Uint8List? _videoThumb;
-  bool _isLoadingVideo = false;
 
   @override
   void initState() {
@@ -200,7 +198,6 @@ class _MediaThumbnailState extends State<_MediaThumbnail> {
 
   Future<void> _loadVideoThumb() async {
     if (!mounted) return;
-    setState(() => _isLoadingVideo = true);
     final mediaProvider = context.read<MediaProvider>();
     final match = mediaProvider.videos.where((v) => v.title == widget.file.name || '${v.title}.${v.mimeType?.split("/").last}' == widget.file.name).firstOrNull;
     if (match != null) {
@@ -208,13 +205,8 @@ class _MediaThumbnailState extends State<_MediaThumbnail> {
       if (mounted && thumb != null) {
         setState(() {
           _videoThumb = thumb;
-          _isLoadingVideo = false;
         });
-      } else {
-        if (mounted) setState(() => _isLoadingVideo = false);
       }
-    } else {
-      if (mounted) setState(() => _isLoadingVideo = false);
     }
   }
 
