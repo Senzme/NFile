@@ -61,6 +61,18 @@ class NFileDrawer extends StatelessWidget {
                       ),
                     _buildDrawerTile(
                       context,
+                      icon: Broken.cpu,
+                      title: 'System Root',
+                      isSelected: fileManager.rootPath == '/',
+                      onTap: () {
+                        Navigator.pop(context);
+                        fileManager.setRootPath('/');
+                        fileManager.loadDirectory('/');
+                        onNavigateTab?.call(1);
+                      },
+                    ),
+                    _buildDrawerTile(
+                      context,
                       icon: Broken.search_normal,
                       title: 'Global Search',
                       onTap: () {

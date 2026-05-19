@@ -509,6 +509,25 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                       );
                     },
                   ),
+                  ListTile(
+                    leading: Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: provider.rootPath == '/' ? theme.colorScheme.primary.withOpacity(0.2) : theme.colorScheme.surfaceVariant,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Broken.cpu, color: provider.rootPath == '/' ? theme.colorScheme.primary : theme.colorScheme.onSurface, size: 24),
+                    ),
+                    title: Text('System Root', style: TextStyle(fontWeight: provider.rootPath == '/' ? FontWeight.bold : FontWeight.w600, fontSize: 16)),
+                    subtitle: Text('/', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6))),
+                    trailing: provider.rootPath == '/' ? Icon(Icons.check_circle, color: theme.colorScheme.primary) : null,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      provider.setRootPath('/');
+                      provider.loadDirectory('/');
+                    },
+                  ),
                   if (provider.pinnedFolderShortcuts.isNotEmpty) ...[
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),

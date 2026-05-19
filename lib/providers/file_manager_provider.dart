@@ -558,7 +558,13 @@ class FileManagerProvider extends ChangeNotifier {
 
   bool isRestrictedPath(String path) {
     final lower = path.toLowerCase();
-    return lower.contains('/android/data') || lower.contains('/android/obb');
+    if (lower.contains('/android/data') || lower.contains('/android/obb')) {
+      return true;
+    }
+    if (path == '/' || path.startsWith('/system') || path.startsWith('/data') || path.startsWith('/etc') || path.startsWith('/vendor')) {
+      return true;
+    }
+    return false;
   }
 
   Future<void> enableRootMode() async {
