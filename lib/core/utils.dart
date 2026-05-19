@@ -37,6 +37,13 @@ class FileUtils {
 
   static bool isTextOrCode(String path) {
     final lower = path.toLowerCase();
+    
+    // Fallback for files without extension (e.g. hosts)
+    final filename = path.split('/').last.split('\\').last;
+    if (!filename.contains('.') && filename.isNotEmpty) {
+      return true;
+    }
+
     const exts = [
       '.txt', '.md', '.json', '.xml', '.py', '.js', '.ts', '.dart', '.html', '.css',
       '.scss', '.java', '.kt', '.cpp', '.c', '.h', '.hpp', '.cs', '.php', '.rb', '.go',
