@@ -126,7 +126,7 @@ class NFileDrawer extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 12.0),
               child: Text(
-                'NFile v1.0.22',
+                'NFile v1.0.26',
                 style: TextStyle(fontSize: 11.5, color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w600),
               ),
             ),
@@ -279,7 +279,7 @@ class NFileDrawer extends StatelessWidget {
                 const SizedBox(height: 16),
                 Text('NFile', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text('Version 1.0.22', style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.5), fontSize: 13, fontWeight: FontWeight.w600)),
+                Text('Version 1.0.26', style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.5), fontSize: 13, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 16),
                 Text(
                   'A premium, fluid, and open-source file manager and offline media hub built with Flutter. Designed for extreme performance and elegance.',
