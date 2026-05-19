@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import '../models/file_item_model.dart';
+import '../models/folder_tab_model.dart';
 import 'package:mime/mime.dart';
 import 'package:open_filex/open_filex.dart';
 import '../ui/screens/image_viewer_screen.dart';
@@ -49,7 +50,6 @@ class FileManagerProvider extends ChangeNotifier {
     _showFolderFileCount = PreferencesService.getShowFolderFileCount();
     _showBottomActionBar = PreferencesService.getShowBottomActionBar();
     _showMediaPreviews = PreferencesService.getShowMediaPreviews();
-    _autoHideBottomBar = PreferencesService.getAutoHideBottomBar();
     _accentColorOption = PreferencesService.getAccentColor();
     _folderIconOption = PreferencesService.getFolderIconStyle();
     _pinnedFolderShortcuts = PreferencesService.getPinnedFolderShortcuts();
@@ -104,11 +104,13 @@ class FileManagerProvider extends ChangeNotifier {
     if (_sortType == type) return;
     _sortType = type;
     PreferencesService.saveSortType(_sortType);
-    final folders = _currentFiles.where((e) => e.isDirectory).toList();
-    final files = _currentFiles.where((e) => !e.isDirectory).toList();
-    _sortList(folders);
-    _sortList(files);
-    _currentFiles = [...folders, ...files];
+    if (_tabs.isNotEmpty) {
+      final folders = currentFiles.where((e) => e.isDirectory).toList();
+      final files = currentFiles.where((e) => !e.isDirectory).toList();
+      _sortList(folders);
+      _sortList(files);
+      activeTab.currentFiles = [...folders, ...files];
+    }
     notifyListeners();
   }
 
@@ -179,6 +181,7 @@ class FileManagerProvider extends ChangeNotifier {
         break;
     }
   }
+
   bool _showHiddenFiles = false;
   bool get showHiddenFiles => _showHiddenFiles;
 
@@ -186,8 +189,8 @@ class FileManagerProvider extends ChangeNotifier {
     _showHiddenFiles = !_showHiddenFiles;
     PreferencesService.saveShowHiddenFiles(_showHiddenFiles);
     notifyListeners();
-    if (_currentPath.isNotEmpty) {
-      loadDirectory(_currentPath, showLoading: false);
+    if (_tabs.isNotEmpty && currentPath.isNotEmpty) {
+      loadDirectory(currentPath, showLoading: false);
     }
   }
 
@@ -236,23 +239,92 @@ class FileManagerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool _autoHideBottomBar = true;
-  bool get autoHideBottomBar => _autoHideBottomBar;
+  // --- Tab Management ---
+  List<FolderTab> _tabs = [];
+  int _activeTabIndex = 0;
 
-  void toggleAutoHideBottomBar() {
-    _autoHideBottomBar = !_autoHideBottomBar;
-    PreferencesService.saveAutoHideBottomBar(_autoHideBottomBar);
+  List<FolderTab> get tabs => _tabs;
+  int get activeTabIndex => _activeTabIndex;
+
+  FolderTab get activeTab {
+    if (_tabs.isEmpty) {
+      _tabs = [FolderTab(id: 'default', currentPath: _rootPath.isNotEmpty ? _rootPath : '/')];
+    }
+    return _tabs[_activeTabIndex];
+  }
+
+  void addTab(String path) {
+    final newTab = FolderTab(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      currentPath: path,
+    );
+    _tabs.add(newTab);
+    _activeTabIndex = _tabs.length - 1;
+    notifyListeners();
+    loadDirectory(path);
+  }
+
+  void closeTab(int index) {
+    if (_tabs.length <= 1) return;
+    _tabs.removeAt(index);
+    if (_activeTabIndex >= _tabs.length) {
+      _activeTabIndex = _tabs.length - 1;
+    } else if (_activeTabIndex == index) {
+      if (_activeTabIndex >= _tabs.length) {
+        _activeTabIndex = _tabs.length - 1;
+      }
+    } else if (_activeTabIndex > index) {
+      _activeTabIndex--;
+    }
     notifyListeners();
   }
 
-  List<FileItemModel> _currentFiles = [];
-  List<FileItemModel> get currentFiles => _currentFiles;
+  void closeOtherTabs() {
+    if (_tabs.length <= 1) return;
+    final active = activeTab;
+    _tabs = [active];
+    _activeTabIndex = 0;
+    notifyListeners();
+  }
 
-  String _currentPath = '';
-  String get currentPath => _currentPath;
-  bool _isLoading = false;
-  bool get isLoading => _isLoading;
+  void duplicateActiveTab() {
+    if (_tabs.isEmpty) return;
+    final active = activeTab;
+    final dup = FolderTab(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      currentPath: active.currentPath,
+      currentFiles: List.from(active.currentFiles),
+      isRestrictedMode: active.isRestrictedMode,
+      needsPermission: active.needsPermission,
+      useRootMode: active.useRootMode,
+      useShizukuMode: active.useShizukuMode,
+      isRootAvailable: active.isRootAvailable,
+    );
+    _tabs.add(dup);
+    _activeTabIndex = _tabs.length - 1;
+    notifyListeners();
+  }
 
+  void setActiveTab(int index) {
+    if (index >= 0 && index < _tabs.length) {
+      _activeTabIndex = index;
+      notifyListeners();
+    }
+  }
+
+  // --- Active Tab Delegations ---
+  List<FileItemModel> get currentFiles => activeTab.currentFiles;
+  String get currentPath => activeTab.currentPath;
+  bool get isLoading => activeTab.isLoading;
+  bool get isRestrictedMode => activeTab.isRestrictedMode;
+  bool get needsPermission => activeTab.needsPermission;
+  bool get useRootMode => activeTab.useRootMode;
+  bool get useShizukuMode => activeTab.useShizukuMode;
+  bool get isRootAvailable => activeTab.isRootAvailable;
+  Set<String> get selectedPaths => activeTab.selectedPaths;
+  bool get isSelectionMode => selectedPaths.isNotEmpty;
+
+  // --- Global Clipboard ---
   final List<String> _clipboardPaths = [];
   bool _isCut = false;
   String? _sourceArchiveForCut;
@@ -279,31 +351,26 @@ class FileManagerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  final Set<String> _selectedPaths = {};
-  Set<String> get selectedPaths => _selectedPaths;
-  bool get isSelectionMode => _selectedPaths.isNotEmpty;
-
   String _rootPath = '';
   String get rootPath => _rootPath;
 
-  final Map<String, double> _scrollOffsets = {};
-
   bool get canGoBack {
-    if (_currentPath.isEmpty || _rootPath.isEmpty) return false;
-    if (_currentPath == _rootPath || _currentPath == '/' || p.dirname(_currentPath) == _currentPath) {
+    final path = currentPath;
+    if (path.isEmpty || _rootPath.isEmpty) return false;
+    if (path == _rootPath || path == '/' || p.dirname(path) == path) {
       return false;
     }
     return true;
   }
 
   void saveScrollOffset(double offset) {
-    if (_currentPath.isNotEmpty) {
-      _scrollOffsets[_currentPath] = offset;
+    if (currentPath.isNotEmpty) {
+      activeTab.scrollOffset = offset;
     }
   }
 
   double getSavedScrollOffset(String path) {
-    return _scrollOffsets[path] ?? 0.0;
+    return activeTab.scrollOffset;
   }
 
   List<StorageVolume> _storageVolumes = [];
@@ -311,7 +378,9 @@ class FileManagerProvider extends ChangeNotifier {
 
   void setRootPath(String path) {
     _rootPath = path;
-    _currentPath = path;
+    if (_tabs.isNotEmpty) {
+      activeTab.currentPath = path;
+    }
     notifyListeners();
   }
 
@@ -364,33 +433,32 @@ class FileManagerProvider extends ChangeNotifier {
   }
 
   Future<void> init() async {
+    String initialPath = '/';
     if (Platform.isAndroid) {
-      _currentPath = '/storage/emulated/0';
-      if (!Directory(_currentPath).existsSync()) {
+      initialPath = '/storage/emulated/0';
+      if (!Directory(initialPath).existsSync()) {
         final dir = await getExternalStorageDirectory();
-        _currentPath = dir?.path ?? '/';
+        initialPath = dir?.path ?? '/';
       }
-      _rootPath = _currentPath;
+      _rootPath = initialPath;
     } else {
       final dir = await getApplicationDocumentsDirectory();
-      _currentPath = dir.path;
-      _rootPath = _currentPath;
+      initialPath = dir.path;
+      _rootPath = initialPath;
     }
+    
+    // Initialize primary default tab
+    _tabs = [
+      FolderTab(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        currentPath: initialPath,
+      )
+    ];
+    _activeTabIndex = 0;
+
     await _detectStorageVolumes();
-    await loadDirectory(_currentPath, showLoading: false);
+    await loadDirectory(initialPath, showLoading: false);
   }
-
-  bool _isRestrictedMode = false;
-  bool _needsPermission = false;
-  bool _useRootMode = false;
-  bool _useShizukuMode = false;
-  bool _isRootAvailable = false;
-
-  bool get isRestrictedMode => _isRestrictedMode;
-  bool get needsPermission => _needsPermission;
-  bool get useRootMode => _useRootMode;
-  bool get useShizukuMode => _useShizukuMode;
-  bool get isRootAvailable => _isRootAvailable;
 
   bool isRestrictedPath(String path) {
     final lower = path.toLowerCase();
@@ -398,21 +466,21 @@ class FileManagerProvider extends ChangeNotifier {
   }
 
   Future<void> enableRootMode() async {
-    _useRootMode = true;
-    _useShizukuMode = false;
-    _needsPermission = false;
+    activeTab.useRootMode = true;
+    activeTab.useShizukuMode = false;
+    activeTab.needsPermission = false;
     notifyListeners();
-    await loadDirectory(_currentPath, showLoading: true);
+    await loadDirectory(currentPath, showLoading: true);
   }
 
   Future<void> enableShizukuMode() async {
     final granted = await RootShizukuService.requestShizukuPermission();
     if (granted) {
-      _useShizukuMode = true;
-      _useRootMode = false;
-      _needsPermission = false;
+      activeTab.useShizukuMode = true;
+      activeTab.useRootMode = false;
+      activeTab.needsPermission = false;
       notifyListeners();
-      await loadDirectory(_currentPath, showLoading: true);
+      await loadDirectory(currentPath, showLoading: true);
     }
   }
 
@@ -422,58 +490,58 @@ class FileManagerProvider extends ChangeNotifier {
     }
 
     if (showLoading) {
-      _isLoading = true;
+      activeTab.isLoading = true;
       notifyListeners();
     }
 
-    _isRestrictedMode = isRestrictedPath(path);
+    activeTab.isRestrictedMode = isRestrictedPath(path);
 
-    if (_isRestrictedMode) {
+    if (activeTab.isRestrictedMode) {
       final status = await RootShizukuService.checkStatus();
-      _isRootAvailable = status.isRootAvailable;
-      if (status.isRootAvailable && (_useRootMode || !status.isShizukuAvailable)) {
-        _useRootMode = true;
-        _useShizukuMode = false;
-        _needsPermission = false;
+      activeTab.isRootAvailable = status.isRootAvailable;
+      if (status.isRootAvailable && (activeTab.useRootMode || !status.isShizukuAvailable)) {
+        activeTab.useRootMode = true;
+        activeTab.useShizukuMode = false;
+        activeTab.needsPermission = false;
       } else if (status.isShizukuAvailable && status.shizukuPermissionGranted) {
-        _useShizukuMode = true;
-        _useRootMode = false;
-        _needsPermission = false;
+        activeTab.useShizukuMode = true;
+        activeTab.useRootMode = false;
+        activeTab.needsPermission = false;
       } else {
-        _needsPermission = true;
-        _currentPath = path;
-        _currentFiles = [];
-        _isLoading = false;
+        activeTab.needsPermission = true;
+        activeTab.currentPath = path;
+        activeTab.currentFiles = [];
+        activeTab.isLoading = false;
         notifyListeners();
         return;
       }
 
       try {
-        _currentPath = path;
-        final items = await RootShizukuService.listFiles(path, useRoot: _useRootMode, showHiddenFiles: _showHiddenFiles);
+        activeTab.currentPath = path;
+        final items = await RootShizukuService.listFiles(path, useRoot: activeTab.useRootMode, showHiddenFiles: _showHiddenFiles);
         final folders = items.where((e) => e.isDirectory).toList();
         final files = items.where((e) => !e.isDirectory).toList();
 
         _sortList(folders);
         _sortList(files);
-        _currentFiles = [...folders, ...files];
+        activeTab.currentFiles = [...folders, ...files];
       } catch (e) {
         debugPrint('Error loading restricted directory: $e');
-        _currentFiles = [];
+        activeTab.currentFiles = [];
       }
-      _isLoading = false;
+      activeTab.isLoading = false;
       notifyListeners();
       return;
     }
 
-    _needsPermission = false;
-    _useRootMode = false;
-    _useShizukuMode = false;
+    activeTab.needsPermission = false;
+    activeTab.useRootMode = false;
+    activeTab.useShizukuMode = false;
 
     try {
       final dir = Directory(path);
       if (await dir.exists()) {
-        _currentPath = path;
+        activeTab.currentPath = path;
         final entities = await dir.list().toList();
         
         final folders = <FileItemModel>[];
@@ -494,40 +562,40 @@ class FileManagerProvider extends ChangeNotifier {
         _sortList(folders);
         _sortList(files);
 
-        _currentFiles = [...folders, ...files];
+        activeTab.currentFiles = [...folders, ...files];
       }
     } catch (e) {
       debugPrint('Error loading directory: $e');
     }
 
-    _isLoading = false;
+    activeTab.isLoading = false;
     notifyListeners();
   }
 
   Future<bool> goBack() async {
     if (!canGoBack) return false;
-    final parent = p.dirname(_currentPath);
+    final parent = p.dirname(currentPath);
     await loadDirectory(parent, showLoading: false);
     return true;
   }
 
   void toggleSelection(String path) {
-    if (_selectedPaths.contains(path)) {
-      _selectedPaths.remove(path);
+    if (selectedPaths.contains(path)) {
+      selectedPaths.remove(path);
     } else {
-      _selectedPaths.add(path);
+      selectedPaths.add(path);
     }
     notifyListeners();
   }
 
   void selectAll() {
-    _selectedPaths.clear();
-    _selectedPaths.addAll(_currentFiles.map((f) => f.path));
+    selectedPaths.clear();
+    selectedPaths.addAll(currentFiles.map((f) => f.path));
     notifyListeners();
   }
 
   void clearSelection() {
-    _selectedPaths.clear();
+    selectedPaths.clear();
     notifyListeners();
   }
 
@@ -540,29 +608,29 @@ class FileManagerProvider extends ChangeNotifier {
   }
 
   void copySelected() {
-    if (_selectedPaths.isEmpty) return;
-    setClipboard(_selectedPaths.toList(), isCut: false);
-    _selectedPaths.clear();
+    if (selectedPaths.isEmpty) return;
+    setClipboard(selectedPaths.toList(), isCut: false);
+    selectedPaths.clear();
     notifyListeners();
   }
 
   void cutSelected() {
-    if (_selectedPaths.isEmpty) return;
-    setClipboard(_selectedPaths.toList(), isCut: true);
-    _selectedPaths.clear();
+    if (selectedPaths.isEmpty) return;
+    setClipboard(selectedPaths.toList(), isCut: true);
+    selectedPaths.clear();
     notifyListeners();
   }
 
   Future<void> deleteSelected() async {
-    if (_selectedPaths.isEmpty) return;
+    if (selectedPaths.isEmpty) return;
 
-    _isLoading = true;
+    activeTab.isLoading = true;
     notifyListeners();
 
     try {
-      for (final path in _selectedPaths) {
+      for (final path in selectedPaths) {
         if (isRestrictedPath(path)) {
-          await RootShizukuService.deleteItem(path, useRoot: _useRootMode);
+          await RootShizukuService.deleteItem(path, useRoot: useRootMode);
         } else {
           final type = FileSystemEntity.typeSync(path);
           if (type == FileSystemEntityType.directory) {
@@ -576,9 +644,9 @@ class FileManagerProvider extends ChangeNotifier {
       debugPrint('Error deleting selected files: $e');
     }
 
-    _selectedPaths.clear();
-    _isLoading = false;
-    await loadDirectory(_currentPath, showLoading: false);
+    selectedPaths.clear();
+    activeTab.isLoading = false;
+    await loadDirectory(currentPath, showLoading: false);
   }
 
   Future<void> pasteFile() async {
@@ -587,13 +655,13 @@ class FileManagerProvider extends ChangeNotifier {
     try {
       for (final srcPath in _clipboardPaths) {
         final fileName = p.basename(srcPath);
-        final destinationPath = p.join(_currentPath, fileName);
+        final destinationPath = p.join(currentPath, fileName);
 
         if (isRestrictedPath(srcPath) || isRestrictedPath(destinationPath)) {
           if (_isCut) {
-            await RootShizukuService.moveItem(srcPath, destinationPath, useRoot: _useRootMode);
+            await RootShizukuService.moveItem(srcPath, destinationPath, useRoot: useRootMode);
           } else {
-            await RootShizukuService.copyItem(srcPath, destinationPath, useRoot: _useRootMode);
+            await RootShizukuService.copyItem(srcPath, destinationPath, useRoot: useRootMode);
           }
         } else {
           final sourceEntity = FileSystemEntity.typeSync(srcPath) == FileSystemEntityType.directory
@@ -624,7 +692,7 @@ class FileManagerProvider extends ChangeNotifier {
       }
       
       clearClipboard();
-      await loadDirectory(_currentPath, showLoading: false);
+      await loadDirectory(currentPath, showLoading: false);
     } catch (e) {
       debugPrint('Error pasting file: $e');
       clearClipboard();
@@ -647,7 +715,7 @@ class FileManagerProvider extends ChangeNotifier {
   Future<void> deleteFile(String path) async {
     try {
       if (isRestrictedPath(path)) {
-        await RootShizukuService.deleteItem(path, useRoot: _useRootMode);
+        await RootShizukuService.deleteItem(path, useRoot: useRootMode);
       } else {
         final type = FileSystemEntity.typeSync(path);
         if (type == FileSystemEntityType.directory) {
@@ -656,7 +724,7 @@ class FileManagerProvider extends ChangeNotifier {
           await File(path).delete();
         }
       }
-      await loadDirectory(_currentPath, showLoading: false);
+      await loadDirectory(currentPath, showLoading: false);
     } catch (e) {
       debugPrint('Error deleting file: $e');
     }
@@ -665,7 +733,7 @@ class FileManagerProvider extends ChangeNotifier {
   Future<void> renameFile(String oldPath, String newName) async {
     try {
       if (isRestrictedPath(oldPath)) {
-        await RootShizukuService.renameItem(oldPath, newName, useRoot: _useRootMode);
+        await RootShizukuService.renameItem(oldPath, newName, useRoot: useRootMode);
       } else {
         final newPath = p.join(p.dirname(oldPath), newName);
         final type = FileSystemEntity.typeSync(oldPath);
@@ -675,7 +743,7 @@ class FileManagerProvider extends ChangeNotifier {
           await File(oldPath).rename(newPath);
         }
       }
-      await loadDirectory(_currentPath, showLoading: false);
+      await loadDirectory(currentPath, showLoading: false);
     } catch (e) {
       debugPrint('Error renaming file: $e');
     }
@@ -683,13 +751,13 @@ class FileManagerProvider extends ChangeNotifier {
 
   Future<void> createFolder(String name) async {
     try {
-      if (isRestrictedPath(_currentPath)) {
-        await RootShizukuService.createFolder(_currentPath, name, useRoot: _useRootMode);
+      if (isRestrictedPath(currentPath)) {
+        await RootShizukuService.createFolder(currentPath, name, useRoot: useRootMode);
       } else {
-        final newPath = p.join(_currentPath, name);
+        final newPath = p.join(currentPath, name);
         await Directory(newPath).create();
       }
-      await loadDirectory(_currentPath, showLoading: false);
+      await loadDirectory(currentPath, showLoading: false);
     } catch (e) {
       debugPrint('Error creating folder: $e');
     }
@@ -697,13 +765,13 @@ class FileManagerProvider extends ChangeNotifier {
 
   Future<void> createFile(String name) async {
     try {
-      if (isRestrictedPath(_currentPath)) {
-        await RootShizukuService.createFile(_currentPath, name, useRoot: _useRootMode);
+      if (isRestrictedPath(currentPath)) {
+        await RootShizukuService.createFile(currentPath, name, useRoot: useRootMode);
       } else {
-        final newPath = p.join(_currentPath, name);
+        final newPath = p.join(currentPath, name);
         await File(newPath).create();
       }
-      await loadDirectory(_currentPath, showLoading: false);
+      await loadDirectory(currentPath, showLoading: false);
     } catch (e) {
       debugPrint('Error creating file: $e');
     }
@@ -719,14 +787,14 @@ class FileManagerProvider extends ChangeNotifier {
     required bool separateArchives,
     List<String>? targetPaths,
   }) async {
-    final paths = targetPaths ?? (_selectedPaths.isNotEmpty ? _selectedPaths.toList() : [_currentPath]);
-    _isLoading = true;
+    final paths = targetPaths ?? (selectedPaths.isNotEmpty ? selectedPaths.toList() : [currentPath]);
+    activeTab.isLoading = true;
     notifyListeners();
 
     try {
       await ArchiveService.createArchive(
         sourcePaths: paths,
-        destinationDir: _currentPath,
+        destinationDir: currentPath,
         archiveName: archiveName,
         format: format,
         compressionLevel: compressionLevel,
@@ -739,15 +807,15 @@ class FileManagerProvider extends ChangeNotifier {
       debugPrint('Error creating archive: $e');
     }
 
-    _selectedPaths.clear();
-    await loadDirectory(_currentPath, showLoading: false);
+    selectedPaths.clear();
+    await loadDirectory(currentPath, showLoading: false);
   }
 
   Future<void> extractArchiveDirectly(BuildContext context, String path) async {
-    final destDir = p.join(_currentPath, p.basenameWithoutExtension(path));
+    final destDir = p.join(currentPath, p.basenameWithoutExtension(path));
     final res = await ExtractArchiveDialog.show(context, archiveName: p.basename(path), defaultDestDir: destDir);
     if (res != null && context.mounted) {
-      _isLoading = true;
+      activeTab.isLoading = true;
       notifyListeners();
       try {
         await ArchiveService.extractArchive(archivePath: path, destinationDir: res.destinationDir, password: res.password);
@@ -759,7 +827,7 @@ class FileManagerProvider extends ChangeNotifier {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Extraction failed: $e')));
         }
       }
-      await loadDirectory(_currentPath, showLoading: false);
+      await loadDirectory(currentPath, showLoading: false);
     }
   }
 
