@@ -48,6 +48,7 @@ class FileManagerProvider extends ChangeNotifier {
     _defaultToBrowseScreen = PreferencesService.getDefaultToBrowseScreen();
     _showFolderFileCount = PreferencesService.getShowFolderFileCount();
     _showBottomActionBar = PreferencesService.getShowBottomActionBar();
+    _showMediaPreviews = PreferencesService.getShowMediaPreviews();
     _accentColorOption = PreferencesService.getAccentColor();
     _folderIconOption = PreferencesService.getFolderIconStyle();
     _pinnedFolderShortcuts = PreferencesService.getPinnedFolderShortcuts();
@@ -222,6 +223,15 @@ class FileManagerProvider extends ChangeNotifier {
   void toggleBottomActionBar() {
     _showBottomActionBar = !_showBottomActionBar;
     PreferencesService.saveShowBottomActionBar(_showBottomActionBar);
+    notifyListeners();
+  }
+
+  bool _showMediaPreviews = true;
+  bool get showMediaPreviews => _showMediaPreviews;
+
+  void toggleMediaPreviews() {
+    _showMediaPreviews = !_showMediaPreviews;
+    PreferencesService.saveShowMediaPreviews(_showMediaPreviews);
     notifyListeners();
   }
 

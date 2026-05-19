@@ -102,6 +102,21 @@ class MoreSettingsScreen extends StatelessWidget {
               ),
               onTap: () => fileManager.toggleBottomActionBar(),
             ),
+            _buildSettingTile(
+              theme,
+              icon: Broken.image,
+              title: 'Show Media Previews',
+              subtitle: 'Display actual image and video thumbnails instead of generic file icons',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.showMediaPreviews,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleMediaPreviews(),
+                ),
+              ),
+              onTap: () => fileManager.toggleMediaPreviews(),
+            ),
 
             const SizedBox(height: 24),
             _buildSectionHeader(theme, 'Appearance & Themes'),

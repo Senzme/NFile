@@ -7,6 +7,7 @@ import '../../models/file_item_model.dart';
 import '../../core/utils.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import '../../providers/media_provider.dart';
+import '../../providers/file_manager_provider.dart';
 
 class FileItem extends StatelessWidget {
   final FileItemModel file;
@@ -189,11 +190,20 @@ class _MediaThumbnailState extends State<_MediaThumbnail> {
 
   @override
   Widget build(BuildContext context) {
+    final showMediaPreviews = context.watch<FileManagerProvider>().showMediaPreviews;
     final isImg = FileUtils.isImage(widget.file.path);
     final isVid = FileUtils.isVideo(widget.file.path);
 
     if (widget.isSelected) {
       return Icon(Broken.tick_circle, color: Theme.of(context).colorScheme.onPrimary, size: 28 * widget.iconScale);
+    }
+
+    if (!showMediaPreviews) {
+      return Icon(
+        FileUtils.getIconForFile(widget.file.path),
+        color: widget.iconColor,
+        size: 28 * widget.iconScale,
+      );
     }
 
     if (isImg) {

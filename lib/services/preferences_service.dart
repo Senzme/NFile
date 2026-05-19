@@ -80,6 +80,16 @@ class PreferencesService {
     await _prefs?.setBool(_keyShowBottomActionBar, val);
   }
 
+  static const String _keyShowMediaPreviews = 'show_media_previews';
+
+  static bool getShowMediaPreviews() {
+    return _prefs?.getBool(_keyShowMediaPreviews) ?? true;
+  }
+
+  static Future<void> saveShowMediaPreviews(bool val) async {
+    await _prefs?.setBool(_keyShowMediaPreviews, val);
+  }
+
   static bool getIsGridView() {
     return _prefs?.getBool(_keyIsGridView) ?? false;
   }
