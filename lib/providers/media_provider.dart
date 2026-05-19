@@ -126,6 +126,11 @@ class MediaProvider extends ChangeNotifier {
   List<FileSystemEntity> _apks = [];
   List<AssetEntity> _screenshots = [];
   List<CustomShortcutModel> _customShortcuts = [];
+  List<AssetPathEntity> _imageAlbums = [];
+  List<AssetPathEntity> _videoAlbums = [];
+
+  List<AssetPathEntity> get imageAlbums => _imageAlbums;
+  List<AssetPathEntity> get videoAlbums => _videoAlbums;
 
   List<String> _categoryOrder = [
     'Images',
@@ -395,6 +400,28 @@ class MediaProvider extends ChangeNotifier {
           _screenshots = allScreenshots;
         }
       }
+
+      // Fetch distinct image albums
+      final imgAlbums = await PhotoManager.getAssetPathList(type: RequestType.image);
+      final filteredImgAlbums = <AssetPathEntity>[];
+      for (final album in imgAlbums) {
+        final count = await album.assetCountAsync;
+        if (count > 0) {
+          filteredImgAlbums.add(album);
+        }
+      }
+      _imageAlbums = filteredImgAlbums;
+
+      // Fetch distinct video albums
+      final vidAlbums = await PhotoManager.getAssetPathList(type: RequestType.video);
+      final filteredVidAlbums = <AssetPathEntity>[];
+      for (final album in vidAlbums) {
+        final count = await album.assetCountAsync;
+        if (count > 0) {
+          filteredVidAlbums.add(album);
+        }
+      }
+      _videoAlbums = filteredVidAlbums;
     } catch (_) {}
   }
 

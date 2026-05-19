@@ -39,6 +39,21 @@ class RootShizukuService {
     return RootShizukuStatus(isRootAvailable: false, isShizukuAvailable: false, shizukuPermissionGranted: false);
   }
 
+  static Future<Map<String, int>?> getStorageSpace() async {
+    if (!Platform.isAndroid) return null;
+    try {
+      final res = await _channel.invokeMethod('getStorageSpace');
+      if (res is Map) {
+        return {
+          'totalBytes': res['totalBytes'] as int? ?? 0,
+          'availableBytes': res['availableBytes'] as int? ?? 0,
+          'usedBytes': res['usedBytes'] as int? ?? 0,
+        };
+      }
+    } catch (_) {}
+    return null;
+  }
+
   static Future<bool> requestShizukuPermission() async {
     if (!Platform.isAndroid) return false;
     try {

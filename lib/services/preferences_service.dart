@@ -81,6 +81,16 @@ class PreferencesService {
     await _prefs?.setBool(_keyShowBottomActionBar, val);
   }
 
+  static const String _keyShowHomeBrowseNav = 'show_home_browse_nav';
+
+  static bool getShowHomeBrowseNav() {
+    return _prefs?.getBool(_keyShowHomeBrowseNav) ?? true;
+  }
+
+  static Future<void> saveShowHomeBrowseNav(bool val) async {
+    await _prefs?.setBool(_keyShowHomeBrowseNav, val);
+  }
+
   static const String _keyShowMediaPreviews = 'show_media_previews';
 
   static bool getShowMediaPreviews() {

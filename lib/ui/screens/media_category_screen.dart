@@ -18,8 +18,9 @@ enum MediaType { images, videos, audios, documents, archives, downloads, apks, s
 
 class MediaCategoryScreen extends StatefulWidget {
   final MediaType mediaType;
+  final AssetPathEntity? album;
 
-  const MediaCategoryScreen({super.key, required this.mediaType});
+  const MediaCategoryScreen({super.key, required this.mediaType, this.album});
 
   @override
   State<MediaCategoryScreen> createState() => _MediaCategoryScreenState();
@@ -34,6 +35,10 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
 
   bool get _isSelectionMode => _selectedFilePaths.isNotEmpty || _selectedAssetIds.isNotEmpty;
 
+  bool _showFoldersMode = false;
+  List<AssetEntity> _albumAssets = [];
+  bool _loadingAlbum = false;
+
   @override
   void initState() {
     super.initState();
@@ -42,9 +47,29 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
       duration: const Duration(milliseconds: 1500),
     )..repeat();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<MediaProvider>().loadMedia();
-    });
+    if (widget.album != null) {
+      _loadAlbumAssets();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<MediaProvider>().loadMedia();
+      });
+    }
+  }
+
+  Future<void> _loadAlbumAssets() async {
+    setState(() => _loadingAlbum = true);
+    try {
+      final count = await widget.album!.assetCountAsync;
+      final assets = await widget.album!.getAssetListPaged(page: 0, size: count);
+      if (mounted) {
+        setState(() {
+          _albumAssets = assets;
+          _loadingAlbum = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingAlbum = false);
+    }
   }
 
   @override
@@ -54,6 +79,9 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
   }
 
   String get _title {
+    if (widget.album != null) {
+      return widget.album!.name;
+    }
     switch (widget.mediaType) {
       case MediaType.images:
         return 'Images';
@@ -583,32 +611,92 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
           ],
         ],
       ),
-      body: Consumer<MediaProvider>(
-        builder: (context, provider, child) {
-          if (provider.isLoading && !provider.isLoaded) {
-            return _buildShimmerLoading(theme);
-          }
+      body: Column(
+        children: [
+          if (widget.album == null && (widget.mediaType == MediaType.images || widget.mediaType == MediaType.videos))
+            _buildFoldersToggle(theme),
+          Expanded(
+            child: Consumer<MediaProvider>(
+              builder: (context, provider, child) {
+                if (widget.album == null && _showFoldersMode) {
+                  final albums = widget.mediaType == MediaType.images ? provider.imageAlbums : provider.videoAlbums;
+                  if (albums.isEmpty) {
+                    return _buildEmptyState(theme);
+                  }
+                  return GridView.builder(
+                    padding: const EdgeInsets.all(12),
+                    physics: const BouncingScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 0.95,
+                    ),
+                    itemCount: albums.length,
+                    itemBuilder: (context, index) {
+                      final album = albums[index];
+                      return FolderGridItem(
+                        album: album,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            _slideRoute(MediaCategoryScreen(
+                              mediaType: widget.mediaType,
+                              album: album,
+                            )),
+                          );
+                        },
+                      );
+                    },
+                  );
+                }
 
-          final isDateWise = provider.sortOrder == MediaSortOrder.dateWise;
+                if (widget.album != null) {
+                  if (_loadingAlbum) {
+                    return _buildShimmerLoading(theme);
+                  }
+                  final displayAssets = List<AssetEntity>.from(_albumAssets);
+                  if (provider.sortOrder == MediaSortOrder.newest) {
+                    displayAssets.sort((a, b) => b.createDateTime.compareTo(a.createDateTime));
+                  } else if (provider.sortOrder == MediaSortOrder.oldest) {
+                    displayAssets.sort((a, b) => a.createDateTime.compareTo(b.createDateTime));
+                  }
 
-          if (widget.mediaType == MediaType.images) {
-            return _buildImageGrid(provider.images, theme, isDateWise);
-          } else if (widget.mediaType == MediaType.videos) {
-            return _buildVideoGrid(provider.videos, theme, isDateWise);
-          } else if (widget.mediaType == MediaType.audios) {
-            return _buildAudioList(provider.audios, theme, isDateWise);
-          } else if (widget.mediaType == MediaType.screenshots) {
-            return _buildImageGrid(provider.screenshots, theme, isDateWise);
-          } else if (widget.mediaType == MediaType.archives) {
-            return _buildGenericFileList(provider.archives, theme, isDateWise);
-          } else if (widget.mediaType == MediaType.downloads) {
-            return _buildGenericFileList(provider.downloads, theme, isDateWise);
-          } else if (widget.mediaType == MediaType.apks) {
-            return _buildGenericFileList(provider.apks, theme, isDateWise);
-          } else {
-            return _buildDocumentList(provider.documents, theme, isDateWise);
-          }
-        },
+                  final isDateWise = provider.sortOrder == MediaSortOrder.dateWise;
+                  if (widget.mediaType == MediaType.images) {
+                    return _buildImageGrid(displayAssets, theme, isDateWise);
+                  } else {
+                    return _buildVideoGrid(displayAssets, theme, isDateWise);
+                  }
+                }
+
+                if (provider.isLoading && !provider.isLoaded) {
+                  return _buildShimmerLoading(theme);
+                }
+
+                final isDateWise = provider.sortOrder == MediaSortOrder.dateWise;
+
+                if (widget.mediaType == MediaType.images) {
+                  return _buildImageGrid(provider.images, theme, isDateWise);
+                } else if (widget.mediaType == MediaType.videos) {
+                  return _buildVideoGrid(provider.videos, theme, isDateWise);
+                } else if (widget.mediaType == MediaType.audios) {
+                  return _buildAudioList(provider.audios, theme, isDateWise);
+                } else if (widget.mediaType == MediaType.screenshots) {
+                  return _buildImageGrid(provider.screenshots, theme, isDateWise);
+                } else if (widget.mediaType == MediaType.archives) {
+                  return _buildGenericFileList(provider.archives, theme, isDateWise);
+                } else if (widget.mediaType == MediaType.downloads) {
+                  return _buildGenericFileList(provider.downloads, theme, isDateWise);
+                } else if (widget.mediaType == MediaType.apks) {
+                  return _buildGenericFileList(provider.apks, theme, isDateWise);
+                } else {
+                  return _buildDocumentList(provider.documents, theme, isDateWise);
+                }
+              },
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: _isSelectionMode ? _buildBottomActionBar(theme) : null,
     );
@@ -1108,6 +1196,65 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
       transitionDuration: const Duration(milliseconds: 250),
     );
   }
+
+  Widget _buildFoldersToggle(ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Container(
+        height: 40,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: InkWell(
+                onTap: () => setState(() => _showFoldersMode = false),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: !_showFoldersMode ? theme.colorScheme.primary : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'All Items',
+                    style: TextStyle(
+                      color: !_showFoldersMode ? theme.colorScheme.onPrimary : theme.colorScheme.onSurfaceVariant,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: InkWell(
+                onTap: () => setState(() => _showFoldersMode = true),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: _showFoldersMode ? theme.colorScheme.primary : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'Folders',
+                    style: TextStyle(
+                      color: _showFoldersMode ? theme.colorScheme.onPrimary : theme.colorScheme.onSurfaceVariant,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ThumbnailShimmerPlaceholder extends StatefulWidget {
@@ -1337,6 +1484,132 @@ class _CachedVideoTileState extends State<_CachedVideoTile> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class FolderGridItem extends StatefulWidget {
+  final AssetPathEntity album;
+  final VoidCallback onTap;
+
+  const FolderGridItem({super.key, required this.album, required this.onTap});
+
+  @override
+  State<FolderGridItem> createState() => _FolderGridItemState();
+}
+
+class _FolderGridItemState extends State<FolderGridItem> {
+  AssetEntity? _firstAsset;
+  int _count = 0;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDetails();
+  }
+
+  Future<void> _loadDetails() async {
+    try {
+      final count = await widget.album.assetCountAsync;
+      if (count > 0) {
+        final assets = await widget.album.getAssetListPaged(page: 0, size: 1);
+        if (assets.isNotEmpty && mounted) {
+          setState(() {
+            _firstAsset = assets.first;
+            _count = count;
+            _loading = false;
+          });
+          return;
+        }
+      }
+    } catch (_) {}
+    if (mounted) {
+      setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            border: Border.all(color: theme.colorScheme.outlineVariant.withOpacity(0.4)),
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (_firstAsset != null)
+                _CachedImageTile(
+                  asset: _firstAsset!,
+                  onTap: widget.onTap,
+                  onLongPress: () {},
+                )
+              else
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [theme.colorScheme.surfaceContainerHighest, theme.colorScheme.surface],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: Icon(Broken.folder_2, color: theme.colorScheme.primary.withOpacity(0.5), size: 40),
+                ),
+              // Gradient Overlay
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.transparent, Colors.black.withOpacity(0.85)],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: const [0.4, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+              // Content
+              Positioned(
+                bottom: 12,
+                left: 12,
+                right: 12,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      widget.album.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$_count items',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.75),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

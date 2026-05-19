@@ -142,31 +142,33 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _currentIndex,
-          onDestinationSelected: (index) {
-            if (index == 1) {
-              final now = DateTime.now();
-              if (_currentIndex == 1 && _lastBrowseTapTime != null && now.difference(_lastBrowseTapTime!) < const Duration(milliseconds: 800)) {
-                provider.loadDirectory(provider.rootPath);
-              }
-              _lastBrowseTapTime = now;
-            }
-            setState(() => _currentIndex = index);
-          },
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Broken.home),
-              selectedIcon: Icon(Broken.home_1),
-              label: 'Home',
-            ),
-            NavigationDestination(
-              icon: Icon(Broken.folder),
-              selectedIcon: Icon(Broken.folder_open),
-              label: 'Browse',
-            ),
-          ],
-        ),
+        bottomNavigationBar: provider.showHomeBrowseNav
+            ? NavigationBar(
+                selectedIndex: _currentIndex,
+                onDestinationSelected: (index) {
+                  if (index == 1) {
+                    final now = DateTime.now();
+                    if (_currentIndex == 1 && _lastBrowseTapTime != null && now.difference(_lastBrowseTapTime!) < const Duration(milliseconds: 800)) {
+                      provider.loadDirectory(provider.rootPath);
+                    }
+                    _lastBrowseTapTime = now;
+                  }
+                  setState(() => _currentIndex = index);
+                },
+                destinations: const [
+                  NavigationDestination(
+                    icon: Icon(Broken.home),
+                    selectedIcon: Icon(Broken.home_1),
+                    label: 'Home',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Broken.folder),
+                    selectedIcon: Icon(Broken.folder_open),
+                    label: 'Browse',
+                  ),
+                ],
+              )
+            : null,
       ),
     );
   }

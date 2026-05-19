@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/icon_fonts/broken_icons.dart';
+import '../../providers/file_manager_provider.dart';
+import '../../core/utils.dart';
 
 class PremiumStorageOverview extends StatelessWidget {
   final VoidCallback onBrowseStorage;
@@ -8,7 +11,23 @@ class PremiumStorageOverview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const double usedPercentage = 0.65;
+    final provider = context.watch<FileManagerProvider>();
+
+    final double totalBytes = provider.totalStorageBytes > 0 
+        ? provider.totalStorageBytes.toDouble() 
+        : 128 * 1024 * 1024 * 1024.0;
+    
+    final double usedBytes = provider.usedStorageBytes > 0 
+        ? provider.usedStorageBytes.toDouble() 
+        : 84.2 * 1024 * 1024 * 1024.0;
+        
+    final double usedPercentage = provider.totalStorageBytes > 0 
+        ? provider.storageUsedPercentage 
+        : 0.65;
+
+    final String totalStorageStr = FileUtils.formatBytes(totalBytes.toInt(), 1);
+    final String usedStorageStr = FileUtils.formatBytes(usedBytes.toInt(), 1);
+
     final theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
 
@@ -131,13 +150,13 @@ class PremiumStorageOverview extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        '84.2 GB used',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12),
+                      Text(
+                        '$usedStorageStr used',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12),
                       ),
                       Text(
-                        '128 GB total',
-                        style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w500, fontSize: 12),
+                        '$totalStorageStr total',
+                        style: TextStyle(color: Colors.white.withOpacity(0.72), fontWeight: FontWeight.w500, fontSize: 12),
                       ),
                     ],
                   ),

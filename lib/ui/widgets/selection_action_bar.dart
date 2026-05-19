@@ -7,6 +7,7 @@ import '../../core/icon_fonts/broken_icons.dart';
 import '../../core/utils.dart';
 import 'file_action_dialogs.dart';
 import 'create_archive_dialog.dart';
+import 'file_operation_progress_dialog.dart';
 
 class SelectionActionBar extends StatelessWidget {
   final FileManagerProvider provider;
@@ -40,9 +41,9 @@ class SelectionActionBar extends StatelessWidget {
               label: 'Copy',
               onTap: () {
                 provider.copySelected();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Copied $selectedCount item(s)')),
-                );
+                // ScaffoldMessenger.of(context).showSnackBar(
+                //   SnackBar(content: Text('Copied $selectedCount item(s)')),
+                // );
               },
             ),
             _ActionButton(
@@ -50,9 +51,9 @@ class SelectionActionBar extends StatelessWidget {
               label: 'Cut',
               onTap: () {
                 provider.cutSelected();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Cut $selectedCount item(s)')),
-                );
+                // ScaffoldMessenger.of(context).showSnackBar(
+                //   SnackBar(content: Text('Cut $selectedCount item(s)')),
+                // );
               },
             ),
             _ActionButton(
@@ -126,6 +127,7 @@ class SelectionActionBar extends StatelessWidget {
                     provider.clearSelection();
                   }
                 } else if (action == 'paste') {
+                  FileOperationProgressDialog.show(context, provider);
                   await provider.pasteFile();
                   provider.clearSelection();
                   if (context.mounted) {

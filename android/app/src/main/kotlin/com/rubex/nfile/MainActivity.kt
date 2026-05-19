@@ -2,6 +2,8 @@ package com.rubex.nfile
 
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Environment
+import android.os.StatFs
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -75,6 +77,30 @@ class MainActivity : FlutterActivity() {
                             "shizukuPermissionGranted" to shizukuPermissionGranted
                         )
                         runOnUiThread { result.success(res) }
+                    }
+                }
+                "getStorageSpace" -> {
+                    executor.execute {
+                        try {
+                            val path = Environment.getExternalStorageDirectory().path
+                            val stat = StatFs(path)
+                            val blockSize = stat.blockSizeLong
+                            val totalBlocks = stat.blockCountLong
+                            val availableBlocks = stat.availableBlocksLong
+
+                            val totalBytes = totalBlocks * blockSize
+                            val availableBytes = availableBlocks * blockSize
+                            val usedBytes = totalBytes - availableBytes
+
+                            val res = mapOf(
+                                "totalBytes" to totalBytes,
+                                "availableBytes" to availableBytes,
+                                "usedBytes" to usedBytes
+                            )
+                            runOnUiThread { result.success(res) }
+                        } catch (e: Exception) {
+                            runOnUiThread { result.error("STORAGE_ERROR", e.message, null) }
+                        }
                     }
                 }
                 "requestShizukuPermission" -> {

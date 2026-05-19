@@ -11,6 +11,7 @@ import '../widgets/file_action_dialogs.dart';
 import '../widgets/create_archive_dialog.dart';
 import '../widgets/selection_action_bar.dart';
 import '../widgets/selection_context_bottom_sheet.dart';
+import '../widgets/file_operation_progress_dialog.dart';
 import '../widgets/nfile_drawer.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import 'global_search_screen.dart';
@@ -95,11 +96,11 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
         break;
       case 'copy':
         provider.copyFile(path);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied to clipboard')));
+        // ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied to clipboard')));
         break;
       case 'cut':
         provider.cutFile(path);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cut to clipboard')));
+        // ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cut to clipboard')));
         break;
       case 'rename':
         final currentName = p.basename(path);
@@ -632,8 +633,9 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                           onPressed: () => _goBack(provider),
                         )
                       : Builder(
-                          builder: (context) => _AnimatedDrawerButton(
-                            onTap: () => Scaffold.of(context).openDrawer(),
+                          builder: (context) => IconButton(
+                            icon: const Icon(Broken.menu),
+                            onPressed: () => Scaffold.of(context).openDrawer(),
                           ),
                         ),
               actions: isSelectionMode
@@ -656,7 +658,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                             tooltip: 'Copy',
                             onPressed: () {
                               provider.copySelected();
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied selected items')));
+                              // ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied selected items')));
                             },
                           ),
                           IconButton(
@@ -664,7 +666,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                             tooltip: 'Cut',
                             onPressed: () {
                               provider.cutSelected();
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cut selected items')));
+                              // ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cut selected items')));
                             },
                           ),
                           IconButton(
@@ -957,27 +959,66 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                 : provider.showBottomActionBar
                     ? FloatingActionButtonLocation.centerDocked
                     : FloatingActionButtonLocation.endFloat,
-            floatingActionButton: provider.hasClipboard
-                ? FloatingActionButton.extended(
-                    onPressed: () async {
-                      await provider.pasteFile();
+            floatingActionButton: (() {
+              if (provider.hasClipboard) {
+                return Padding(
+                  padding: EdgeInsets.only(bottom: provider.showBottomActionBar ? 0 : 16),
+                  child: GestureDetector(
+                    onLongPress: () {
+                      provider.clearClipboard();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Action cancelled / Clipboard cleared'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                    onDoubleTap: () async {
+                      FileOperationProgressDialog.show(context, provider);
+                      await provider.pasteFile(clearAfterPaste: false);
                       if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pasted successfully')));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Pasted (holding clipboard for multiple pastes)'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
                       }
                     },
-                    icon: const Icon(Broken.clipboard),
-                    label: const Text('Paste Here'),
-                  )
-                : (!isSelectionMode && provider.showFloatingAddButton)
-                    ? FloatingActionButton(
-                        onPressed: () => _showAddBottomSheet(context, provider),
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        foregroundColor: Colors.white,
-                        elevation: 4,
-                        shape: provider.showBottomActionBar ? RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)) : null,
-                        child: const Icon(Broken.add, size: 28),
-                      )
-                    : null,
+                    child: FloatingActionButton.extended(
+                      onPressed: () async {
+                        FileOperationProgressDialog.show(context, provider);
+                        await provider.pasteFile(clearAfterPaste: true);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Pasted successfully'),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(Broken.clipboard),
+                      label: const Text('Paste Here'),
+                    ),
+                  ),
+                );
+              }
+              if (!isSelectionMode && provider.showFloatingAddButton) {
+                return Padding(
+                  padding: EdgeInsets.only(bottom: provider.showBottomActionBar ? 0 : 16),
+                  child: FloatingActionButton(
+                    onPressed: () => _showAddBottomSheet(context, provider),
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 4,
+                    shape: provider.showBottomActionBar ? RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)) : null,
+                    child: const Icon(Broken.add, size: 28),
+                  ),
+                );
+              }
+              return null;
+            })(),
             bottomNavigationBar: (isSelectionMode && provider.showBottomActionBar)
                 ? SelectionActionBar(provider: provider)
                 : !provider.showBottomActionBar
@@ -1090,57 +1131,6 @@ class _AnimatedTitleButtonState extends State<_AnimatedTitleButton> with SingleT
                 ],
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AnimatedDrawerButton extends StatefulWidget {
-  final VoidCallback onTap;
-  const _AnimatedDrawerButton({required this.onTap});
-
-  @override
-  State<_AnimatedDrawerButton> createState() => _AnimatedDrawerButtonState();
-}
-
-class _AnimatedDrawerButtonState extends State<_AnimatedDrawerButton> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 100));
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.85).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) => Transform.scale(
-        scale: _scaleAnimation.value,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTapDown: (_) => _controller.forward(),
-          onTapUp: (_) {
-            _controller.reverse();
-            widget.onTap();
-          },
-          onTapCancel: () => _controller.reverse(),
-          child: Container(
-            margin: const EdgeInsets.only(left: 8),
-            padding: const EdgeInsets.all(10.0),
-            color: Colors.transparent,
-            child: const Icon(Icons.menu_rounded, size: 28),
           ),
         ),
       ),

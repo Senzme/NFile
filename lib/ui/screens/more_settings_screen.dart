@@ -104,6 +104,21 @@ class MoreSettingsScreen extends StatelessWidget {
             ),
             _buildSettingTile(
               theme,
+              icon: Broken.menu,
+              title: 'Show Home & Browse Bottom Bar',
+              subtitle: 'Toggle bottom navigation bar visibility on the Home screen',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.showHomeBrowseNav,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleShowHomeBrowseNav(),
+                ),
+              ),
+              onTap: () => fileManager.toggleShowHomeBrowseNav(),
+            ),
+            _buildSettingTile(
+              theme,
               icon: Broken.image,
               title: 'Show Media Previews',
               subtitle: 'Display actual image and video thumbnails instead of generic file icons',

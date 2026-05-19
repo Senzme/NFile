@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/file_manager_provider.dart';
+import '../../core/utils.dart';
 
 class StorageOverviewCard extends StatelessWidget {
   const StorageOverviewCard({super.key});
@@ -6,9 +9,23 @@ class StorageOverviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final provider = context.watch<FileManagerProvider>();
+
+    final double totalBytes = provider.totalStorageBytes > 0 
+        ? provider.totalStorageBytes.toDouble() 
+        : 128 * 1024 * 1024 * 1024.0;
     
-    // In a real app, this would come from a platform channel measuring real storage
-    const double usedPercentage = 0.65; 
+    final double usedBytes = provider.usedStorageBytes > 0 
+        ? provider.usedStorageBytes.toDouble() 
+        : 82.4 * 1024 * 1024 * 1024.0;
+        
+    final double usedPercentage = provider.totalStorageBytes > 0 
+        ? provider.storageUsedPercentage 
+        : 0.65;
+
+    final String totalStorageStr = FileUtils.formatBytes(totalBytes.toInt(), 1);
+    final String usedStorageStr = FileUtils.formatBytes(usedBytes.toInt(), 1);
+    final int usedPercentInt = (usedPercentage * 100).toInt();
     
     return Container(
       margin: const EdgeInsets.all(16),
@@ -51,9 +68,9 @@ class StorageOverviewCard extends StatelessWidget {
                   color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text(
-                  '65% Used',
-                  style: TextStyle(
+                child: Text(
+                  '$usedPercentInt% Used',
+                  style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
                   ),
@@ -72,19 +89,19 @@ class StorageOverviewCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '82.4 GB used',
-                style: TextStyle(
+                '$usedStorageStr used',
+                style: const TextStyle(
                   color: Colors.white70,
                   fontWeight: FontWeight.w500,
                 ),
               ),
               Text(
-                '128 GB total',
-                style: TextStyle(
+                '$totalStorageStr total',
+                style: const TextStyle(
                   color: Colors.white70,
                   fontWeight: FontWeight.w500,
                 ),

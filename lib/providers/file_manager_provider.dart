@@ -50,11 +50,19 @@ class FileManagerProvider extends ChangeNotifier {
     _defaultToBrowseScreen = PreferencesService.getDefaultToBrowseScreen();
     _showFolderFileCount = PreferencesService.getShowFolderFileCount();
     _showBottomActionBar = PreferencesService.getShowBottomActionBar();
+    _showHomeBrowseNav = PreferencesService.getShowHomeBrowseNav();
     _showMediaPreviews = PreferencesService.getShowMediaPreviews();
     _enableMultipleTabs = PreferencesService.getEnableMultipleTabs();
     _accentColorOption = PreferencesService.getAccentColor();
     _folderIconOption = PreferencesService.getFolderIconStyle();
     _pinnedFolderShortcuts = PreferencesService.getPinnedFolderShortcuts();
+  }
+
+  final ValueNotifier<FileOperationProgress?> progressNotifier = ValueNotifier<FileOperationProgress?>(null);
+  bool _isOperationCancelled = false;
+
+  void cancelOperation() {
+    _isOperationCancelled = true;
   }
 
   List<CustomShortcutModel> _pinnedFolderShortcuts = [];
@@ -232,6 +240,15 @@ class FileManagerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool _showHomeBrowseNav = true;
+  bool get showHomeBrowseNav => _showHomeBrowseNav;
+
+  void toggleShowHomeBrowseNav() {
+    _showHomeBrowseNav = !_showHomeBrowseNav;
+    PreferencesService.saveShowHomeBrowseNav(_showHomeBrowseNav);
+    notifyListeners();
+  }
+
   bool _showMediaPreviews = true;
   bool get showMediaPreviews => _showMediaPreviews;
 
@@ -401,6 +418,59 @@ class FileManagerProvider extends ChangeNotifier {
   List<StorageVolume> _storageVolumes = [];
   List<StorageVolume> get storageVolumes => _storageVolumes;
 
+  int _totalStorageBytes = 0;
+  int _usedStorageBytes = 0;
+
+  int get totalStorageBytes => _totalStorageBytes;
+  int get usedStorageBytes => _usedStorageBytes;
+  double get storageUsedPercentage => _totalStorageBytes == 0 ? 0.0 : (_usedStorageBytes / _totalStorageBytes);
+
+  Future<void> updateStorageSpace() async {
+    final space = await RootShizukuService.getStorageSpace();
+    if (space != null) {
+      final rawTotal = space['totalBytes'] ?? 0;
+      final rawUsed = space['usedBytes'] ?? 0;
+
+      if (rawTotal > 0) {
+        final double rawTotalGb = rawTotal / (1024 * 1024 * 1024);
+        double marketingGb = rawTotalGb;
+
+        if (rawTotalGb <= 8) {
+          marketingGb = 8.0;
+        } else if (rawTotalGb <= 16) {
+          marketingGb = 16.0;
+        } else if (rawTotalGb <= 32) {
+          marketingGb = 32.0;
+        } else if (rawTotalGb <= 64) {
+          marketingGb = 64.0;
+        } else if (rawTotalGb <= 128) {
+          marketingGb = 128.0;
+        } else if (rawTotalGb <= 256) {
+          marketingGb = 256.0;
+        } else if (rawTotalGb <= 512) {
+          marketingGb = 512.0;
+        } else if (rawTotalGb <= 1024) {
+          marketingGb = 1024.0;
+        } else if (rawTotalGb <= 2048) {
+          marketingGb = 2048.0;
+        } else {
+          marketingGb = rawTotalGb.roundToDouble();
+        }
+
+        final int marketingTotalBytes = (marketingGb * 1024 * 1024 * 1024).toInt();
+        final int systemReservedBytes = marketingTotalBytes - rawTotal;
+        final int adjustedUsedBytes = rawUsed + systemReservedBytes;
+
+        _totalStorageBytes = marketingTotalBytes;
+        _usedStorageBytes = adjustedUsedBytes;
+      } else {
+        _totalStorageBytes = 0;
+        _usedStorageBytes = 0;
+      }
+      notifyListeners();
+    }
+  }
+
   void setRootPath(String path) {
     _rootPath = path;
     if (_tabs.isNotEmpty) {
@@ -410,6 +480,7 @@ class FileManagerProvider extends ChangeNotifier {
   }
 
   Future<void> _detectStorageVolumes() async {
+    updateStorageSpace();
     final volumes = <StorageVolume>[];
     if (Platform.isAndroid) {
       volumes.add(StorageVolume(name: 'Internal Storage', path: '/storage/emulated/0', isInternal: true));
@@ -686,36 +757,189 @@ class FileManagerProvider extends ChangeNotifier {
     await loadDirectory(currentPath, showLoading: false);
   }
 
-  Future<void> pasteFile() async {
+  Future<void> pasteFile({bool clearAfterPaste = true}) async {
     if (_clipboardPaths.isEmpty) return;
 
-    try {
-      for (final srcPath in _clipboardPaths) {
-        final fileName = p.basename(srcPath);
-        final destinationPath = p.join(currentPath, fileName);
+    _isOperationCancelled = false;
+    activeTab.isLoading = true;
+    notifyListeners();
 
-        if (isRestrictedPath(srcPath) || isRestrictedPath(destinationPath)) {
-          if (_isCut) {
-            await RootShizukuService.moveItem(srcPath, destinationPath, useRoot: useRootMode);
-          } else {
-            await RootShizukuService.copyItem(srcPath, destinationPath, useRoot: useRootMode);
+    try {
+      // 1. Calculate total size and gather all files
+      int totalBytes = 0;
+      final List<Map<String, dynamic>> itemsToProcess = [];
+
+      for (final srcPath in _clipboardPaths) {
+        final type = FileSystemEntity.typeSync(srcPath);
+        if (type == FileSystemEntityType.file) {
+          final file = File(srcPath);
+          final size = file.lengthSync();
+          totalBytes += size;
+          itemsToProcess.add({
+            'source': file,
+            'destPath': p.join(currentPath, p.basename(srcPath)),
+            'size': size,
+            'isDir': false,
+          });
+        } else if (type == FileSystemEntityType.directory) {
+          final dir = Directory(srcPath);
+          final parentPath = p.dirname(srcPath);
+          
+          itemsToProcess.add({
+            'source': dir,
+            'destPath': p.join(currentPath, p.basename(srcPath)),
+            'size': 0,
+            'isDir': true,
+          });
+
+          try {
+            final entities = dir.listSync(recursive: true, followLinks: false);
+            for (final entity in entities) {
+              final relPath = p.relative(entity.path, from: parentPath);
+              final destPath = p.join(currentPath, relPath);
+              
+              if (entity is Directory) {
+                itemsToProcess.add({
+                  'source': entity,
+                  'destPath': destPath,
+                  'size': 0,
+                  'isDir': true,
+                });
+              } else if (entity is File) {
+                final size = entity.lengthSync();
+                totalBytes += size;
+                itemsToProcess.add({
+                  'source': entity,
+                  'destPath': destPath,
+                  'size': size,
+                  'isDir': false,
+                });
+              }
+            }
+          } catch (_) {}
+        }
+      }
+
+      // 2. Initialize progress tracking variables
+      int bytesProcessed = 0;
+      final stopwatch = Stopwatch()..start();
+      final totalFiles = itemsToProcess.length;
+
+      progressNotifier.value = FileOperationProgress(
+        totalFiles: totalFiles,
+        currentFileIndex: 1,
+        currentFileName: 'Starting...',
+        percentage: 0.0,
+        speedMBs: 0.0,
+        eta: Duration.zero,
+        totalBytes: totalBytes > 0 ? totalBytes : 1,
+        bytesProcessed: 0,
+      );
+
+      // 3. Process items sequentially
+      for (int i = 0; i < itemsToProcess.length; i++) {
+        if (_isOperationCancelled) {
+          throw Exception('Cancelled');
+        }
+
+        final item = itemsToProcess[i];
+        final source = item['source'];
+        final String destPath = item['destPath'];
+        final int size = item['size'];
+        final bool isDir = item['isDir'];
+
+        final fileName = p.basename(source.path);
+        double basePercent = totalBytes > 0 ? (bytesProcessed / totalBytes) : (i / totalFiles);
+        progressNotifier.value = FileOperationProgress(
+          totalFiles: totalFiles,
+          currentFileIndex: i + 1,
+          currentFileName: fileName,
+          percentage: basePercent,
+          speedMBs: stopwatch.elapsedMilliseconds > 0 
+              ? (bytesProcessed / (1024 * 1024)) / (stopwatch.elapsed.inMilliseconds / 1000.0)
+              : 0.0,
+          eta: Duration.zero,
+          totalBytes: totalBytes > 0 ? totalBytes : 1,
+          bytesProcessed: bytesProcessed,
+        );
+
+        if (isDir) {
+          final destDir = Directory(destPath);
+          if (!destDir.existsSync()) {
+            await destDir.create(recursive: true);
           }
         } else {
-          final sourceEntity = FileSystemEntity.typeSync(srcPath) == FileSystemEntityType.directory
-              ? Directory(srcPath)
-              : File(srcPath);
+          final parentDir = Directory(p.dirname(destPath));
+          if (!parentDir.existsSync()) {
+            await parentDir.create(recursive: true);
+          }
 
-          if (sourceEntity is File) {
-            if (_isCut) {
-              await sourceEntity.rename(destinationPath);
-            } else {
-              await sourceEntity.copy(destinationPath);
+          final srcFile = source as File;
+          final destFile = File(destPath);
+
+          if (_isCut) {
+            try {
+              await srcFile.rename(destPath);
+              bytesProcessed += size;
+            } catch (_) {
+              await _copyFileWithProgress(
+                srcFile,
+                destFile,
+                onChunkCopied: (chunkSize) {
+                  bytesProcessed += chunkSize;
+                  final elapsedSeconds = stopwatch.elapsed.inMilliseconds / 1000.0;
+                  final speed = elapsedSeconds > 0 ? (bytesProcessed / (1024 * 1024)) / elapsedSeconds : 0.0;
+                  final remainingBytes = totalBytes - bytesProcessed;
+                  final etaSeconds = speed > 0 ? (remainingBytes / (1024 * 1024)) / speed : 0.0;
+
+                  progressNotifier.value = FileOperationProgress(
+                    totalFiles: totalFiles,
+                    currentFileIndex: i + 1,
+                    currentFileName: fileName,
+                    percentage: totalBytes > 0 ? (bytesProcessed / totalBytes) : (i / totalFiles),
+                    speedMBs: speed,
+                    eta: Duration(seconds: etaSeconds.round()),
+                    totalBytes: totalBytes > 0 ? totalBytes : 1,
+                    bytesProcessed: bytesProcessed,
+                  );
+                },
+              );
+              await srcFile.delete();
             }
-          } else if (sourceEntity is Directory) {
-            if (_isCut) {
-              await sourceEntity.rename(destinationPath);
-            } else {
-              await _copyDirectory(Directory(srcPath), Directory(destinationPath));
+          } else {
+            await _copyFileWithProgress(
+              srcFile,
+              destFile,
+              onChunkCopied: (chunkSize) {
+                bytesProcessed += chunkSize;
+                final elapsedSeconds = stopwatch.elapsed.inMilliseconds / 1000.0;
+                final speed = elapsedSeconds > 0 ? (bytesProcessed / (1024 * 1024)) / elapsedSeconds : 0.0;
+                final remainingBytes = totalBytes - bytesProcessed;
+                final etaSeconds = speed > 0 ? (remainingBytes / (1024 * 1024)) / speed : 0.0;
+
+                progressNotifier.value = FileOperationProgress(
+                  totalFiles: totalFiles,
+                  currentFileIndex: i + 1,
+                  currentFileName: fileName,
+                  percentage: totalBytes > 0 ? (bytesProcessed / totalBytes) : (i / totalFiles),
+                  speedMBs: speed,
+                  eta: Duration(seconds: etaSeconds.round()),
+                  totalBytes: totalBytes > 0 ? totalBytes : 1,
+                  bytesProcessed: bytesProcessed,
+                );
+              },
+            );
+          }
+        }
+      }
+
+      if (_isCut) {
+        for (final srcPath in _clipboardPaths) {
+          final type = FileSystemEntity.typeSync(srcPath);
+          if (type == FileSystemEntityType.directory) {
+            final dir = Directory(srcPath);
+            if (dir.existsSync()) {
+              await dir.delete(recursive: true);
             }
           }
         }
@@ -733,13 +957,14 @@ class FileManagerProvider extends ChangeNotifier {
         );
       }
       
-      clearClipboard();
-      await loadDirectory(currentPath, showLoading: false);
-
+      if (clearAfterPaste) {
+        clearClipboard();
+      }
+      
       _highlightedPaths.clear();
       _highlightedPaths.addAll(pastedPaths);
       _shouldScrollToHighlight = true;
-      notifyListeners();
+
       Timer(const Duration(milliseconds: 2000), () {
         bool changed = false;
         for (final path in pastedPaths) {
@@ -751,9 +976,39 @@ class FileManagerProvider extends ChangeNotifier {
           notifyListeners();
         }
       });
+
     } catch (e) {
       debugPrint('Error pasting file: $e');
-      clearClipboard();
+    } finally {
+      progressNotifier.value = null;
+      activeTab.isLoading = false;
+      await loadDirectory(currentPath, showLoading: false);
+      notifyListeners();
+    }
+  }
+
+  Future<void> _copyFileWithProgress(
+    File source,
+    File destination, {
+    required Function(int chunkSize) onChunkCopied,
+  }) async {
+    final reader = source.openRead();
+    final writer = destination.openWrite();
+
+    try {
+      await for (final chunk in reader) {
+        if (_isOperationCancelled) {
+          await writer.close();
+          if (await destination.exists()) {
+            await destination.delete();
+          }
+          throw Exception('Cancelled');
+        }
+        writer.add(chunk);
+        onChunkCopied(chunk.length);
+      }
+    } finally {
+      await writer.close();
     }
   }
 
@@ -928,4 +1183,26 @@ class FileManagerProvider extends ChangeNotifier {
       await OpenFilex.open(path);
     }
   }
+}
+
+class FileOperationProgress {
+  final int totalFiles;
+  final int currentFileIndex;
+  final String currentFileName;
+  final double percentage; // 0.0 to 1.0
+  final double speedMBs; // MB/s
+  final Duration eta;
+  final int totalBytes;
+  final int bytesProcessed;
+
+  FileOperationProgress({
+    required this.totalFiles,
+    required this.currentFileIndex,
+    required this.currentFileName,
+    required this.percentage,
+    required this.speedMBs,
+    required this.eta,
+    required this.totalBytes,
+    required this.bytesProcessed,
+  });
 }

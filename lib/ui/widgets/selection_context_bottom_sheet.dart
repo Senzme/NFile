@@ -134,9 +134,9 @@ class SelectionContextBottomSheet extends StatelessWidget {
               onTap: () {
                 Navigator.pop(context);
                 provider.copySelected();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Copied $selectedCount item(s)')),
-                );
+                // ScaffoldMessenger.of(context).showSnackBar(
+                //   SnackBar(content: Text('Copied $selectedCount item(s)')),
+                // );
               },
             ),
             _buildMenuItem(
@@ -146,9 +146,9 @@ class SelectionContextBottomSheet extends StatelessWidget {
               onTap: () {
                 Navigator.pop(context);
                 provider.cutSelected();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Cut $selectedCount item(s)')),
-                );
+                // ScaffoldMessenger.of(context).showSnackBar(
+                //   SnackBar(content: Text('Cut $selectedCount item(s)')),
+                // );
               },
             ),
             if (isSingle)
