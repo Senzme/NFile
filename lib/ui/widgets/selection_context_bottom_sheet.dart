@@ -7,6 +7,7 @@ import '../../core/icon_fonts/broken_icons.dart';
 import 'selection_action_bar.dart'; // To access PropertiesModalDialog
 import 'file_action_dialogs.dart';
 import 'create_archive_dialog.dart';
+import 'batch_rename_dialog.dart';
 
 class SelectionContextBottomSheet extends StatelessWidget {
   final FileManagerProvider provider;
@@ -170,6 +171,16 @@ class SelectionContextBottomSheet extends StatelessWidget {
                     await provider.renameFile(targetPath, newName);
                     provider.clearSelection();
                   }
+                },
+              )
+            else
+              _buildMenuItem(
+                context: context,
+                icon: Broken.edit,
+                label: 'Rename',
+                onTap: () async {
+                  Navigator.pop(context);
+                  await BatchRenameDialog.show(context, provider);
                 },
               ),
             _buildMenuItem(

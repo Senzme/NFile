@@ -8,6 +8,7 @@ import '../../core/utils.dart';
 import 'file_action_dialogs.dart';
 import 'create_archive_dialog.dart';
 import 'file_operation_progress_dialog.dart';
+import 'batch_rename_dialog.dart';
 
 class SelectionActionBar extends StatelessWidget {
   final FileManagerProvider provider;
@@ -126,6 +127,8 @@ class SelectionActionBar extends StatelessWidget {
                     await provider.renameFile(path, newName);
                     provider.clearSelection();
                   }
+                } else if (action == 'batch_rename') {
+                  await BatchRenameDialog.show(context, provider);
                 } else if (action == 'paste') {
                   FileOperationProgressDialog.show(context, provider);
                   await provider.pasteFile();
@@ -143,6 +146,17 @@ class SelectionActionBar extends StatelessWidget {
                 if (selectedCount == 1)
                   const PopupMenuItem(
                     value: 'rename',
+                    child: Row(
+                      children: [
+                        Icon(Broken.edit, size: 20),
+                        SizedBox(width: 12),
+                        Text('Rename', style: TextStyle(fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+                  ),
+                if (selectedCount > 1)
+                  const PopupMenuItem(
+                    value: 'batch_rename',
                     child: Row(
                       children: [
                         Icon(Broken.edit, size: 20),
