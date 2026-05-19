@@ -34,8 +34,11 @@ class FileGridItem extends StatelessWidget {
     final theme = Theme.of(context);
     final iconColor = FileUtils.getColorForFile(file.path, context);
     final isArchive = FileUtils.isArchive(file.path);
+    final isHighlighted = context.select<FileManagerProvider, bool>(
+      (p) => p.highlightedPaths.contains(file.path),
+    );
 
-    return Card(
+    final child = Card(
       color: isSelected ? theme.colorScheme.primaryContainer.withOpacity(0.4) : theme.colorScheme.surface,
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -82,26 +85,23 @@ class FileGridItem extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       Text(
                         file.name,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13 * (1 + (iconScale - 1) * 0.3),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13.5 * (1 + (iconScale - 1) * 0.3),
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        FileUtils.formatBytes(file.size, 2),
+                        FileUtils.formatBytes(file.size, 1),
                         style: theme.textTheme.bodySmall?.copyWith(
-                          fontSize: 10 * (1 + (iconScale - 1) * 0.2),
                           color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -148,6 +148,31 @@ class FileGridItem extends StatelessWidget {
           ],
         ),
       ),
+    );
+
+    return Stack(
+      children: [
+        child,
+        Positioned.fill(
+          child: IgnorePointer(
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 500),
+              opacity: isHighlighted ? 1.0 : 0.0,
+              child: Container(
+                margin: const EdgeInsets.all(4.0),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withOpacity(0.25),
+                    width: 1.5,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

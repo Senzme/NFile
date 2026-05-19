@@ -28,12 +28,17 @@ class FolderItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isHighlighted = context.select<FileManagerProvider, bool>(
+      (p) => p.highlightedPaths.contains(folder.path),
+    );
 
-    return Card(
-      margin: EdgeInsets.symmetric(
-        horizontal: (16 * itemPaddingMultiplier).clamp(4.0, 32.0),
-        vertical: (4 * itemPaddingMultiplier).clamp(1.0, 16.0),
-      ),
+    final cardMargin = EdgeInsets.symmetric(
+      horizontal: (16 * itemPaddingMultiplier).clamp(4.0, 32.0),
+      vertical: (4 * itemPaddingMultiplier).clamp(1.0, 16.0),
+    );
+
+    final child = Card(
+      margin: cardMargin,
       color: isSelected ? theme.colorScheme.primaryContainer.withOpacity(0.4) : theme.colorScheme.surface,
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -112,6 +117,31 @@ class FolderItem extends StatelessWidget {
           ),
         ),
       ),
+    );
+
+    return Stack(
+      children: [
+        child,
+        Positioned.fill(
+          child: IgnorePointer(
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 500),
+              opacity: isHighlighted ? 1.0 : 0.0,
+              child: Container(
+                margin: cardMargin,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withOpacity(0.25),
+                    width: 1.5,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

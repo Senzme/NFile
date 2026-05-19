@@ -12,6 +12,7 @@ class FolderTab {
   bool isRootAvailable;
   final Set<String> selectedPaths;
   double scrollOffset;
+  final Map<String, double> scrollPositions;
 
   FolderTab({
     required this.id,
@@ -25,5 +26,7 @@ class FolderTab {
     this.isRootAvailable = false,
     Set<String>? selectedPaths,
     this.scrollOffset = 0.0,
-  }) : this.selectedPaths = selectedPaths ?? {};
+    Map<String, double>? scrollPositions,
+  }) : this.selectedPaths = selectedPaths ?? {},
+       this.scrollPositions = scrollPositions ?? {};
 }

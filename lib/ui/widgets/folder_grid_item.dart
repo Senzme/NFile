@@ -28,8 +28,11 @@ class FolderGridItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isHighlighted = context.select<FileManagerProvider, bool>(
+      (p) => p.highlightedPaths.contains(folder.path),
+    );
 
-    return Card(
+    final child = Card(
       color: isSelected ? theme.colorScheme.primaryContainer.withOpacity(0.4) : theme.colorScheme.surface,
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -136,6 +139,31 @@ class FolderGridItem extends StatelessWidget {
           ],
         ),
       ),
+    );
+
+    return Stack(
+      children: [
+        child,
+        Positioned.fill(
+          child: IgnorePointer(
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 500),
+              opacity: isHighlighted ? 1.0 : 0.0,
+              child: Container(
+                margin: const EdgeInsets.all(4.0),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withOpacity(0.25),
+                    width: 1.5,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

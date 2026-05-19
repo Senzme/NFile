@@ -45,7 +45,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
 
   void _openFolder(FileManagerProvider provider, String path) {
     if (_scrollController.hasClients) {
-      provider.saveScrollOffset(_scrollController.offset);
+      provider.saveScrollOffset(provider.currentPath, _scrollController.offset);
     }
     provider.loadDirectory(path).then((_) {
       if (_scrollController.hasClients) {
@@ -57,7 +57,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
 
   void _goBack(FileManagerProvider provider) async {
     if (_scrollController.hasClients) {
-      provider.saveScrollOffset(_scrollController.offset);
+      provider.saveScrollOffset(provider.currentPath, _scrollController.offset);
     }
     final prevPath = p.dirname(provider.currentPath);
     final handled = await provider.goBack();
@@ -567,6 +567,34 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
     return Consumer<FileManagerProvider>(
       builder: (context, provider, child) {
         final isSelectionMode = provider.isSelectionMode;
+
+        if (provider.shouldScrollToHighlight) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_scrollController.hasClients) {
+              provider.resetScrollToHighlight();
+              final firstHighlightedIndex = provider.currentFiles.indexWhere(
+                (f) => provider.highlightedPaths.contains(f.path),
+              );
+              if (firstHighlightedIndex != -1) {
+                double targetOffset = 0.0;
+                if (provider.isGridView) {
+                  final crossAxisCount = (MediaQuery.of(context).size.width / (110 * provider.iconScale)).floor().clamp(2, 6);
+                  final row = firstHighlightedIndex ~/ crossAxisCount;
+                  final itemHeight = (150 * provider.iconScale * provider.itemPaddingMultiplier).clamp(100.0, 300.0);
+                  targetOffset = row * itemHeight;
+                } else {
+                  final itemHeight = (72 * provider.itemPaddingMultiplier).clamp(40.0, 150.0);
+                  targetOffset = firstHighlightedIndex * itemHeight;
+                }
+                _scrollController.animateTo(
+                  targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
+                  duration: const Duration(milliseconds: 600),
+                  curve: Curves.easeInOutCubic,
+                );
+              }
+            }
+          });
+        }
 
         return PopScope(
           canPop: !isSelectionMode && !provider.canGoBack,

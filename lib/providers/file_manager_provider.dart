@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
@@ -312,6 +313,7 @@ class FileManagerProvider extends ChangeNotifier {
       useRootMode: active.useRootMode,
       useShizukuMode: active.useShizukuMode,
       isRootAvailable: active.isRootAvailable,
+      scrollPositions: Map.from(active.scrollPositions),
     );
     _tabs.add(dup);
     _activeTabIndex = _tabs.length - 1;
@@ -364,6 +366,16 @@ class FileManagerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  final Set<String> _highlightedPaths = {};
+  Set<String> get highlightedPaths => _highlightedPaths;
+
+  bool _shouldScrollToHighlight = false;
+  bool get shouldScrollToHighlight => _shouldScrollToHighlight;
+
+  void resetScrollToHighlight() {
+    _shouldScrollToHighlight = false;
+  }
+
   String _rootPath = '';
   String get rootPath => _rootPath;
 
@@ -376,14 +388,14 @@ class FileManagerProvider extends ChangeNotifier {
     return true;
   }
 
-  void saveScrollOffset(double offset) {
-    if (currentPath.isNotEmpty) {
-      activeTab.scrollOffset = offset;
+  void saveScrollOffset(String path, double offset) {
+    if (path.isNotEmpty) {
+      activeTab.scrollPositions[path] = offset;
     }
   }
 
   double getSavedScrollOffset(String path) {
-    return activeTab.scrollOffset;
+    return activeTab.scrollPositions[path] ?? 0.0;
   }
 
   List<StorageVolume> _storageVolumes = [];
@@ -498,6 +510,9 @@ class FileManagerProvider extends ChangeNotifier {
   }
 
   Future<void> loadDirectory(String path, {bool showLoading = true}) async {
+    if (currentPath != path) {
+      _highlightedPaths.clear();
+    }
     if (_storageVolumes.isEmpty) {
       _detectStorageVolumes();
     }
@@ -587,8 +602,17 @@ class FileManagerProvider extends ChangeNotifier {
 
   Future<bool> goBack() async {
     if (!canGoBack) return false;
+    final exitedPath = currentPath;
     final parent = p.dirname(currentPath);
     await loadDirectory(parent, showLoading: false);
+    _highlightedPaths.clear();
+    _highlightedPaths.add(exitedPath);
+    notifyListeners();
+    Timer(const Duration(milliseconds: 2000), () {
+      if (_highlightedPaths.remove(exitedPath)) {
+        notifyListeners();
+      }
+    });
     return true;
   }
 
@@ -697,6 +721,11 @@ class FileManagerProvider extends ChangeNotifier {
         }
       }
 
+      final pastedPaths = _clipboardPaths.map((srcPath) {
+        final fileName = p.basename(srcPath);
+        return p.join(currentPath, fileName);
+      }).toList();
+
       if (_isCut && _sourceArchiveForCut != null && _internalSourcePathsForCut != null) {
         await ArchiveService.deleteItemsFromArchive(
           archivePath: _sourceArchiveForCut!,
@@ -706,6 +735,22 @@ class FileManagerProvider extends ChangeNotifier {
       
       clearClipboard();
       await loadDirectory(currentPath, showLoading: false);
+
+      _highlightedPaths.clear();
+      _highlightedPaths.addAll(pastedPaths);
+      _shouldScrollToHighlight = true;
+      notifyListeners();
+      Timer(const Duration(milliseconds: 2000), () {
+        bool changed = false;
+        for (final path in pastedPaths) {
+          if (_highlightedPaths.remove(path)) {
+            changed = true;
+          }
+        }
+        if (changed) {
+          notifyListeners();
+        }
+      });
     } catch (e) {
       debugPrint('Error pasting file: $e');
       clearClipboard();
@@ -845,6 +890,15 @@ class FileManagerProvider extends ChangeNotifier {
   }
 
   Future<void> openFile(BuildContext context, String path) async {
+    _highlightedPaths.clear();
+    _highlightedPaths.add(path);
+    notifyListeners();
+    Timer(const Duration(milliseconds: 2000), () {
+      if (_highlightedPaths.remove(path)) {
+        notifyListeners();
+      }
+    });
+
     if (FileUtils.isArchive(path)) {
       Navigator.push(
         context,
