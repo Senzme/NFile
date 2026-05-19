@@ -20,6 +20,7 @@ import '../core/utils.dart';
 import '../services/preferences_service.dart';
 import '../models/custom_shortcut_model.dart';
 import '../services/root_shizuku_service.dart';
+import 'package:on_audio_query/on_audio_query.dart';
 
 enum FileSortType {
   nameAsc,
@@ -1165,7 +1166,47 @@ class FileManagerProvider extends ChangeNotifier {
     } else if (mimeType.startsWith('video/')) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => VideoPlayerScreen(videoPath: path)));
     } else if (mimeType.startsWith('audio/')) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => AudioPlayerScreen(audioPath: path, title: p.basename(path))));
+      final folderAudioFiles = activeTab.currentFiles
+          .where((f) => !f.isDirectory && (lookupMimeType(f.path)?.startsWith('audio/') == true))
+          .toList();
+      
+      List<SongModel>? allSongs;
+      int initialIndex = 0;
+
+      if (folderAudioFiles.isNotEmpty && folderAudioFiles.any((f) => f.path == path)) {
+        allSongs = [];
+        for (int i = 0; i < folderAudioFiles.length; i++) {
+          final file = folderAudioFiles[i];
+          final songMap = {
+            '_id': i,
+            '_data': file.path,
+            'title': p.basenameWithoutExtension(file.path),
+            'artist': 'Unknown Artist',
+            'album': 'Local Folder',
+            'duration': 0,
+            'size': file.size,
+            'display_name': p.basename(file.path),
+            'display_name_wo_ext': p.basenameWithoutExtension(file.path),
+            'is_music': true,
+          };
+          allSongs.add(SongModel(songMap));
+          if (file.path == path) {
+            initialIndex = i;
+          }
+        }
+      }
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AudioPlayerScreen(
+            audioPath: path,
+            title: p.basename(path),
+            allSongs: allSongs,
+            initialIndex: initialIndex,
+          ),
+        ),
+      );
     } else if (FileUtils.isTextOrCode(path)) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => TextEditorScreen(filePath: path)));
     } else if (docExts.contains(ext)) {
