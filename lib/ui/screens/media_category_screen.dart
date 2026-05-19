@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'dart:typed_data';
+import 'package:path/path.dart' as path_helper;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -193,12 +193,12 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
     );
 
     if (confirm == true && mounted) {
+      final mediaProvider = context.read<MediaProvider>();
       final filePaths = _selectedFilePaths.toList();
       final assetIds = _selectedAssetIds.toList();
 
       if (_selectedAssetIds.isNotEmpty) {
-        final provider = context.read<MediaProvider>();
-        final allAssets = [...provider.images, ...provider.videos, ...provider.screenshots];
+        final allAssets = [...mediaProvider.images, ...mediaProvider.videos, ...mediaProvider.screenshots];
         for (final id in assetIds) {
           final match = allAssets.where((a) => a.id == id).firstOrNull;
           if (match != null) {
@@ -208,7 +208,7 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
         }
       }
 
-      await context.read<MediaProvider>().deleteMediaItems(filePaths: filePaths, assetIds: assetIds);
+      await mediaProvider.deleteMediaItems(filePaths: filePaths, assetIds: assetIds);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Successfully deleted $count items')));
         _clearSelection();
@@ -344,11 +344,16 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
           if (count == 1) {
             lastMod = st.modified;
             permissionsStr = '${(st.mode & 0x100) != 0 ? "R" : ""}${(st.mode & 0x80) != 0 ? "/W" : ""}';
-            final ext = p.contains('.') ? p.substring(p.lastIndexOf('.')).toLowerCase() : '';
-            if (widget.mediaType == MediaType.audios) mimeType = 'audio/$ext';
-            else if (widget.mediaType == MediaType.apks) mimeType = 'application/vnd.android.package-archive';
-            else if (widget.mediaType == MediaType.archives) mimeType = 'archive/$ext';
-            else mimeType = 'file/$ext';
+            final ext = path_helper.extension(p).toLowerCase();
+            if (widget.mediaType == MediaType.audios) {
+              mimeType = 'audio/$ext';
+            } else if (widget.mediaType == MediaType.apks) {
+              mimeType = 'application/vnd.android.package-archive';
+            } else if (widget.mediaType == MediaType.archives) {
+              mimeType = 'archive/$ext';
+            } else {
+              mimeType = 'file/$ext';
+            }
           }
         }
       } catch (_) {}
@@ -478,18 +483,18 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
                     ),
                   );
                   if (confirm == true && mounted) {
+                    final mediaProvider = context.read<MediaProvider>();
                     List<String> files = [];
                     if (filePath != null) files.add(filePath);
                     if (assetId != null) {
-                      final provider = context.read<MediaProvider>();
-                      final allAssets = [...provider.images, ...provider.videos, ...provider.screenshots];
+                      final allAssets = [...mediaProvider.images, ...mediaProvider.videos, ...mediaProvider.screenshots];
                       final match = allAssets.where((a) => a.id == assetId).firstOrNull;
                       if (match != null) {
                         final f = await match.file;
                         if (f != null) files.add(f.path);
                       }
                     }
-                    await context.read<MediaProvider>().deleteMediaItems(filePaths: files, assetIds: assetId != null ? [assetId] : []);
+                    await mediaProvider.deleteMediaItems(filePaths: files, assetIds: assetId != null ? [assetId] : []);
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Deleted $name')));
                     }

@@ -84,11 +84,13 @@ class ApkInstallerService {
         baseApk = allApks.first;
       }
 
+      if (!context.mounted) return;
       Navigator.pop(context); // Close loading dialog
 
       if (baseApk != null && await baseApk.exists()) {
         await OpenFilex.open(baseApk.path);
       } else {
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('No installable APK found in package bundle')),
         );

@@ -193,7 +193,7 @@ class PropertiesModalDialog extends StatefulWidget {
   final List<String> selectedPaths;
   final FileManagerProvider provider;
 
-  const PropertiesModalDialog({required this.selectedPaths, required this.provider});
+  const PropertiesModalDialog({super.key, required this.selectedPaths, required this.provider});
 
   @override
   State<PropertiesModalDialog> createState() => PropertiesModalDialogState();

@@ -27,6 +27,6 @@ class FolderTab {
     Set<String>? selectedPaths,
     this.scrollOffset = 0.0,
     Map<String, double>? scrollPositions,
-  }) : this.selectedPaths = selectedPaths ?? {},
-       this.scrollPositions = scrollPositions ?? {};
+  }) : selectedPaths = selectedPaths ?? {},
+       scrollPositions = scrollPositions ?? {};
 }

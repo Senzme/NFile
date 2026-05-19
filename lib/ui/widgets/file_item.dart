@@ -235,7 +235,7 @@ class _MediaThumbnailState extends State<_MediaThumbnail> {
         width: double.infinity,
         height: double.infinity,
         cacheWidth: 160,
-        errorBuilder: (_, __, ___) => Icon(Broken.image, color: widget.iconColor, size: 28 * widget.iconScale),
+        errorBuilder: (context, error, stackTrace) => Icon(Broken.image, color: widget.iconColor, size: 28 * widget.iconScale),
       );
     }
 

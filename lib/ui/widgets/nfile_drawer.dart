@@ -225,6 +225,7 @@ class NFileDrawer extends StatelessWidget {
                     style: TextStyle(fontSize: 15, fontWeight: isSelected ? FontWeight.bold : FontWeight.w600, color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface.withOpacity(0.9)),
                   ),
                 ),
+                // ignore: use_null_aware_elements
                 if (trailing != null) trailing,
               ],
             ),

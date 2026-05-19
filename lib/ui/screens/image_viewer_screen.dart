@@ -223,7 +223,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
                   minScale: PhotoViewComputedScale.contained,
                   maxScale: PhotoViewComputedScale.covered * 4,
                   heroAttributes: PhotoViewHeroAttributes(tag: tagKey),
-                  onTapUp: (_, __, ___) {
+                  onTapUp: (context, details, controllerValue) {
                     setState(() {
                       _showUI = !_showUI;
                     });
