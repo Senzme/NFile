@@ -41,7 +41,8 @@ class NFileApp extends StatefulWidget {
 
 class _NFileAppState extends State<NFileApp> {
   ThemeMode _themeMode = ThemeMode.system;
-  bool _hasPermission = false;
+  bool? _hasPermission;
+  bool _sharingObserverSetup = false;
   StreamSubscription<List<SharedMediaFile>>? _sharingIntentSubscription;
 
   @override
@@ -58,21 +59,21 @@ class _NFileAppState extends State<NFileApp> {
   }
 
   Future<void> _initializeApplication() async {
-    await _requestStoragePermission();
-    if (_hasPermission) {
+    await _checkStoragePermission();
+    if (_hasPermission == true) {
       _setupSharingIntentObserver();
     }
   }
 
-  Future<void> _requestStoragePermission() async {
+  Future<void> _checkStoragePermission() async {
     if (Platform.isAndroid) {
-      final manageStorageGranted = await Permission.manageExternalStorage.request().isGranted;
-      final standardStorageGranted = await Permission.storage.request().isGranted;
+      final manageStorageGranted = await Permission.manageExternalStorage.isGranted;
+      final standardStorageGranted = await Permission.storage.isGranted;
 
-      if (manageStorageGranted || standardStorageGranted) {
-        if (mounted) {
-          setState(() => _hasPermission = true);
-        }
+      if (mounted) {
+        setState(() {
+          _hasPermission = manageStorageGranted || standardStorageGranted;
+        });
       }
     } else {
       if (mounted) {
@@ -81,7 +82,30 @@ class _NFileAppState extends State<NFileApp> {
     }
   }
 
+  Future<void> _requestStoragePermission() async {
+    if (Platform.isAndroid) {
+      final manageStorageGranted = await Permission.manageExternalStorage.request().isGranted;
+      final standardStorageGranted = await Permission.storage.request().isGranted;
+
+      if (mounted) {
+        setState(() {
+          _hasPermission = manageStorageGranted || standardStorageGranted;
+        });
+        if (_hasPermission == true) {
+          _setupSharingIntentObserver();
+        }
+      }
+    } else {
+      if (mounted) {
+        setState(() => _hasPermission = true);
+        _setupSharingIntentObserver();
+      }
+    }
+  }
+
   void _setupSharingIntentObserver() {
+    if (_sharingObserverSetup) return;
+    _sharingObserverSetup = true;
     _sharingIntentSubscription = ReceiveSharingIntent.instance.getMediaStream().listen(
       (List<SharedMediaFile> incomingFiles) {
         if (incomingFiles.isNotEmpty) {
@@ -146,9 +170,11 @@ class _NFileAppState extends State<NFileApp> {
               theme: AppTheme.getAppTheme(light: true, seed: baseSeedColor, customScheme: activeLightScheme),
               darkTheme: AppTheme.getAppTheme(light: false, seed: baseSeedColor, customScheme: activeDarkScheme),
               themeMode: _themeMode,
-              home: _hasPermission
-                  ? HomeScreen(toggleTheme: _toggleTheme)
-                  : _StoragePermissionShield(onRequestPermission: _requestStoragePermission),
+              home: _hasPermission == null
+                  ? const Scaffold()
+                  : (_hasPermission == true
+                      ? HomeScreen(toggleTheme: _toggleTheme)
+                      : _StoragePermissionShield(onRequestPermission: _requestStoragePermission)),
             );
           },
         );

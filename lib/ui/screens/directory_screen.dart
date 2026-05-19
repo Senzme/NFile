@@ -632,9 +632,8 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                           onPressed: () => _goBack(provider),
                         )
                       : Builder(
-                          builder: (context) => IconButton(
-                            icon: const Icon(Broken.menu),
-                            onPressed: () => Scaffold.of(context).openDrawer(),
+                          builder: (context) => _AnimatedDrawerButton(
+                            onTap: () => Scaffold.of(context).openDrawer(),
                           ),
                         ),
               actions: isSelectionMode
@@ -1091,6 +1090,57 @@ class _AnimatedTitleButtonState extends State<_AnimatedTitleButton> with SingleT
                 ],
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AnimatedDrawerButton extends StatefulWidget {
+  final VoidCallback onTap;
+  const _AnimatedDrawerButton({required this.onTap});
+
+  @override
+  State<_AnimatedDrawerButton> createState() => _AnimatedDrawerButtonState();
+}
+
+class _AnimatedDrawerButtonState extends State<_AnimatedDrawerButton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 100));
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.85).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) => Transform.scale(
+        scale: _scaleAnimation.value,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (_) => _controller.forward(),
+          onTapUp: (_) {
+            _controller.reverse();
+            widget.onTap();
+          },
+          onTapCancel: () => _controller.reverse(),
+          child: Container(
+            margin: const EdgeInsets.only(left: 8),
+            padding: const EdgeInsets.all(10.0),
+            color: Colors.transparent,
+            child: const Icon(Icons.menu_rounded, size: 28),
           ),
         ),
       ),
