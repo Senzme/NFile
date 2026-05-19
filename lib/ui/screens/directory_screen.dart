@@ -10,6 +10,7 @@ import '../widgets/folder_grid_item.dart';
 import '../widgets/file_action_dialogs.dart';
 import '../widgets/create_archive_dialog.dart';
 import '../widgets/selection_action_bar.dart';
+import '../widgets/selection_context_bottom_sheet.dart';
 import '../widgets/nfile_drawer.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import 'global_search_screen.dart';
@@ -859,7 +860,13 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                                               _openFolder(provider, item.path);
                                             }
                                           },
-                                          onLongPress: () => provider.toggleSelection(item.path),
+                                          onLongPress: () {
+                                            if (isSelectionMode && isSelected) {
+                                              SelectionContextBottomSheet.show(context, provider, item.path);
+                                            } else {
+                                              provider.toggleSelection(item.path);
+                                            }
+                                          },
                                           onAction: (action) => _handleAction(context, action, item.path),
                                         );
                                       } else {
@@ -875,7 +882,13 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                                               provider.openFile(context, item.path);
                                             }
                                           },
-                                          onLongPress: () => provider.toggleSelection(item.path),
+                                          onLongPress: () {
+                                            if (isSelectionMode && isSelected) {
+                                              SelectionContextBottomSheet.show(context, provider, item.path);
+                                            } else {
+                                              provider.toggleSelection(item.path);
+                                            }
+                                          },
                                           onAction: (action) => _handleAction(context, action, item.path),
                                         );
                                       }
@@ -901,7 +914,13 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                                               _openFolder(provider, item.path);
                                             }
                                           },
-                                          onLongPress: () => provider.toggleSelection(item.path),
+                                          onLongPress: () {
+                                            if (isSelectionMode && isSelected) {
+                                              SelectionContextBottomSheet.show(context, provider, item.path);
+                                            } else {
+                                              provider.toggleSelection(item.path);
+                                            }
+                                          },
                                           onAction: (action) => _handleAction(context, action, item.path),
                                         );
                                       } else {
@@ -917,7 +936,13 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                                               provider.openFile(context, item.path);
                                             }
                                           },
-                                          onLongPress: () => provider.toggleSelection(item.path),
+                                          onLongPress: () {
+                                            if (isSelectionMode && isSelected) {
+                                              SelectionContextBottomSheet.show(context, provider, item.path);
+                                            } else {
+                                              provider.toggleSelection(item.path);
+                                            }
+                                          },
                                           onAction: (action) => _handleAction(context, action, item.path),
                                         );
                                       }

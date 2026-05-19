@@ -1,6 +1,6 @@
 # NFile
 
-A beautiful, premium, and feature-rich File Manager application built with Flutter.
+A beautiful File Manager application built with Flutter.
 
 ## Overview
 NFile is designed to provide a highly aesthetic file management experience on Android. It features a stunning interface with an exclusive "Broken" icon pack, dynamic AMOLED-friendly dark mode, and a fluid user experience. 

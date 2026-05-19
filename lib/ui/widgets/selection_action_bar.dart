@@ -185,22 +185,22 @@ class SelectionActionBar extends StatelessWidget {
 
     showDialog(
       context: context,
-      builder: (context) => _PropertiesModalDialog(selectedPaths: selectedPaths, provider: provider),
+      builder: (context) => PropertiesModalDialog(selectedPaths: selectedPaths, provider: provider),
     );
   }
 }
 
-class _PropertiesModalDialog extends StatefulWidget {
+class PropertiesModalDialog extends StatefulWidget {
   final List<String> selectedPaths;
   final FileManagerProvider provider;
 
-  const _PropertiesModalDialog({required this.selectedPaths, required this.provider});
+  const PropertiesModalDialog({required this.selectedPaths, required this.provider});
 
   @override
-  State<_PropertiesModalDialog> createState() => _PropertiesModalDialogState();
+  State<PropertiesModalDialog> createState() => PropertiesModalDialogState();
 }
 
-class _PropertiesModalDialogState extends State<_PropertiesModalDialog> {
+class PropertiesModalDialogState extends State<PropertiesModalDialog> {
   bool _isLoading = true;
   int _totalBytes = 0;
   int _folderCount = 0;
