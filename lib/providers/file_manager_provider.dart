@@ -13,6 +13,7 @@ import '../ui/screens/audio_player/audio_player_screen.dart';
 import '../ui/screens/text_editor_screen.dart';
 import '../ui/screens/document_viewer_screen.dart';
 import '../ui/screens/archive_viewer_screen.dart';
+import '../ui/screens/database_reader_screen.dart';
 import '../services/archive_service.dart';
 import '../services/apk_installer_service.dart';
 import '../ui/widgets/extract_archive_dialog.dart';
@@ -1209,6 +1210,8 @@ class FileManagerProvider extends ChangeNotifier {
       );
     } else if (FileUtils.isTextOrCode(path)) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => TextEditorScreen(filePath: path)));
+    } else if (const ['.db', '.sqlite', '.sqlite3', '.db3'].contains(ext)) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => DatabaseReaderScreen(filePath: path)));
     } else if (docExts.contains(ext)) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => DocumentViewerScreen(filePath: path)));
     } else if (ApkInstallerService.isApk(path)) {
