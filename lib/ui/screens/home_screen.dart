@@ -7,6 +7,7 @@ import '../../core/icon_fonts/broken_icons.dart';
 import '../widgets/premium_storage_overview.dart';
 import '../widgets/quick_categories_grid.dart';
 import '../widgets/recent_files_section.dart';
+import '../widgets/nfile_drawer.dart';
 import 'directory_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -132,6 +133,10 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       },
       child: Scaffold(
+        drawer: NFileDrawer(
+          toggleTheme: widget.toggleTheme,
+          onNavigateTab: (index) => setState(() => _currentIndex = index),
+        ),
         body: IndexedStack(
           index: _currentIndex,
           children: [
@@ -191,10 +196,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: theme.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
-                  ),
-                  IconButton(
-                    icon: Icon(theme.brightness == Brightness.dark ? Broken.sun_1 : Broken.moon),
-                    onPressed: widget.toggleTheme,
                   ),
                 ],
               ),

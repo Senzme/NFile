@@ -247,7 +247,7 @@ class _PaneBrowserState extends State<PaneBrowser> {
                   
                   // --- Pane Body ---
                   Expanded(
-                    child: tab.isLoading
+                    child: (tab.isLoading && tab.currentFiles.isEmpty)
                         ? const Center(child: CircularProgressIndicator())
                         : tab.needsPermission
                             ? RestrictedFolderBanner(
@@ -261,10 +261,13 @@ class _PaneBrowserState extends State<PaneBrowser> {
                                 },
                                 isRootAvailable: tab.isRootAvailable,
                               )
-                            : CustomScrollView(
-                                controller: _scrollController,
-                                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                                slivers: [
+                            : AnimatedOpacity(
+                                duration: const Duration(milliseconds: 300),
+                                opacity: tab.isLoading ? 0.6 : 1.0,
+                                child: CustomScrollView(
+                                  controller: _scrollController,
+                                  physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                                  slivers: [
                                   CupertinoSliverRefreshControl(
                                     onRefresh: () => provider.loadDirectoryForTab(widget.tabIndex, tab.currentPath, showLoading: false),
                                   ),
@@ -388,7 +391,7 @@ class _PaneBrowserState extends State<PaneBrowser> {
                                                       isSelected,
                                                       isSelectionMode,
                                                     );
-                                                  } else {
+                                                   } else {
                                                     return _buildCompactFileItem(
                                                       context,
                                                       provider,
@@ -402,7 +405,8 @@ class _PaneBrowserState extends State<PaneBrowser> {
                                               ),
                                             ),
                                     ),
-                                ],
+                                  ],
+                                ),
                               ),
                   ),
                 ],

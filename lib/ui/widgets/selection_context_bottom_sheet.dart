@@ -7,6 +7,7 @@ import '../../core/icon_fonts/broken_icons.dart';
 import 'selection_action_bar.dart'; // To access PropertiesModalDialog
 import 'file_action_dialogs.dart';
 import 'create_archive_dialog.dart';
+import 'package:share_plus/share_plus.dart';
 import 'batch_rename_dialog.dart';
 
 class SelectionContextBottomSheet extends StatelessWidget {
@@ -206,6 +207,36 @@ class SelectionContextBottomSheet extends StatelessWidget {
                     targetPaths: provider.selectedPaths.toList(),
                   );
                   provider.clearSelection();
+                }
+              },
+            ),
+            _buildMenuItem(
+              context: context,
+              icon: Icons.share_outlined,
+              label: 'Share',
+              onTap: () async {
+                Navigator.pop(context);
+                final selectedPaths = provider.selectedPaths.toList();
+                final filesToShare = <XFile>[];
+                for (final path in selectedPaths) {
+                  if (FileSystemEntity.isFileSync(path)) {
+                    filesToShare.add(XFile(path));
+                  }
+                }
+                if (filesToShare.isNotEmpty) {
+                  try {
+                    await Share.shareXFiles(filesToShare);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error sharing: $e')),
+                      );
+                    }
+                  }
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Only files can be shared.')),
+                  );
                 }
               },
             ),

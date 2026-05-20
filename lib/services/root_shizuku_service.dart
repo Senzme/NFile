@@ -78,9 +78,9 @@ class RootShizukuService {
   }
 
   static Future<List<FileItemModel>> listFiles(String path, {required bool useRoot, bool showHiddenFiles = false}) async {
-    final cleanPath = path.endsWith('/') ? path.substring(0, path.length - 1) : path;
+    final cleanPath = (path == '/' || !path.endsWith('/')) ? path : path.substring(0, path.length - 1);
     
-    final cmd = 'for f in "$cleanPath"/* "$cleanPath"/.*; do [ -e "\$f" ] && [ "\${f##*/}" != "." ] && [ "\${f##*/}" != ".." ] && stat -c "%F|%s|%Y|%n" "\$f"; done';
+    final cmd = 'for f in "$cleanPath"/* "$cleanPath"/.*; do [ -e "\$f" ] && [ "\${f##*/}" != "." ] && [ "\${f##*/}" != ".." ] && (stat -L -c "%F|%s|%Y|%n" "\$f" 2>/dev/null || stat -c "%F|%s|%Y|%n" "\$f"); done';
     
     final output = await runCommand(cmd, useRoot: useRoot);
     if (output == null || output.trim().isEmpty) return [];

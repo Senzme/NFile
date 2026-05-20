@@ -778,7 +778,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                       Expanded(child: PaneBrowser(tabIndex: 1)),
                     ],
                   )
-                : provider.isLoading
+                : (provider.isLoading && provider.currentFiles.isEmpty)
                     ? const Center(child: CircularProgressIndicator())
                     : provider.needsPermission
                         ? RestrictedFolderBanner(
@@ -786,10 +786,13 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                             onEnableShizuku: () => provider.enableShizukuMode(),
                             isRootAvailable: provider.isRootAvailable,
                           )
-                        : CustomScrollView(
-                            controller: _scrollController,
-                    physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                    slivers: [
+                        : AnimatedOpacity(
+                            duration: const Duration(milliseconds: 300),
+                            opacity: provider.isLoading ? 0.6 : 1.0,
+                            child: CustomScrollView(
+                              controller: _scrollController,
+                              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                              slivers: [
                       CupertinoSliverRefreshControl(
                         onRefresh: () => provider.loadDirectory(provider.currentPath),
                       ),
@@ -982,6 +985,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                         ),
                     ],
                   ),
+                ),
             floatingActionButtonLocation: isSelectionMode
                 ? null
                 : provider.showBottomActionBar

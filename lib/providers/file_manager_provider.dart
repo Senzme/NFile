@@ -608,7 +608,8 @@ class FileManagerProvider extends ChangeNotifier {
     if (lower.contains('/android/data') || lower.contains('/android/obb')) {
       return true;
     }
-    if (path == '/' || path.startsWith('/system') || path.startsWith('/data') || path.startsWith('/etc') || path.startsWith('/vendor')) {
+    // Only /data (excluding /data/media) is strictly restricted by default
+    if (path == '/data' || (path.startsWith('/data/') && !path.startsWith('/data/media'))) {
       return true;
     }
     return false;
@@ -717,7 +718,41 @@ class FileManagerProvider extends ChangeNotifier {
         activeTab.currentFiles = [...folders, ...files];
       }
     } catch (e) {
-      debugPrint('Error loading directory: $e');
+      debugPrint('Error loading directory: $e. Fallback to restricted mode.');
+      // Auto fallback to restricted mode
+      activeTab.isRestrictedMode = true;
+      final status = await RootShizukuService.checkStatus();
+      activeTab.isRootAvailable = status.isRootAvailable;
+      if (status.isRootAvailable && (activeTab.useRootMode || !status.isShizukuAvailable)) {
+        activeTab.useRootMode = true;
+        activeTab.useShizukuMode = false;
+        activeTab.needsPermission = false;
+      } else if (status.isShizukuAvailable && status.shizukuPermissionGranted) {
+        activeTab.useShizukuMode = true;
+        activeTab.useRootMode = false;
+        activeTab.needsPermission = false;
+      } else {
+        activeTab.needsPermission = true;
+        activeTab.currentPath = path;
+        activeTab.currentFiles = [];
+        activeTab.isLoading = false;
+        notifyListeners();
+        return;
+      }
+
+      try {
+        activeTab.currentPath = path;
+        final items = await RootShizukuService.listFiles(path, useRoot: activeTab.useRootMode, showHiddenFiles: _showHiddenFiles);
+        final folders = items.where((e) => e.isDirectory).toList();
+        final files = items.where((e) => !e.isDirectory).toList();
+
+        _sortList(folders);
+        _sortList(files);
+        activeTab.currentFiles = [...folders, ...files];
+      } catch (err) {
+        debugPrint('Error loading restricted directory fallback: $err');
+        activeTab.currentFiles = [];
+      }
     }
 
     activeTab.isLoading = false;

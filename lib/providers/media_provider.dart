@@ -455,29 +455,74 @@ class MediaProvider extends ChangeNotifier {
     '.epub',
   ];
 
-  Future<void> _loadDocuments() async {
-    final docs = <FileSystemEntity>[];
-
-    final searchDirs = [
-      '/storage/emulated/0/Documents',
-      '/storage/emulated/0/Download',
-      '/storage/emulated/0/Downloads',
-    ];
-
-    for (final dirPath in searchDirs) {
-      final dir = Directory(dirPath);
-      if (await dir.exists()) {
-        try {
-          await for (final entity in dir.list(recursive: true)) {
-            if (entity is File) {
-              final ext = p.extension(entity.path).toLowerCase();
-              if (_docExtensions.contains(ext)) {
-                docs.add(entity);
+  Future<List<String>> _getUserSearchDirs() async {
+    final searchDirs = <String>[];
+    try {
+      final rootDir = Directory('/storage/emulated/0');
+      if (await rootDir.exists()) {
+        await for (final entity in rootDir.list(recursive: false)) {
+          try {
+            if (entity is Directory) {
+              final name = p.basename(entity.path);
+              if (name != 'Android' && !name.startsWith('.')) {
+                searchDirs.add(entity.path);
               }
             }
-          }
-        } catch (_) {}
+          } catch (_) {}
+        }
       }
+    } catch (_) {}
+    if (searchDirs.isEmpty) {
+      searchDirs.addAll([
+        '/storage/emulated/0/Download',
+        '/storage/emulated/0/Downloads',
+        '/storage/emulated/0/Documents',
+        '/storage/emulated/0/Telegram',
+        '/storage/emulated/0/WhatsApp/Media',
+      ]);
+    }
+    return searchDirs;
+  }
+
+  Future<void> _scanDirectoryRecursively(
+    String startPath,
+    bool Function(String ext) shouldInclude,
+    void Function(File file) onFound,
+  ) async {
+    final queue = <String>[startPath];
+    while (queue.isNotEmpty) {
+      final currentPath = queue.removeAt(0);
+      final dir = Directory(currentPath);
+      try {
+        await for (final entity in dir.list(recursive: false)) {
+          try {
+            if (entity is Directory) {
+              final name = p.basename(entity.path);
+              if (!name.startsWith('.') && name != 'Android') {
+                queue.add(entity.path);
+              }
+            } else if (entity is File) {
+              final ext = p.extension(entity.path).toLowerCase();
+              if (shouldInclude(ext)) {
+                onFound(entity);
+              }
+            }
+          } catch (_) {}
+        }
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _loadDocuments() async {
+    final docs = <FileSystemEntity>[];
+    final searchDirs = await _getUserSearchDirs();
+
+    for (final dirPath in searchDirs) {
+      await _scanDirectoryRecursively(
+        dirPath,
+        (ext) => _docExtensions.contains(ext),
+        (file) => docs.add(file),
+      );
     }
 
     _documents = docs;
@@ -506,31 +551,21 @@ class MediaProvider extends ChangeNotifier {
       }
     }
 
-    // For archives & apks, scan standard user directories
-    final searchDirs = [
-      '/storage/emulated/0/Download',
-      '/storage/emulated/0/Downloads',
-      '/storage/emulated/0/Documents',
-      '/storage/emulated/0/Telegram',
-      '/storage/emulated/0/WhatsApp/Media',
-    ];
+    final searchDirs = await _getUserSearchDirs();
 
     for (final dirPath in searchDirs) {
-      final dir = Directory(dirPath);
-      if (await dir.exists()) {
-        try {
-          await for (final entity in dir.list(recursive: true)) {
-            if (entity is File) {
-              final ext = p.extension(entity.path).toLowerCase();
-              if (_archiveExtensions.contains(ext)) {
-                arch.add(entity);
-              } else if (_apkExtensions.contains(ext)) {
-                apkList.add(entity);
-              }
-            }
+      await _scanDirectoryRecursively(
+        dirPath,
+        (ext) => _archiveExtensions.contains(ext) || _apkExtensions.contains(ext),
+        (file) {
+          final ext = p.extension(file.path).toLowerCase();
+          if (_archiveExtensions.contains(ext)) {
+            arch.add(file);
+          } else if (_apkExtensions.contains(ext)) {
+            apkList.add(file);
           }
-        } catch (_) {}
-      }
+        },
+      );
     }
 
     _downloads = dl;

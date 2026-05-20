@@ -13,6 +13,7 @@ import 'video_player/video_player_screen.dart';
 import 'audio_player/audio_player_screen.dart';
 import 'document_viewer_screen.dart';
 import '../../core/icon_fonts/broken_icons.dart';
+import 'package:share_plus/share_plus.dart';
 
 enum MediaType { images, videos, audios, documents, archives, downloads, apks, screenshots }
 
@@ -277,6 +278,49 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
     await context.read<MediaProvider>().loadMedia(forceRefresh: true);
   }
 
+  Future<void> _handleShare() async {
+    final count = _selectedFilePaths.length + _selectedAssetIds.length;
+    if (count == 0) return;
+
+    final filePaths = _selectedFilePaths.toList();
+    if (_selectedAssetIds.isNotEmpty) {
+      final mediaProvider = context.read<MediaProvider>();
+      final allAssets = [...mediaProvider.images, ...mediaProvider.videos, ...mediaProvider.screenshots];
+      for (final id in _selectedAssetIds) {
+        final match = allAssets.where((a) => a.id == id).firstOrNull;
+        if (match != null) {
+          final f = await match.file;
+          if (f != null) filePaths.add(f.path);
+        }
+      }
+    }
+
+    final filesToShare = <XFile>[];
+    for (final path in filePaths) {
+      if (FileSystemEntity.isFileSync(path)) {
+        filesToShare.add(XFile(path));
+      }
+    }
+
+    if (filesToShare.isNotEmpty) {
+      try {
+        await Share.shareXFiles(filesToShare);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error sharing: $e')),
+          );
+        }
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No files available to share.')),
+        );
+      }
+    }
+  }
+
   Widget _buildCopyableRow(String label, String value, BuildContext ctx) {
     if (value.isEmpty) return const SizedBox.shrink();
     final theme = Theme.of(ctx);
@@ -537,6 +581,40 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
                   _showPropertiesDialog(singleFilePath: filePath, singleAssetId: assetId, explicitName: name);
                 },
               ),
+              ListTile(
+                leading: Icon(Icons.share_outlined, color: theme.colorScheme.primary),
+                title: const Text('Share'),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  String? target = filePath;
+                  if (assetId != null) {
+                    final provider = context.read<MediaProvider>();
+                    final allAssets = [...provider.images, ...provider.videos, ...provider.screenshots];
+                    final match = allAssets.where((a) => a.id == assetId).firstOrNull;
+                    if (match != null) {
+                      final f = await match.file;
+                      target = f?.path;
+                    }
+                  }
+                  if (target != null && FileSystemEntity.isFileSync(target)) {
+                    try {
+                      await Share.shareXFiles([XFile(target)]);
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error sharing: $e')),
+                        );
+                      }
+                    }
+                  } else {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('File not found or not shareable.')),
+                      );
+                    }
+                  }
+                },
+              ),
             ],
           ),
         );
@@ -716,6 +794,7 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
             _buildActionItem(theme, icon: Broken.document_copy, label: 'Copy', onTap: () => _handleCopyCut(false)),
             _buildActionItem(theme, icon: Broken.scissor, label: 'Cut', onTap: () => _handleCopyCut(true)),
             _buildActionItem(theme, icon: Broken.trash, label: 'Delete', color: Colors.red, onTap: _handleDelete),
+            _buildActionItem(theme, icon: Icons.share_outlined, label: 'Share', onTap: _handleShare),
             _buildActionItem(theme, icon: Broken.info_circle, label: 'Info', onTap: () => _showPropertiesDialog()),
           ],
         ),

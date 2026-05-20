@@ -8,6 +8,7 @@ import '../../core/utils.dart';
 import 'file_action_dialogs.dart';
 import 'create_archive_dialog.dart';
 import 'file_operation_progress_dialog.dart';
+import 'package:share_plus/share_plus.dart';
 import 'batch_rename_dialog.dart';
 
 class SelectionActionBar extends StatelessWidget {
@@ -142,6 +143,29 @@ class SelectionActionBar extends StatelessWidget {
                   }
                 } else if (action == 'select_all') {
                   provider.selectAll();
+                } else if (action == 'share') {
+                  final selectedPaths = provider.selectedPaths.toList();
+                  final filesToShare = <XFile>[];
+                  for (final path in selectedPaths) {
+                    if (FileSystemEntity.isFileSync(path)) {
+                      filesToShare.add(XFile(path));
+                    }
+                  }
+                  if (filesToShare.isNotEmpty) {
+                    try {
+                      await Share.shareXFiles(filesToShare);
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error sharing: $e')),
+                        );
+                      }
+                    }
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Only files can be shared.')),
+                    );
+                  }
                 }
               },
               itemBuilder: (context) => [
@@ -166,6 +190,16 @@ class SelectionActionBar extends StatelessWidget {
                       ],
                     ),
                   ),
+                const PopupMenuItem(
+                  value: 'share',
+                  child: Row(
+                    children: [
+                      Icon(Icons.share_outlined, size: 20),
+                      SizedBox(width: 12),
+                      Text('Share', style: TextStyle(fontWeight: FontWeight.w500)),
+                    ],
+                  ),
+                ),
                 const PopupMenuItem(
                   value: 'select_all',
                   child: Row(

@@ -18,15 +18,26 @@ class FileItemModel {
   });
 
   factory FileItemModel.fromEntity(FileSystemEntity entity) {
-    final stat = entity.statSync();
-    return FileItemModel(
-      entity: entity,
-      name: entity.path.split(Platform.pathSeparator).last,
-      path: entity.path,
-      isDirectory: entity is Directory,
-      size: stat.size,
-      modified: stat.modified,
-    );
+    try {
+      final stat = entity.statSync();
+      return FileItemModel(
+        entity: entity,
+        name: entity.path.split(Platform.pathSeparator).last,
+        path: entity.path,
+        isDirectory: entity is Directory,
+        size: stat.size,
+        modified: stat.modified,
+      );
+    } catch (_) {
+      return FileItemModel(
+        entity: entity,
+        name: entity.path.split(Platform.pathSeparator).last,
+        path: entity.path,
+        isDirectory: entity is Directory,
+        size: 0,
+        modified: DateTime.fromMillisecondsSinceEpoch(0),
+      );
+    }
   }
 
   factory FileItemModel.fromCustom({
