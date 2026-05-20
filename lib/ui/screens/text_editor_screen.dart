@@ -119,6 +119,7 @@ class _TextEditorScreenState extends State<TextEditorScreen> {
   bool _showFindReplace = false;
   bool _wordWrap = false;
   bool _readOnly = false;
+  bool _showLineNumbers = true;
   String _selectedLanguage = 'auto'; // auto, plain, html, xml, json, dart, java, js, python, cpp, css, smali, markdown
   int _currentLineCount = 1;
 
@@ -496,6 +497,8 @@ class _TextEditorScreenState extends State<TextEditorScreen> {
                 setState(() => _wordWrap = !_wordWrap);
               } else if (value == 'read_only') {
                 setState(() => _readOnly = !_readOnly);
+              } else if (value == 'toggle_line_numbers') {
+                setState(() => _showLineNumbers = !_showLineNumbers);
               } else if (value == 'syntax') {
                 _showSyntaxPicker();
               }
@@ -526,6 +529,10 @@ class _TextEditorScreenState extends State<TextEditorScreen> {
               PopupMenuItem(
                 value: 'read_only',
                 child: Row(children: [Icon(_readOnly ? Broken.lock_1 : Broken.edit, size: 18), const SizedBox(width: 12), Text(_readOnly ? 'Edit Lock: ON' : 'Edit Lock: OFF')]),
+              ),
+              PopupMenuItem(
+                value: 'toggle_line_numbers',
+                child: Row(children: [Icon(_showLineNumbers ? Broken.eye_slash : Broken.eye, size: 18), const SizedBox(width: 12), Text(_showLineNumbers ? 'Hide Line Numbers' : 'Show Line Numbers')]),
               ),
               PopupMenuItem(
                 value: 'syntax',
@@ -618,29 +625,30 @@ class _TextEditorScreenState extends State<TextEditorScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Line Numbers Gutter
-                        Container(
-                          width: 48,
-                          padding: const EdgeInsets.only(top: 12, right: 8),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surface,
-                            border: Border(right: BorderSide(color: theme.dividerColor.withValues(alpha: 0.2))),
-                          ),
-                          child: ListView.builder(
-                            controller: _lineScrollController,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: lineCount,
-                            itemBuilder: (context, i) => Text(
-                              '${i + 1}',
-                              textAlign: TextAlign.right,
-                              style: TextStyle(
-                                fontFamily: 'monospace',
-                                fontSize: _fontSize,
-                                height: 1.45,
-                                color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                        if (_showLineNumbers)
+                          Container(
+                            width: 48,
+                            padding: const EdgeInsets.only(top: 12, right: 8),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surface,
+                              border: Border(right: BorderSide(color: theme.dividerColor.withValues(alpha: 0.2))),
+                            ),
+                            child: ListView.builder(
+                              controller: _lineScrollController,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: lineCount,
+                              itemBuilder: (context, i) => Text(
+                                '${i + 1}',
+                                textAlign: TextAlign.right,
+                                style: TextStyle(
+                                  fontFamily: 'monospace',
+                                  fontSize: _fontSize,
+                                  height: 1.45,
+                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                                ),
                               ),
                             ),
                           ),
-                        ),
 
                         // Code Editor TextField
                         Expanded(

@@ -9,6 +9,7 @@ import '../widgets/file_grid_item.dart';
 import '../widgets/folder_grid_item.dart';
 import '../widgets/file_action_dialogs.dart';
 import '../widgets/create_archive_dialog.dart';
+import '../widgets/batch_rename_dialog.dart';
 import '../widgets/selection_action_bar.dart';
 import '../widgets/selection_context_bottom_sheet.dart';
 import '../widgets/file_operation_progress_dialog.dart';
@@ -18,6 +19,7 @@ import 'global_search_screen.dart';
 import 'internal_file_picker_screen.dart';
 import '../widgets/restricted_folder_banner.dart';
 import '../widgets/directory_tab_bar.dart';
+import '../widgets/pane_browser.dart';
 
 class DirectoryScreen extends StatefulWidget {
   final VoidCallback toggleTheme;
@@ -689,25 +691,25 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                             },
                           ),
                           IconButton(
-                            icon: const Icon(Broken.box_add),
-                            tooltip: 'Create Archive',
+                            icon: const Icon(Broken.edit),
+                            tooltip: 'Rename',
                             onPressed: () async {
-                              final res = await CreateArchiveDialog.show(
-                                context,
-                                initialName: p.basename(provider.currentPath).isEmpty ? 'archive' : p.basename(provider.currentPath),
-                                isMultiSelection: provider.selectedPaths.length > 1,
-                              );
-                              if (res != null) {
-                                await provider.createArchive(
-                                  archiveName: res.archiveName,
-                                  format: res.format,
-                                  compressionLevel: res.compressionLevel,
-                                  password: res.password,
-                                  splitSizeMB: res.splitSizeMB,
-                                  deleteSource: res.deleteSource,
-                                  separateArchives: res.separateArchives,
-                                  targetPaths: provider.selectedPaths.toList(),
+                              if (provider.selectedPaths.length == 1) {
+                                final path = provider.selectedPaths.first;
+                                final currentName = p.basename(path);
+                                final newName = await FileActionDialogs.showTextInputDialog(
+                                  context,
+                                  title: 'Rename',
+                                  hint: 'Enter new name',
+                                  initialValue: currentName,
+                                  actionText: 'Rename',
                                 );
+                                if (newName != null && newName.isNotEmpty) {
+                                  await provider.renameFile(path, newName);
+                                  provider.clearSelection();
+                                }
+                              } else if (provider.selectedPaths.length > 1) {
+                                await BatchRenameDialog.show(context, provider);
                               }
                             },
                           ),
@@ -769,16 +771,23 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                           ),
                         ],
             ),
-            body: provider.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : provider.needsPermission
-                    ? RestrictedFolderBanner(
-                        onEnableRoot: () => provider.enableRootMode(),
-                        onEnableShizuku: () => provider.enableShizukuMode(),
-                        isRootAvailable: provider.isRootAvailable,
-                      )
-                    : CustomScrollView(
-                    controller: _scrollController,
+            body: provider.enableSplitScreen
+                ? const Row(
+                    children: [
+                      Expanded(child: PaneBrowser(tabIndex: 0)),
+                      Expanded(child: PaneBrowser(tabIndex: 1)),
+                    ],
+                  )
+                : provider.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : provider.needsPermission
+                        ? RestrictedFolderBanner(
+                            onEnableRoot: () => provider.enableRootMode(),
+                            onEnableShizuku: () => provider.enableShizukuMode(),
+                            isRootAvailable: provider.isRootAvailable,
+                          )
+                        : CustomScrollView(
+                            controller: _scrollController,
                     physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
                     slivers: [
                       CupertinoSliverRefreshControl(

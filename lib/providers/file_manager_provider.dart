@@ -55,6 +55,7 @@ class FileManagerProvider extends ChangeNotifier {
     _showHomeBrowseNav = PreferencesService.getShowHomeBrowseNav();
     _showMediaPreviews = PreferencesService.getShowMediaPreviews();
     _enableMultipleTabs = PreferencesService.getEnableMultipleTabs();
+    _enableSplitScreen = PreferencesService.getEnableSplitScreen();
     _accentColorOption = PreferencesService.getAccentColor();
     _folderIconOption = PreferencesService.getFolderIconStyle();
     _pinnedFolderShortcuts = PreferencesService.getPinnedFolderShortcuts();
@@ -270,6 +271,41 @@ class FileManagerProvider extends ChangeNotifier {
       closeOtherTabs();
     }
     notifyListeners();
+  }
+
+  bool _enableSplitScreen = false;
+  bool get enableSplitScreen => _enableSplitScreen;
+
+  void toggleSplitScreen() {
+    _enableSplitScreen = !_enableSplitScreen;
+    PreferencesService.saveEnableSplitScreen(_enableSplitScreen);
+    
+    if (_enableSplitScreen) {
+      if (_tabs.length < 2) {
+        final initialPath = _rootPath.isNotEmpty ? _rootPath : '/';
+        final newTab = FolderTab(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          currentPath: initialPath,
+        );
+        _tabs.add(newTab);
+      }
+      loadDirectoryForTab(0, _tabs[0].currentPath, showLoading: false);
+      loadDirectoryForTab(1, _tabs[1].currentPath, showLoading: false);
+    } else {
+      if (_activeTabIndex >= _tabs.length) {
+        _activeTabIndex = 0;
+      }
+    }
+    notifyListeners();
+  }
+
+  Future<void> loadDirectoryForTab(int tabIndex, String path, {bool showLoading = true}) async {
+    if (tabIndex >= 0 && tabIndex < _tabs.length) {
+      final oldIndex = _activeTabIndex;
+      _activeTabIndex = tabIndex;
+      await loadDirectory(path, showLoading: showLoading);
+      _activeTabIndex = oldIndex;
+    }
   }
 
   // --- Tab Management ---
@@ -552,10 +588,19 @@ class FileManagerProvider extends ChangeNotifier {
         currentPath: initialPath,
       )
     ];
+    if (_enableSplitScreen) {
+      _tabs.add(FolderTab(
+        id: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
+        currentPath: initialPath,
+      ));
+    }
     _activeTabIndex = 0;
 
     await _detectStorageVolumes();
     await loadDirectory(initialPath, showLoading: false);
+    if (_enableSplitScreen) {
+      await loadDirectoryForTab(1, initialPath, showLoading: false);
+    }
   }
 
   bool isRestrictedPath(String path) {

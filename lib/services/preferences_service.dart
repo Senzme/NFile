@@ -18,6 +18,7 @@ class PreferencesService {
   static const String _keyShowFolderFileCount = 'show_folder_file_count';
   static const String _keyShowBottomActionBar = 'show_bottom_action_bar';
   static const String _keyEnableMultipleTabs = 'enable_multiple_tabs';
+  static const String _keyEnableSplitScreen = 'enable_split_screen';
 
   static SharedPreferences? _prefs;
 
@@ -107,6 +108,14 @@ class PreferencesService {
 
   static Future<void> saveEnableMultipleTabs(bool val) async {
     await _prefs?.setBool(_keyEnableMultipleTabs, val);
+  }
+
+  static bool getEnableSplitScreen() {
+    return _prefs?.getBool(_keyEnableSplitScreen) ?? false;
+  }
+
+  static Future<void> saveEnableSplitScreen(bool val) async {
+    await _prefs?.setBool(_keyEnableSplitScreen, val);
   }
 
   static bool getIsGridView() {

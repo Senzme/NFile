@@ -32,7 +32,7 @@ class BatchRenameDialog extends StatefulWidget {
 }
 
 class _BatchRenameDialogState extends State<BatchRenameDialog> {
-  final _patternController = TextEditingController(text: '%');
+  final _patternController = TextEditingController();
   final _extensionController = TextEditingController();
   final _paddingController = TextEditingController(text: '0');
   final _startController = TextEditingController(text: '1');

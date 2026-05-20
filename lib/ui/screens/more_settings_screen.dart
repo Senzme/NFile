@@ -147,6 +147,21 @@ class MoreSettingsScreen extends StatelessWidget {
               ),
               onTap: () => fileManager.toggleMultipleTabs(),
             ),
+            _buildSettingTile(
+              theme,
+              icon: Icons.splitscreen,
+              title: 'Enable Split Screen',
+              subtitle: 'Browse two directories side by side and transfer files easily',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.enableSplitScreen,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleSplitScreen(),
+                ),
+              ),
+              onTap: () => fileManager.toggleSplitScreen(),
+            ),
 
             const SizedBox(height: 24),
             _buildSectionHeader(theme, 'Appearance & Themes'),

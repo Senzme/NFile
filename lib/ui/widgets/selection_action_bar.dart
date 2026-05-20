@@ -73,25 +73,25 @@ class SelectionActionBar extends StatelessWidget {
               },
             ),
             _ActionButton(
-              icon: Broken.box_add,
-              label: 'Archive',
+              icon: Broken.edit,
+              label: 'Rename',
               onTap: () async {
-                final res = await CreateArchiveDialog.show(
-                  context,
-                  initialName: p.basename(provider.currentPath).isEmpty ? 'archive' : p.basename(provider.currentPath),
-                  isMultiSelection: selectedCount > 1,
-                );
-                if (res != null) {
-                  await provider.createArchive(
-                    archiveName: res.archiveName,
-                    format: res.format,
-                    compressionLevel: res.compressionLevel,
-                    password: res.password,
-                    splitSizeMB: res.splitSizeMB,
-                    deleteSource: res.deleteSource,
-                    separateArchives: res.separateArchives,
-                    targetPaths: provider.selectedPaths.toList(),
+                if (selectedCount == 1) {
+                  final path = provider.selectedPaths.first;
+                  final currentName = p.basename(path);
+                  final newName = await FileActionDialogs.showTextInputDialog(
+                    context,
+                    title: 'Rename',
+                    hint: 'Enter new name',
+                    initialValue: currentName,
+                    actionText: 'Rename',
                   );
+                  if (newName != null && newName.isNotEmpty) {
+                    await provider.renameFile(path, newName);
+                    provider.clearSelection();
+                  }
+                } else if (selectedCount > 1) {
+                  await BatchRenameDialog.show(context, provider);
                 }
               },
             ),
@@ -113,22 +113,24 @@ class SelectionActionBar extends StatelessWidget {
               position: PopupMenuPosition.under,
               elevation: 8,
               onSelected: (action) async {
-                if (action == 'rename') {
-                  final path = provider.selectedPaths.first;
-                  final currentName = p.basename(path);
-                  final newName = await FileActionDialogs.showTextInputDialog(
+                if (action == 'archive') {
+                  final res = await CreateArchiveDialog.show(
                     context,
-                    title: 'Rename',
-                    hint: 'Enter new name',
-                    initialValue: currentName,
-                    actionText: 'Rename',
+                    initialName: p.basename(provider.currentPath).isEmpty ? 'archive' : p.basename(provider.currentPath),
+                    isMultiSelection: selectedCount > 1,
                   );
-                  if (newName != null && newName.isNotEmpty) {
-                    await provider.renameFile(path, newName);
-                    provider.clearSelection();
+                  if (res != null) {
+                    await provider.createArchive(
+                      archiveName: res.archiveName,
+                      format: res.format,
+                      compressionLevel: res.compressionLevel,
+                      password: res.password,
+                      splitSizeMB: res.splitSizeMB,
+                      deleteSource: res.deleteSource,
+                      separateArchives: res.separateArchives,
+                      targetPaths: provider.selectedPaths.toList(),
+                    );
                   }
-                } else if (action == 'batch_rename') {
-                  await BatchRenameDialog.show(context, provider);
                 } else if (action == 'paste') {
                   FileOperationProgressDialog.show(context, provider);
                   await provider.pasteFile();
@@ -143,28 +145,16 @@ class SelectionActionBar extends StatelessWidget {
                 }
               },
               itemBuilder: (context) => [
-                if (selectedCount == 1)
-                  const PopupMenuItem(
-                    value: 'rename',
-                    child: Row(
-                      children: [
-                        Icon(Broken.edit, size: 20),
-                        SizedBox(width: 12),
-                        Text('Rename', style: TextStyle(fontWeight: FontWeight.w500)),
-                      ],
-                    ),
+                const PopupMenuItem(
+                  value: 'archive',
+                  child: Row(
+                    children: [
+                      Icon(Broken.box_add, size: 20),
+                      SizedBox(width: 12),
+                      Text('Archive', style: TextStyle(fontWeight: FontWeight.w500)),
+                    ],
                   ),
-                if (selectedCount > 1)
-                  const PopupMenuItem(
-                    value: 'batch_rename',
-                    child: Row(
-                      children: [
-                        Icon(Broken.edit, size: 20),
-                        SizedBox(width: 12),
-                        Text('Rename', style: TextStyle(fontWeight: FontWeight.w500)),
-                      ],
-                    ),
-                  ),
+                ),
                 if (hasClipboard)
                   const PopupMenuItem(
                     value: 'paste',
