@@ -22,6 +22,7 @@ import '../services/preferences_service.dart';
 import '../models/custom_shortcut_model.dart';
 import '../services/root_shizuku_service.dart';
 import 'package:on_audio_query/on_audio_query.dart';
+import '../core/icon_fonts/broken_icons.dart';
 
 enum FileSortType {
   nameAsc,
@@ -1219,15 +1220,26 @@ class FileManagerProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> openFile(BuildContext context, String path) async {
-    _highlightedPaths.clear();
-    _highlightedPaths.add(path);
-    notifyListeners();
-    Timer(const Duration(milliseconds: 2000), () {
-      if (_highlightedPaths.remove(path)) {
-        notifyListeners();
-      }
-    });
+  bool hasNativeViewer(String path) {
+    final mimeType = lookupMimeType(path) ?? '';
+    final ext = p.extension(path).toLowerCase();
+    const docExts = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.epub', '.odt'];
+    
+    if (FileUtils.isArchive(path)) return true;
+    if (mimeType.startsWith('image/')) return true;
+    if (mimeType.startsWith('video/')) return true;
+    if (mimeType.startsWith('audio/')) return true;
+    if (FileUtils.isTextOrCode(path)) return true;
+    if (const ['.db', '.sqlite', '.sqlite3', '.db3'].contains(ext)) return true;
+    if (docExts.contains(ext)) return true;
+    if (ApkInstallerService.isApk(path)) return true;
+    return false;
+  }
+
+  Future<void> _openFileNatively(BuildContext context, String path) async {
+    final mimeType = lookupMimeType(path) ?? '';
+    final ext = p.extension(path).toLowerCase();
+    const docExts = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.epub', '.odt'];
 
     if (FileUtils.isArchive(path)) {
       Navigator.push(
@@ -1239,9 +1251,6 @@ class FileManagerProvider extends ChangeNotifier {
       return;
     }
 
-    final mimeType = lookupMimeType(path) ?? '';
-    final ext = p.extension(path).toLowerCase();
-    const docExts = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.epub', '.odt'];
     if (mimeType.startsWith('image/')) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => ImageViewerScreen(imagePath: path)));
     } else if (mimeType.startsWith('video/')) {
@@ -1299,6 +1308,290 @@ class FileManagerProvider extends ChangeNotifier {
     } else {
       await OpenFilex.open(path);
     }
+  }
+
+  Future<void> openFile(BuildContext context, String path, {bool showOpenWithPopup = false}) async {
+    _highlightedPaths.clear();
+    _highlightedPaths.add(path);
+    notifyListeners();
+    Timer(const Duration(milliseconds: 2000), () {
+      if (_highlightedPaths.remove(path)) {
+        notifyListeners();
+      }
+    });
+
+    final ext = p.extension(path).toLowerCase();
+
+    if (showOpenWithPopup && hasNativeViewer(path)) {
+      final defaultAction = PreferencesService.getDefaultOpenAction(ext);
+      if (defaultAction == 'native') {
+        await _openFileNatively(context, path);
+        return;
+      } else if (defaultAction == 'external') {
+        await OpenFilex.open(path);
+        return;
+      }
+
+      if (!context.mounted) return;
+      final theme = Theme.of(context);
+
+      await showModalBottomSheet(
+        context: context,
+        backgroundColor: theme.scaffoldBackgroundColor,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        builder: (ctx) {
+          bool rememberChoice = false;
+          String selectedType = 'native';
+
+          return StatefulBuilder(
+            builder: (context, setModalState) {
+              return SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.onSurface.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Open with...',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        p.basename(path),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: theme.colorScheme.onSurface.withOpacity(0.5),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      InkWell(
+                        onTap: () => setModalState(() => selectedType = 'native'),
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: selectedType == 'native'
+                                ? theme.colorScheme.primary.withOpacity(0.12)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: selectedType == 'native'
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.outline.withOpacity(0.2),
+                              width: selectedType == 'native' ? 1.5 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primary.withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Broken.eye,
+                                  color: theme.colorScheme.primary,
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Built-in NFile Viewer',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: selectedType == 'native'
+                                            ? theme.colorScheme.primary
+                                            : theme.colorScheme.onSurface,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      "NFile's custom native experience",
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (selectedType == 'native')
+                                Icon(Icons.check_circle, color: theme.colorScheme.primary)
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      InkWell(
+                        onTap: () => setModalState(() => selectedType = 'external'),
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: selectedType == 'external'
+                                ? theme.colorScheme.primary.withOpacity(0.12)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: selectedType == 'external'
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.outline.withOpacity(0.2),
+                              width: selectedType == 'external' ? 1.5 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primary.withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Broken.export_1,
+                                  color: theme.colorScheme.primary,
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'System External App',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: selectedType == 'external'
+                                            ? theme.colorScheme.primary
+                                            : theme.colorScheme.onSurface,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      "Open with third party apps on device",
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (selectedType == 'external')
+                                Icon(Icons.check_circle, color: theme.colorScheme.primary)
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      InkWell(
+                        onTap: () {
+                          setModalState(() {
+                            rememberChoice = !rememberChoice;
+                          });
+                        },
+                        child: Row(
+                          children: [
+                            Checkbox(
+                              value: rememberChoice,
+                              activeColor: theme.colorScheme.primary,
+                              onChanged: (val) {
+                                setModalState(() {
+                                  rememberChoice = val ?? false;
+                                });
+                              },
+                            ),
+                            Text(
+                              'Always use this choice for ${ext.isNotEmpty ? ext : "these"} files',
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              onPressed: () async {
+                                Navigator.pop(ctx);
+                                if (selectedType == 'native') {
+                                  await _openFileNatively(context, path);
+                                } else {
+                                  await OpenFilex.open(path);
+                                }
+                              },
+                              child: const Text('Just once'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FilledButton(
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              onPressed: () async {
+                                Navigator.pop(ctx);
+                                if (rememberChoice) {
+                                  await PreferencesService.saveDefaultOpenAction(ext, selectedType);
+                                }
+                                if (selectedType == 'native') {
+                                  await _openFileNatively(context, path);
+                                } else {
+                                  await OpenFilex.open(path);
+                                }
+                              },
+                              child: const Text('Always'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      );
+      return;
+    }
+
+    await _openFileNatively(context, path);
   }
 }
 

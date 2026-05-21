@@ -360,7 +360,7 @@ class _PaneBrowserState extends State<PaneBrowser> {
                                                         if (isSelectionMode) {
                                                           provider.toggleSelection(item.path);
                                                         } else {
-                                                          provider.openFile(context, item.path);
+                                                          provider.openFile(context, item.path, showOpenWithPopup: true);
                                                         }
                                                       },
                                                       onLongPress: () {
@@ -533,7 +533,7 @@ class _PaneBrowserState extends State<PaneBrowser> {
         if (isSelectionMode) {
           provider.toggleSelection(file.path);
         } else {
-          provider.openFile(context, file.path);
+          provider.openFile(context, file.path, showOpenWithPopup: true);
         }
       },
       onLongPress: () {

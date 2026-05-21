@@ -4,9 +4,23 @@ import '../../providers/file_manager_provider.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import '../../core/utils.dart';
 import '../widgets/quick_categories_grid.dart';
+import '../../services/preferences_service.dart';
 
-class MoreSettingsScreen extends StatelessWidget {
+class MoreSettingsScreen extends StatefulWidget {
   const MoreSettingsScreen({super.key});
+
+  @override
+  State<MoreSettingsScreen> createState() => _MoreSettingsScreenState();
+}
+
+class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
+  bool _preferFolders = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _preferFolders = PreferencesService.getPreferFoldersInMedia();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +41,49 @@ class MoreSettingsScreen extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
           children: [
             _buildSectionHeader(theme, 'Browser Experience'),
+            _buildSettingTile(
+              theme,
+              icon: Broken.folder_2,
+              title: 'Default Album Preferred View',
+              subtitle: 'Open Images/Videos quick categories directly in Folders (Albums) preferred view',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: _preferFolders,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (val) {
+                    setState(() {
+                      _preferFolders = val;
+                    });
+                    PreferencesService.savePreferFoldersInMedia(val);
+                  },
+                ),
+              ),
+              onTap: () {
+                final val = !_preferFolders;
+                setState(() {
+                  _preferFolders = val;
+                });
+                PreferencesService.savePreferFoldersInMedia(val);
+              },
+            ),
+            _buildSettingTile(
+              theme,
+              icon: Broken.refresh_2,
+              title: 'Reset Default File Viewers',
+              subtitle: 'Clear all remembered "Open With" associations for file viewers',
+              onTap: () async {
+                await PreferencesService.clearAllDefaultOpenActions();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('All default viewer choices have been reset'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              },
+            ),
             _buildSettingTile(
               theme,
               icon: Broken.folder_favorite,

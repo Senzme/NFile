@@ -248,4 +248,34 @@ class PreferencesService {
   static Future<void> saveFolderIconStyle(String val) async {
     await _prefs?.setString(_keyFolderIconStyle, val);
   }
+
+  // --- Preferred Media Category default view & Open With preferences ---
+  static const String _keyPreferFoldersInMedia = 'prefer_folders_in_media';
+  static const String _keyDefaultOpenActionPrefix = 'default_open_action_';
+
+  static bool getPreferFoldersInMedia() {
+    return _prefs?.getBool(_keyPreferFoldersInMedia) ?? false;
+  }
+
+  static Future<void> savePreferFoldersInMedia(bool val) async {
+    await _prefs?.setBool(_keyPreferFoldersInMedia, val);
+  }
+
+  static String? getDefaultOpenAction(String ext) {
+    final sanitizedExt = ext.toLowerCase().replaceAll('.', '');
+    return _prefs?.getString('$_keyDefaultOpenActionPrefix$sanitizedExt');
+  }
+
+  static Future<void> saveDefaultOpenAction(String ext, String action) async {
+    final sanitizedExt = ext.toLowerCase().replaceAll('.', '');
+    await _prefs?.setString('$_keyDefaultOpenActionPrefix$sanitizedExt', action);
+  }
+
+  static Future<void> clearAllDefaultOpenActions() async {
+    final keys = _prefs?.getKeys() ?? {};
+    final keysToRemove = keys.where((k) => k.startsWith(_keyDefaultOpenActionPrefix)).toList();
+    for (final key in keysToRemove) {
+      await _prefs?.remove(key);
+    }
+  }
 }

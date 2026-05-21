@@ -14,6 +14,8 @@ enum MediaSortOrder {
   newest,
   oldest,
   dateWise,
+  newestGrouped,
+  oldestGrouped,
 }
 
 class ThumbnailCache {
@@ -581,13 +583,15 @@ class MediaProvider extends ChangeNotifier {
 
   void _applySort() {
     if (_sortOrder == MediaSortOrder.newest ||
+        _sortOrder == MediaSortOrder.newestGrouped ||
         _sortOrder == MediaSortOrder.dateWise) {
         _images.sort((a, b) => b.createDateTime.compareTo(a.createDateTime));
         _videos.sort((a, b) => b.createDateTime.compareTo(a.createDateTime));
         _screenshots.sort((a, b) => b.createDateTime.compareTo(a.createDateTime));
         _audios.sort(
             (a, b) => (b.dateAdded ?? 0).compareTo(a.dateAdded ?? 0));
-    } else if (_sortOrder == MediaSortOrder.oldest) {
+    } else if (_sortOrder == MediaSortOrder.oldest ||
+               _sortOrder == MediaSortOrder.oldestGrouped) {
         _images.sort((a, b) => a.createDateTime.compareTo(b.createDateTime));
         _videos.sort((a, b) => a.createDateTime.compareTo(b.createDateTime));
         _screenshots.sort((a, b) => a.createDateTime.compareTo(b.createDateTime));
@@ -599,7 +603,7 @@ class MediaProvider extends ChangeNotifier {
       try {
         final aTime = (a as File).lastModifiedSync();
         final bTime = (b as File).lastModifiedSync();
-        return _sortOrder == MediaSortOrder.oldest
+        return (_sortOrder == MediaSortOrder.oldest || _sortOrder == MediaSortOrder.oldestGrouped)
             ? aTime.compareTo(bTime)
             : bTime.compareTo(aTime);
       } catch (_) {

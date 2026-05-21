@@ -5,8 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:on_audio_query/on_audio_query.dart';
+import 'package:intl/intl.dart';
 import '../../providers/media_provider.dart';
 import '../../providers/file_manager_provider.dart';
+import '../../services/preferences_service.dart';
 import '../../core/utils.dart';
 import 'image_viewer_screen.dart';
 import 'video_player/video_player_screen.dart';
@@ -47,6 +49,10 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat();
+
+    if (widget.album == null && (widget.mediaType == MediaType.images || widget.mediaType == MediaType.videos)) {
+      _showFoldersMode = PreferencesService.getPreferFoldersInMedia();
+    }
 
     if (widget.album != null) {
       _loadAlbumAssets();
@@ -673,6 +679,16 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
                       checked: provider.sortOrder == MediaSortOrder.dateWise,
                       child: const Text('Date Wise'),
                     ),
+                    CheckedPopupMenuItem(
+                      value: MediaSortOrder.newestGrouped,
+                      checked: provider.sortOrder == MediaSortOrder.newestGrouped,
+                      child: const Text('Newest First (Grouped per month)'),
+                    ),
+                    CheckedPopupMenuItem(
+                      value: MediaSortOrder.oldestGrouped,
+                      checked: provider.sortOrder == MediaSortOrder.oldestGrouped,
+                      child: const Text('Oldest First (Grouped per month)'),
+                    ),
                   ],
                 );
               },
@@ -734,17 +750,24 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
                     return _buildShimmerLoading(theme);
                   }
                   final displayAssets = List<AssetEntity>.from(_albumAssets);
-                  if (provider.sortOrder == MediaSortOrder.newest) {
+                  if (provider.sortOrder == MediaSortOrder.newest ||
+                      provider.sortOrder == MediaSortOrder.newestGrouped ||
+                      provider.sortOrder == MediaSortOrder.dateWise) {
                     displayAssets.sort((a, b) => b.createDateTime.compareTo(a.createDateTime));
-                  } else if (provider.sortOrder == MediaSortOrder.oldest) {
+                  } else if (provider.sortOrder == MediaSortOrder.oldest ||
+                             provider.sortOrder == MediaSortOrder.oldestGrouped) {
                     displayAssets.sort((a, b) => a.createDateTime.compareTo(b.createDateTime));
                   }
 
                   final isDateWise = provider.sortOrder == MediaSortOrder.dateWise;
+                  final isGrouped = provider.sortOrder == MediaSortOrder.newestGrouped ||
+                      provider.sortOrder == MediaSortOrder.oldestGrouped ||
+                      provider.sortOrder == MediaSortOrder.dateWise;
+
                   if (widget.mediaType == MediaType.images) {
-                    return _buildImageGrid(displayAssets, theme, isDateWise);
+                    return _buildImageGrid(displayAssets, theme, isDateWise, isGrouped);
                   } else {
-                    return _buildVideoGrid(displayAssets, theme, isDateWise);
+                    return _buildVideoGrid(displayAssets, theme, isDateWise, isGrouped);
                   }
                 }
 
@@ -753,23 +776,26 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
                 }
 
                 final isDateWise = provider.sortOrder == MediaSortOrder.dateWise;
+                final isGrouped = provider.sortOrder == MediaSortOrder.newestGrouped ||
+                    provider.sortOrder == MediaSortOrder.oldestGrouped ||
+                    provider.sortOrder == MediaSortOrder.dateWise;
 
                 if (widget.mediaType == MediaType.images) {
-                  return _buildImageGrid(provider.images, theme, isDateWise);
+                  return _buildImageGrid(provider.images, theme, isDateWise, isGrouped);
                 } else if (widget.mediaType == MediaType.videos) {
-                  return _buildVideoGrid(provider.videos, theme, isDateWise);
+                  return _buildVideoGrid(provider.videos, theme, isDateWise, isGrouped);
                 } else if (widget.mediaType == MediaType.audios) {
-                  return _buildAudioList(provider.audios, theme, isDateWise);
+                  return _buildAudioList(provider.audios, theme, isDateWise, isGrouped);
                 } else if (widget.mediaType == MediaType.screenshots) {
-                  return _buildImageGrid(provider.screenshots, theme, isDateWise);
+                  return _buildImageGrid(provider.screenshots, theme, isDateWise, isGrouped);
                 } else if (widget.mediaType == MediaType.archives) {
-                  return _buildGenericFileList(provider.archives, theme, isDateWise);
+                  return _buildGenericFileList(provider.archives, theme, isDateWise, isGrouped);
                 } else if (widget.mediaType == MediaType.downloads) {
-                  return _buildGenericFileList(provider.downloads, theme, isDateWise);
+                  return _buildGenericFileList(provider.downloads, theme, isDateWise, isGrouped);
                 } else if (widget.mediaType == MediaType.apks) {
-                  return _buildGenericFileList(provider.apks, theme, isDateWise);
+                  return _buildGenericFileList(provider.apks, theme, isDateWise, isGrouped);
                 } else {
-                  return _buildDocumentList(provider.documents, theme, isDateWise);
+                  return _buildDocumentList(provider.documents, theme, isDateWise, isGrouped);
                 }
               },
             ),
@@ -850,8 +876,228 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
     );
   }
 
-  Widget _buildImageGrid(List<AssetEntity> images, ThemeData theme, bool isDateWise) {
+  DateTime _getItemDateTime(dynamic item) {
+    if (item is AssetEntity) {
+      return item.createDateTime;
+    } else if (item is SongModel) {
+      try {
+        final f = File(item.data);
+        if (f.existsSync()) {
+          return f.statSync().modified;
+        }
+      } catch (_) {}
+      return DateTime.fromMillisecondsSinceEpoch((item.dateAdded ?? 0) * 1000);
+    } else if (item is FileSystemEntity) {
+      try {
+        return item.statSync().modified;
+      } catch (_) {}
+    }
+    return DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  Map<String, List<T>> _groupByMonth<T>(List<T> items, DateTime Function(T) getDate) {
+    final groups = <String, List<T>>{};
+    for (final item in items) {
+      final date = getDate(item);
+      final monthKey = DateFormat('MMMM yyyy').format(date);
+      groups.putIfAbsent(monthKey, () => []).add(item);
+    }
+    return groups;
+  }
+
+  Widget _buildGroupedView<T>({
+    required List<T> items,
+    required ThemeData theme,
+    required bool isGrid,
+    required bool isDateWise,
+    required Widget Function(T item, bool isDateWise) itemTileBuilder,
+  }) {
+    if (items.isEmpty) return _buildEmptyState(theme);
+
+    final grouped = _groupByMonth(items, _getItemDateTime);
+    final entries = grouped.entries.toList();
+
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
+      slivers: [
+        for (final entry in entries) ...[
+          // Month Header
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 8),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer.withOpacity(0.35),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: theme.colorScheme.primary.withOpacity(0.15),
+                      ),
+                    ),
+                    child: Text(
+                      entry.key,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Divider(
+                      color: theme.colorScheme.outlineVariant.withOpacity(0.3),
+                      thickness: 1,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Group Items (Grid or List)
+          if (isGrid)
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              sliver: SliverGrid(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 6,
+                  mainAxisSpacing: 6,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final item = entry.value[index];
+                    return itemTileBuilder(item, isDateWise);
+                  },
+                  childCount: entry.value.length,
+                ),
+              ),
+            )
+          else
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final item = entry.value[index];
+                  return itemTileBuilder(item, isDateWise);
+                },
+                childCount: entry.value.length,
+              ),
+            ),
+          // Spacing / line after month of files
+          SliverToBoxAdapter(
+            child: entry.key == entries.last.key
+                ? const SizedBox(height: 16)
+                : Column(
+                    children: [
+                      const SizedBox(height: 12),
+                      Divider(
+                        color: theme.colorScheme.outlineVariant.withOpacity(0.15),
+                        thickness: 1.5,
+                        indent: 16,
+                        endIndent: 16,
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildImageTile(
+    AssetEntity asset,
+    ThemeData theme,
+    bool isSelected,
+    bool showDate,
+    String dateStr,
+    List<AssetEntity> images,
+  ) {
+    return Stack(
+      key: ValueKey(asset.id),
+      fit: StackFit.expand,
+      children: [
+        _CachedImageTile(
+          asset: asset,
+          onTap: () async {
+            if (_isSelectionMode) {
+              _toggleSelection(null, asset.id);
+            } else {
+              final file = await asset.file;
+              if (file != null && mounted) {
+                Navigator.push(context, _slideRoute(ImageViewerScreen(
+                  imagePath: file.path,
+                  siblingAssets: images,
+                  initialAssetId: asset.id,
+                )));
+              }
+            }
+          },
+          onLongPress: () => _toggleSelection(null, asset.id),
+        ),
+        if (showDate)
+          Positioned(
+            bottom: 4,
+            left: 4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(4)),
+              child: Text(
+                dateStr.split(',').first,
+                style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        if (_isSelectionMode || isSelected)
+          Positioned(
+            top: 6,
+            right: 6,
+            child: Icon(
+              isSelected ? Broken.tick_square : Icons.check_box_outline_blank,
+              color: isSelected ? theme.colorScheme.primary : Colors.white.withOpacity(0.8),
+              size: 24,
+            ),
+          )
+        else
+          Positioned(
+            top: 4,
+            right: 4,
+            child: InkWell(
+              onTap: () async {
+                final f = await asset.file;
+                if (f != null) {
+                  _showSingleItemOptions(name: asset.title ?? 'Image_${asset.id}', filePath: f.path, assetId: asset.id);
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
+                child: const Icon(Broken.more, color: Colors.white, size: 18),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildImageGrid(List<AssetEntity> images, ThemeData theme, bool isDateWise, bool isGrouped) {
     if (images.isEmpty) return _buildEmptyState(theme);
+    if (isGrouped) {
+      return _buildGroupedView<AssetEntity>(
+        items: images,
+        theme: theme,
+        isGrid: true,
+        isDateWise: isDateWise,
+        itemTileBuilder: (asset, showDate) {
+          final isSelected = _selectedAssetIds.contains(asset.id);
+          final dateStr = FileUtils.formatDate(asset.createDateTime);
+          return _buildImageTile(asset, theme, isSelected, showDate, dateStr, images);
+        },
+      );
+    }
     return GridView.builder(
       padding: const EdgeInsets.all(6),
       physics: const BouncingScrollPhysics(),
@@ -861,78 +1107,96 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
         final asset = images[index];
         final isSelected = _selectedAssetIds.contains(asset.id);
         final dateStr = FileUtils.formatDate(asset.createDateTime);
-
-        return Stack(
-          key: ValueKey(asset.id),
-          fit: StackFit.expand,
-          children: [
-            _CachedImageTile(
-              asset: asset,
-              onTap: () async {
-                if (_isSelectionMode) {
-                  _toggleSelection(null, asset.id);
-                } else {
-                  final file = await asset.file;
-                  if (file != null && context.mounted) {
-                    Navigator.push(context, _slideRoute(ImageViewerScreen(
-                      imagePath: file.path,
-                      siblingAssets: images,
-                      initialAssetId: asset.id,
-                    )));
-                  }
-                }
-              },
-              onLongPress: () => _toggleSelection(null, asset.id),
-            ),
-            if (isDateWise)
-              Positioned(
-                bottom: 4,
-                left: 4,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(4)),
-                  child: Text(
-                    dateStr.split(',').first,
-                    style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-            if (_isSelectionMode || isSelected)
-              Positioned(
-                top: 6,
-                right: 6,
-                child: Icon(
-                  isSelected ? Broken.tick_square : Icons.check_box_outline_blank,
-                  color: isSelected ? theme.colorScheme.primary : Colors.white.withOpacity(0.8),
-                  size: 24,
-                ),
-              )
-            else
-              Positioned(
-                top: 4,
-                right: 4,
-                child: InkWell(
-                  onTap: () async {
-                    final f = await asset.file;
-                    if (f != null) {
-                      _showSingleItemOptions(name: asset.title ?? 'Image_${asset.id}', filePath: f.path, assetId: asset.id);
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
-                    child: const Icon(Broken.more, color: Colors.white, size: 18),
-                  ),
-                ),
-              ),
-          ],
-        );
+        return _buildImageTile(asset, theme, isSelected, isDateWise, dateStr, images);
       },
     );
   }
 
-  Widget _buildVideoGrid(List<AssetEntity> videos, ThemeData theme, bool isDateWise) {
+  Widget _buildVideoTile(
+    AssetEntity asset,
+    ThemeData theme,
+    bool isSelected,
+    bool showDate,
+    String dateStr,
+  ) {
+    return Stack(
+      key: ValueKey(asset.id),
+      fit: StackFit.expand,
+      children: [
+        _CachedVideoTile(
+          asset: asset,
+          onTap: () async {
+            if (_isSelectionMode) {
+              _toggleSelection(null, asset.id);
+            } else {
+              final file = await asset.file;
+              if (file != null && mounted) {
+                Navigator.push(context, _slideRoute(VideoPlayerScreen(videoPath: file.path)));
+              }
+            }
+          },
+          onLongPress: () => _toggleSelection(null, asset.id),
+        ),
+        if (showDate)
+          Positioned(
+            bottom: 4,
+            left: 4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(4)),
+              child: Text(
+                dateStr.split(',').first,
+                style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        if (_isSelectionMode || isSelected)
+          Positioned(
+            top: 6,
+            right: 6,
+            child: Icon(
+              isSelected ? Broken.tick_square : Icons.check_box_outline_blank,
+              color: isSelected ? theme.colorScheme.primary : Colors.white.withOpacity(0.8),
+              size: 24,
+            ),
+          )
+        else
+          Positioned(
+            top: 4,
+            right: 4,
+            child: InkWell(
+              onTap: () async {
+                final f = await asset.file;
+                if (f != null) {
+                  _showSingleItemOptions(name: asset.title ?? 'Video_${asset.id}', filePath: f.path, assetId: asset.id);
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
+                child: const Icon(Broken.more, color: Colors.white, size: 18),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildVideoGrid(List<AssetEntity> videos, ThemeData theme, bool isDateWise, bool isGrouped) {
     if (videos.isEmpty) return _buildEmptyState(theme);
+    if (isGrouped) {
+      return _buildGroupedView<AssetEntity>(
+        items: videos,
+        theme: theme,
+        isGrid: true,
+        isDateWise: isDateWise,
+        itemTileBuilder: (asset, showDate) {
+          final isSelected = _selectedAssetIds.contains(asset.id);
+          final dateStr = FileUtils.formatDate(asset.createDateTime);
+          return _buildVideoTile(asset, theme, isSelected, showDate, dateStr);
+        },
+      );
+    }
     return GridView.builder(
       padding: const EdgeInsets.all(6),
       physics: const BouncingScrollPhysics(),
@@ -942,74 +1206,113 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
         final asset = videos[index];
         final isSelected = _selectedAssetIds.contains(asset.id);
         final dateStr = FileUtils.formatDate(asset.createDateTime);
-
-        return Stack(
-          key: ValueKey(asset.id),
-          fit: StackFit.expand,
-          children: [
-            _CachedVideoTile(
-              asset: asset,
-              onTap: () async {
-                if (_isSelectionMode) {
-                  _toggleSelection(null, asset.id);
-                } else {
-                  final file = await asset.file;
-                  if (file != null && context.mounted) {
-                    Navigator.push(context, _slideRoute(VideoPlayerScreen(videoPath: file.path)));
-                  }
-                }
-              },
-              onLongPress: () => _toggleSelection(null, asset.id),
-            ),
-            if (isDateWise)
-              Positioned(
-                bottom: 4,
-                left: 4,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(4)),
-                  child: Text(
-                    dateStr.split(',').first,
-                    style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-            if (_isSelectionMode || isSelected)
-              Positioned(
-                top: 6,
-                right: 6,
-                child: Icon(
-                  isSelected ? Broken.tick_square : Icons.check_box_outline_blank,
-                  color: isSelected ? theme.colorScheme.primary : Colors.white.withOpacity(0.8),
-                  size: 24,
-                ),
-              )
-            else
-              Positioned(
-                top: 4,
-                right: 4,
-                child: InkWell(
-                  onTap: () async {
-                    final f = await asset.file;
-                    if (f != null) {
-                      _showSingleItemOptions(name: asset.title ?? 'Video_${asset.id}', filePath: f.path, assetId: asset.id);
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
-                    child: const Icon(Broken.more, color: Colors.white, size: 18),
-                  ),
-                ),
-              ),
-          ],
-        );
+        return _buildVideoTile(asset, theme, isSelected, isDateWise, dateStr);
       },
     );
   }
 
-  Widget _buildAudioList(List<SongModel> audios, ThemeData theme, bool isDateWise) {
+  Widget _buildAudioTile(
+    SongModel audio,
+    ThemeData theme,
+    bool isSelected,
+    bool showDate,
+    String dateStr,
+    int index,
+    List<SongModel> audios,
+  ) {
+    final path = audio.data;
+    return ListTile(
+      key: ValueKey(path),
+      onTap: () {
+        if (_isSelectionMode) {
+          _toggleSelection(path, null);
+        } else {
+          Navigator.push(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) => AudioPlayerScreen(
+                audioPath: path,
+                title: audio.title,
+                artist: audio.artist ?? 'Unknown Artist',
+                allSongs: audios,
+                initialIndex: index,
+              ),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) => SlideTransition(
+                position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+                child: child,
+              ),
+              transitionDuration: const Duration(milliseconds: 400),
+            ),
+          );
+        }
+      },
+      onLongPress: () => _toggleSelection(path, null),
+      leading: Stack(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), color: theme.colorScheme.primaryContainer),
+            child: QueryArtworkWidget(
+              id: audio.id,
+              type: ArtworkType.AUDIO,
+              artworkBorder: BorderRadius.circular(10),
+              artworkFit: BoxFit.cover,
+              artworkWidth: 50,
+              artworkHeight: 50,
+              nullArtworkWidget: Icon(Icons.music_note, size: 26, color: theme.colorScheme.onPrimaryContainer),
+            ),
+          ),
+          if (_isSelectionMode || isSelected)
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: Container(
+                decoration: BoxDecoration(color: theme.colorScheme.surface, shape: BoxShape.circle),
+                child: Icon(isSelected ? Broken.tick_square : Icons.check_box_outline_blank, color: isSelected ? theme.colorScheme.primary : Colors.grey, size: 20),
+              ),
+            ),
+        ],
+      ),
+      title: Text(audio.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+      subtitle: Text(
+        showDate
+            ? '${audio.artist ?? "Unknown Artist"} • $dateStr'
+            : audio.artist ?? "Unknown Artist",
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.55), fontSize: 11),
+      ),
+      trailing: _isSelectionMode
+          ? null
+          : IconButton(
+              icon: const Icon(Broken.more),
+              onPressed: () => _showSingleItemOptions(name: audio.title, filePath: path),
+            ),
+    );
+  }
+
+  Widget _buildAudioList(List<SongModel> audios, ThemeData theme, bool isDateWise, bool isGrouped) {
     if (audios.isEmpty) return _buildEmptyState(theme);
+    if (isGrouped) {
+      return _buildGroupedView<SongModel>(
+        items: audios,
+        theme: theme,
+        isGrid: false,
+        isDateWise: isDateWise,
+        itemTileBuilder: (audio, showDate) {
+          final path = audio.data;
+          final isSelected = _selectedFilePaths.contains(path);
+          DateTime? modified;
+          try {
+            modified = File(path).statSync().modified;
+          } catch (_) {}
+          final dateStr = modified != null ? FileUtils.formatDate(modified) : 'Unknown Date';
+          final index = audios.indexOf(audio);
+          return _buildAudioTile(audio, theme, isSelected, showDate, dateStr, index, audios);
+        },
+      );
+    }
     return ListView.builder(
       physics: const BouncingScrollPhysics(),
       itemCount: audios.length,
@@ -1022,95 +1325,98 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
           modified = File(path).statSync().modified;
         } catch (_) {}
         final dateStr = modified != null ? FileUtils.formatDate(modified) : 'Unknown Date';
-
-        return ListTile(
-          key: ValueKey(path),
-          onTap: () {
-            if (_isSelectionMode) {
-              _toggleSelection(path, null);
-            } else {
-              Navigator.push(
-                context,
-                PageRouteBuilder(
-                  pageBuilder: (context, animation, secondaryAnimation) => AudioPlayerScreen(
-                    audioPath: path,
-                    title: audio.title,
-                    artist: audio.artist ?? 'Unknown Artist',
-                    allSongs: audios,
-                    initialIndex: index,
-                  ),
-                  transitionsBuilder: (context, animation, secondaryAnimation, child) => SlideTransition(
-                    position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-                    child: child,
-                  ),
-                  transitionDuration: const Duration(milliseconds: 400),
-                ),
-              );
-            }
-          },
-          onLongPress: () => _toggleSelection(path, null),
-          leading: Stack(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), color: theme.colorScheme.primaryContainer),
-                child: QueryArtworkWidget(
-                  id: audio.id,
-                  type: ArtworkType.AUDIO,
-                  artworkBorder: BorderRadius.circular(10),
-                  artworkFit: BoxFit.cover,
-                  artworkWidth: 50,
-                  artworkHeight: 50,
-                  nullArtworkWidget: Icon(Icons.music_note, size: 26, color: theme.colorScheme.onPrimaryContainer),
-                ),
-              ),
-              if (_isSelectionMode || isSelected)
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: Container(
-                    decoration: BoxDecoration(color: theme.colorScheme.surface, shape: BoxShape.circle),
-                    child: Icon(isSelected ? Broken.tick_square : Icons.check_box_outline_blank, color: isSelected ? theme.colorScheme.primary : Colors.grey, size: 20),
-                  ),
-                ),
-            ],
-          ),
-          title: Text(audio.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-          subtitle: Text(
-            isDateWise
-                ? '${audio.artist ?? "Unknown Artist"} • $dateStr'
-                : audio.artist ?? "Unknown Artist",
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.55), fontSize: 11),
-          ),
-          trailing: _isSelectionMode
-              ? null
-              : IconButton(
-                  icon: const Icon(Broken.more),
-                  onPressed: () => _showSingleItemOptions(name: audio.title, filePath: path),
-                ),
-        );
+        return _buildAudioTile(audio, theme, isSelected, isDateWise, dateStr, index, audios);
       },
     );
   }
 
-  Widget _buildDocumentList(List<FileSystemEntity> documents, ThemeData theme, bool isDateWise) {
+  Widget _buildDocumentTile(
+    FileSystemEntity doc,
+    ThemeData theme,
+    bool isSelected,
+    bool showDate,
+    int size,
+    DateTime modified,
+  ) {
+    final path = doc.path;
+    final name = path.split('/').last;
+    final ext = name.contains('.') ? name.substring(name.lastIndexOf('.')).toLowerCase() : '';
+    final icon = _docIcon(ext);
+    final color = _docColor(ext);
+
+    return ListTile(
+      key: ValueKey(path),
+      onTap: () {
+        if (_isSelectionMode) {
+          _toggleSelection(path, null);
+        } else {
+          Navigator.push(context, _slideRoute(DocumentViewerScreen(filePath: path)));
+        }
+      },
+      onLongPress: () => _toggleSelection(path, null),
+      leading: Stack(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          if (_isSelectionMode || isSelected)
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: Container(
+                decoration: BoxDecoration(color: theme.colorScheme.surface, shape: BoxShape.circle),
+                child: Icon(isSelected ? Broken.tick_square : Icons.check_box_outline_blank, color: isSelected ? theme.colorScheme.primary : Colors.grey, size: 20),
+              ),
+            ),
+        ],
+      ),
+      title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w500)),
+      subtitle: Text(
+        showDate
+            ? '${FileUtils.formatBytes(size, 1)} • ${FileUtils.formatDate(modified)}'
+            : FileUtils.formatBytes(size, 1),
+        style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6), fontSize: 11),
+      ),
+      trailing: _isSelectionMode
+          ? null
+          : IconButton(
+              icon: const Icon(Broken.more),
+              onPressed: () => _showSingleItemOptions(name: name, filePath: path),
+            ),
+    );
+  }
+
+  Widget _buildDocumentList(List<FileSystemEntity> documents, ThemeData theme, bool isDateWise, bool isGrouped) {
     if (documents.isEmpty) return _buildEmptyState(theme);
+    if (isGrouped) {
+      return _buildGroupedView<FileSystemEntity>(
+        items: documents,
+        theme: theme,
+        isGrid: false,
+        isDateWise: isDateWise,
+        itemTileBuilder: (doc, showDate) {
+          final isSelected = _selectedFilePaths.contains(doc.path);
+          int size = 0;
+          DateTime modified = DateTime.now();
+          try {
+            final st = doc.statSync();
+            size = st.size;
+            modified = st.modified;
+          } catch (_) {}
+          return _buildDocumentTile(doc, theme, isSelected, showDate, size, modified);
+        },
+      );
+    }
     return ListView.builder(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: documents.length,
       itemBuilder: (context, index) {
         final doc = documents[index];
-        final path = doc.path;
-        final name = path.split('/').last;
-        final ext = name.contains('.') ? name.substring(name.lastIndexOf('.')).toLowerCase() : '';
-        final icon = _docIcon(ext);
-        final color = _docColor(ext);
-        final isSelected = _selectedFilePaths.contains(path);
-
+        final isSelected = _selectedFilePaths.contains(doc.path);
         int size = 0;
         DateTime modified = DateTime.now();
         try {
@@ -1118,66 +1424,96 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
           size = st.size;
           modified = st.modified;
         } catch (_) {}
-
-        return ListTile(
-          key: ValueKey(path),
-          onTap: () {
-            if (_isSelectionMode) {
-              _toggleSelection(path, null);
-            } else {
-              Navigator.push(context, _slideRoute(DocumentViewerScreen(filePath: path)));
-            }
-          },
-          onLongPress: () => _toggleSelection(path, null),
-          leading: Stack(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
-                child: Icon(icon, color: color, size: 22),
-              ),
-              if (_isSelectionMode || isSelected)
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: Container(
-                    decoration: BoxDecoration(color: theme.colorScheme.surface, shape: BoxShape.circle),
-                    child: Icon(isSelected ? Broken.tick_square : Icons.check_box_outline_blank, color: isSelected ? theme.colorScheme.primary : Colors.grey, size: 20),
-                  ),
-                ),
-            ],
-          ),
-          title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w500)),
-          subtitle: Text(
-            isDateWise
-                ? '${FileUtils.formatBytes(size, 1)} • ${FileUtils.formatDate(modified)}'
-                : FileUtils.formatBytes(size, 1),
-            style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6), fontSize: 11),
-          ),
-          trailing: _isSelectionMode
-              ? null
-              : IconButton(
-                  icon: const Icon(Broken.more),
-                  onPressed: () => _showSingleItemOptions(name: name, filePath: path),
-                ),
-        );
+        return _buildDocumentTile(doc, theme, isSelected, isDateWise, size, modified);
       },
     );
   }
 
-  Widget _buildGenericFileList(List<FileSystemEntity> files, ThemeData theme, bool isDateWise) {
+  Widget _buildGenericFileTile(
+    FileSystemEntity file,
+    ThemeData theme,
+    bool isSelected,
+    bool showDate,
+    int size,
+    DateTime modified,
+  ) {
+    final path = file.path;
+    final name = path.split('/').last;
+    final iconColor = FileUtils.getColorForFile(name, context);
+
+    return ListTile(
+      key: ValueKey(path),
+      onTap: () {
+        if (_isSelectionMode) {
+          _toggleSelection(path, null);
+        } else {
+          context.read<FileManagerProvider>().openFile(context, path);
+        }
+      },
+      onLongPress: () => _toggleSelection(path, null),
+      leading: Stack(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(color: iconColor.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
+            child: Icon(FileUtils.getIconForFile(name), color: iconColor, size: 22),
+          ),
+          if (_isSelectionMode || isSelected)
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: Container(
+                decoration: BoxDecoration(color: theme.colorScheme.surface, shape: BoxShape.circle),
+                child: Icon(isSelected ? Broken.tick_square : Icons.check_box_outline_blank, color: isSelected ? theme.colorScheme.primary : Colors.grey, size: 20),
+              ),
+            ),
+        ],
+      ),
+      title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w500)),
+      subtitle: Text(
+        showDate
+            ? '${FileUtils.formatBytes(size, 1)} • ${FileUtils.formatDate(modified)}'
+            : FileUtils.formatBytes(size, 1),
+        style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6), fontSize: 11),
+      ),
+      trailing: _isSelectionMode
+          ? null
+          : IconButton(
+              icon: const Icon(Broken.more),
+              onPressed: () => _showSingleItemOptions(name: name, filePath: path),
+            ),
+    );
+  }
+
+  Widget _buildGenericFileList(List<FileSystemEntity> files, ThemeData theme, bool isDateWise, bool isGrouped) {
     if (files.isEmpty) return _buildEmptyState(theme);
+    if (isGrouped) {
+      return _buildGroupedView<FileSystemEntity>(
+        items: files,
+        theme: theme,
+        isGrid: false,
+        isDateWise: isDateWise,
+        itemTileBuilder: (file, showDate) {
+          final isSelected = _selectedFilePaths.contains(file.path);
+          int size = 0;
+          DateTime modified = DateTime.now();
+          try {
+            final st = file.statSync();
+            size = st.size;
+            modified = st.modified;
+          } catch (_) {}
+          return _buildGenericFileTile(file, theme, isSelected, showDate, size, modified);
+        },
+      );
+    }
     return ListView.builder(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: files.length,
       itemBuilder: (context, index) {
         final file = files[index];
-        final path = file.path;
-        final name = path.split('/').last;
-        final isSelected = _selectedFilePaths.contains(path);
-
+        final isSelected = _selectedFilePaths.contains(file.path);
         int size = 0;
         DateTime modified = DateTime.now();
         try {
@@ -1185,51 +1521,7 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
           size = st.size;
           modified = st.modified;
         } catch (_) {}
-        final iconColor = FileUtils.getColorForFile(name, context);
-
-        return ListTile(
-          key: ValueKey(path),
-          onTap: () {
-            if (_isSelectionMode) {
-              _toggleSelection(path, null);
-            } else {
-              context.read<FileManagerProvider>().openFile(context, path);
-            }
-          },
-          onLongPress: () => _toggleSelection(path, null),
-          leading: Stack(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(color: iconColor.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
-                child: Icon(FileUtils.getIconForFile(name), color: iconColor, size: 22),
-              ),
-              if (_isSelectionMode || isSelected)
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: Container(
-                    decoration: BoxDecoration(color: theme.colorScheme.surface, shape: BoxShape.circle),
-                    child: Icon(isSelected ? Broken.tick_square : Icons.check_box_outline_blank, color: isSelected ? theme.colorScheme.primary : Colors.grey, size: 20),
-                  ),
-                ),
-            ],
-          ),
-          title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w500)),
-          subtitle: Text(
-            isDateWise
-                ? '${FileUtils.formatBytes(size, 1)} • ${FileUtils.formatDate(modified)}'
-                : FileUtils.formatBytes(size, 1),
-            style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6), fontSize: 11),
-          ),
-          trailing: _isSelectionMode
-              ? null
-              : IconButton(
-                  icon: const Icon(Broken.more),
-                  onPressed: () => _showSingleItemOptions(name: name, filePath: path),
-                ),
-        );
+        return _buildGenericFileTile(file, theme, isSelected, isDateWise, size, modified);
       },
     );
   }
