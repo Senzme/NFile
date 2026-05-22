@@ -1,6 +1,8 @@
 package com.rubex.nfile
 
 import android.content.pm.PackageManager
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.os.StatFs
@@ -214,6 +216,72 @@ class MainActivity : FlutterActivity() {
                             e.printStackTrace()
                             runOnUiThread { result.error("WRITE_ERROR", e.message, null) }
                         }
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.rubex.nfile/ftp_service").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "startFtpService" -> {
+                    val ip = call.argument<String>("ip") ?: "127.0.0.1"
+                    val port = call.argument<Int>("port") ?: 9999
+                    try {
+                        val intent = Intent(this, FtpForegroundService::class.java).apply {
+                            putExtra("ip", ip)
+                            putExtra("port", port)
+                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            startForegroundService(intent)
+                        } else {
+                            startService(intent)
+                        }
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("START_FAILED", e.message, null)
+                    }
+                }
+                "stopFtpService" -> {
+                    try {
+                        val intent = Intent(this, FtpForegroundService::class.java)
+                        stopService(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("STOP_FAILED", e.message, null)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.rubex.nfile/web_sharing_service").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "startWebSharingService" -> {
+                    val url = call.argument<String>("url") ?: "http://127.0.0.1:8080"
+                    val isInternet = call.argument<Boolean>("isInternet") ?: false
+                    try {
+                        val intent = Intent(this, WebSharingForegroundService::class.java).apply {
+                            putExtra("url", url)
+                            putExtra("isInternet", isInternet)
+                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            startForegroundService(intent)
+                        } else {
+                            startService(intent)
+                        }
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("START_FAILED", e.message, null)
+                    }
+                }
+                "stopWebSharingService" -> {
+                    try {
+                        val intent = Intent(this, WebSharingForegroundService::class.java)
+                        stopService(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("STOP_FAILED", e.message, null)
                     }
                 }
                 else -> result.notImplemented()

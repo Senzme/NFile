@@ -21,6 +21,9 @@ import '../widgets/restricted_folder_banner.dart';
 import '../widgets/directory_tab_bar.dart';
 import '../widgets/pane_browser.dart';
 import '../widgets/nfile_address_bar.dart';
+import '../../services/network_connections_service.dart';
+import 'network_connection_wizard_screen.dart';
+import 'remote_explorer_screen.dart';
 
 class DirectoryScreen extends StatefulWidget {
   final VoidCallback toggleTheme;
@@ -435,6 +438,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
       backgroundColor: theme.scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) {
+        final connections = NetworkConnectionsService.getConnections();
         return SafeArea(
           child: SingleChildScrollView(
             child: Padding(
@@ -483,35 +487,28 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: provider.storageVolumes.length,
-                    itemBuilder: (_, i) {
-                      final vol = provider.storageVolumes[i];
-                      final isSelected = provider.rootPath == vol.path;
-
-                      return ListTile(
-                        leading: Container(
-                          width: 42,
-                          height: 42,
-                          decoration: BoxDecoration(
-                            color: isSelected ? theme.colorScheme.primary.withOpacity(0.2) : theme.colorScheme.surfaceVariant,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(vol.isInternal ? Broken.folder_open : Icons.sd_storage_rounded, color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface, size: 24),
+                  ...provider.storageVolumes.map((vol) {
+                    final isSelected = provider.rootPath == vol.path;
+                    return ListTile(
+                      leading: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: isSelected ? theme.colorScheme.primary.withOpacity(0.2) : theme.colorScheme.surfaceVariant,
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        title: Text(vol.name, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.w600, fontSize: 16)),
-                        subtitle: Text(vol.path, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6))),
-                        trailing: isSelected ? Icon(Icons.check_circle, color: theme.colorScheme.primary) : null,
-                        onTap: () {
-                          Navigator.pop(ctx);
-                          provider.setRootPath(vol.path);
-                          provider.loadDirectory(vol.path);
-                        },
-                      );
-                    },
-                  ),
+                        child: Icon(vol.isInternal ? Broken.folder_open : Icons.sd_storage_rounded, color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface, size: 24),
+                      ),
+                      title: Text(vol.name, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.w600, fontSize: 16)),
+                      subtitle: Text(vol.path, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6))),
+                      trailing: isSelected ? Icon(Icons.check_circle, color: theme.colorScheme.primary) : null,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        provider.setRootPath(vol.path);
+                        provider.loadDirectory(vol.path);
+                      },
+                    );
+                  }),
                   ListTile(
                     leading: Container(
                       width: 42,
@@ -531,36 +528,28 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                       provider.loadDirectory('/');
                     },
                   ),
-                  if (provider.pinnedFolderShortcuts.isNotEmpty) ...[
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                      child: Divider(),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                      child: Text('Pinned Shortcuts', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
-                    ),
-                    const SizedBox(height: 8),
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: provider.pinnedFolderShortcuts.length,
-                      itemBuilder: (_, i) {
-                        final item = provider.pinnedFolderShortcuts[i];
-                        final isSelected = provider.rootPath == item.path || provider.currentPath == item.path;
-                        return ListTile(
-                          leading: Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: isSelected ? theme.colorScheme.primary.withOpacity(0.2) : theme.colorScheme.surfaceVariant,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(Broken.folder_favorite, color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface, size: 24),
-                          ),
-                          title: Text(item.label, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.w600, fontSize: 16)),
-                          subtitle: Text(item.path, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6))),
-                          trailing: IconButton(
+                  ...provider.pinnedFolderShortcuts.map((item) {
+                    final isSelected = provider.rootPath == item.path || provider.currentPath == item.path;
+                    return ListTile(
+                      leading: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: isSelected ? theme.colorScheme.primary.withOpacity(0.2) : theme.colorScheme.surfaceVariant,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Broken.folder_favorite, color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface, size: 24),
+                      ),
+                      title: Text(item.label, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.w600, fontSize: 16)),
+                      subtitle: Text(item.path, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6))),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (isSelected) ...[
+                            Icon(Icons.check_circle, color: theme.colorScheme.primary),
+                            const SizedBox(width: 8),
+                          ],
+                          IconButton(
                             icon: const Icon(Broken.trash, size: 20, color: Colors.redAccent),
                             onPressed: () {
                               provider.removePinnedFolderShortcut(item.id);
@@ -568,13 +557,164 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                               _showStorageVolumeModal(context, provider);
                             },
                           ),
-                          onTap: () {
-                            Navigator.pop(ctx);
-                            provider.setRootPath(item.path);
-                            provider.loadDirectory(item.path);
-                          },
-                        );
+                        ],
+                      ),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        provider.setRootPath(item.path);
+                        provider.loadDirectory(item.path);
                       },
+                    );
+                  }),
+
+                  // Network Connections Section
+                  const SizedBox(height: 24),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Network Connections',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.primary,
+                            fontFamily: 'LexendDeca',
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.add_link_rounded, size: 20),
+                          tooltip: 'Add Network Connection',
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            final added = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const NetworkConnectionWizardScreen(),
+                              ),
+                            );
+                            if (added == true) {
+                              _showStorageVolumeModal(context, provider);
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12.0),
+                    child: Divider(height: 8, thickness: 1),
+                  ),
+
+                  if (connections.isNotEmpty) ...[
+                    ...connections.map((conn) {
+                      IconData iconData;
+                      switch (conn.type) {
+                        case 'Google Drive':
+                          iconData = Icons.cloud_circle_rounded;
+                          break;
+                        case 'Dropbox':
+                          iconData = Icons.folder_shared_rounded;
+                          break;
+                        case 'OneDrive':
+                          iconData = Icons.cloud_queue_rounded;
+                          break;
+                        case 'Box':
+                          iconData = Icons.all_inbox_rounded;
+                          break;
+                        case 'LAN/SMB':
+                          iconData = Icons.dns_rounded;
+                          break;
+                        case 'FTP':
+                          iconData = Icons.swap_horizontal_circle_rounded;
+                          break;
+                        case 'SFTP':
+                          iconData = Icons.vpn_lock_rounded;
+                          break;
+                        case 'WebDav':
+                          iconData = Icons.web_rounded;
+                          break;
+                        default:
+                          iconData = Broken.wifi;
+                      }
+                      return ListTile(
+                        leading: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(iconData, color: theme.colorScheme.primary, size: 22),
+                        ),
+                        title: Text(conn.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                        subtitle: Text('${conn.type} • ${conn.host}', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6))),
+                        trailing: IconButton(
+                          icon: const Icon(Broken.trash, size: 20, color: Colors.redAccent),
+                          tooltip: 'Remove Connection',
+                          onPressed: () async {
+                            await NetworkConnectionsService.deleteConnection(conn.id);
+                            Navigator.pop(ctx);
+                            _showStorageVolumeModal(context, provider);
+                          },
+                        ),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => RemoteExplorerScreen(connection: conn),
+                            ),
+                          );
+                        },
+                      );
+                    }),
+                  ] else ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.onSurface.withOpacity(0.03),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: theme.colorScheme.onSurface.withOpacity(0.05)),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              'No Saved Network Connections',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.onSurface.withOpacity(0.5),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: theme.colorScheme.primary.withOpacity(0.5)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                              ),
+                              icon: const Icon(Icons.add_link_rounded, size: 16),
+                              label: const Text('Add Connection', style: TextStyle(fontSize: 13)),
+                              onPressed: () async {
+                                Navigator.pop(ctx);
+                                final added = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const NetworkConnectionWizardScreen(),
+                                  ),
+                                );
+                                if (added == true) {
+                                  _showStorageVolumeModal(context, provider);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ],

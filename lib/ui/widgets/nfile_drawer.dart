@@ -5,6 +5,11 @@ import '../../providers/file_manager_provider.dart';
 import '../screens/global_search_screen.dart';
 import '../screens/more_settings_screen.dart';
 import '../screens/vault_lock_screen.dart';
+import '../screens/ftp_server_screen.dart';
+import '../../services/network_connections_service.dart';
+import '../screens/network_connection_wizard_screen.dart';
+import '../screens/remote_explorer_screen.dart';
+import '../screens/web_sharing_screen.dart';
 
 class NFileDrawer extends StatelessWidget {
   final VoidCallback toggleTheme;
@@ -17,6 +22,7 @@ class NFileDrawer extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final fileManager = context.watch<FileManagerProvider>();
+    final connections = NetworkConnectionsService.getConnections();
 
     return Drawer(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -89,6 +95,107 @@ class NFileDrawer extends StatelessWidget {
                         Navigator.pop(context);
                         Navigator.push(context, MaterialPageRoute(builder: (_) => const VaultLockScreen()));
                       },
+                    ),
+
+                    _buildDivider(context),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 2.0),
+                      child: Theme(
+                        data: theme.copyWith(dividerColor: Colors.transparent),
+                        child: ExpansionTile(
+                          leading: Icon(Broken.wifi_square, size: 22, color: theme.colorScheme.onSurface.withOpacity(0.8)),
+                          title: Text(
+                            'Servers & Tools',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface.withOpacity(0.9)),
+                          ),
+                          iconColor: theme.colorScheme.primary,
+                          textColor: theme.colorScheme.primary,
+                          collapsedIconColor: theme.colorScheme.onSurface.withOpacity(0.8),
+                          tilePadding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          children: [
+                            _buildDrawerTile(
+                              context,
+                              icon: Broken.wifi,
+                              title: 'FTP Server',
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => const FtpServerScreen()));
+                              },
+                            ),
+                            _buildDrawerTile(
+                              context,
+                              icon: Icons.language_rounded,
+                              title: 'Web Sharing',
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => const WebSharingScreen()));
+                              },
+                            ),
+                            ...connections.map((conn) {
+                              IconData iconData;
+                              switch (conn.type) {
+                                case 'Google Drive':
+                                  iconData = Icons.cloud_circle_rounded;
+                                  break;
+                                case 'Dropbox':
+                                  iconData = Icons.folder_shared_rounded;
+                                  break;
+                                case 'OneDrive':
+                                  iconData = Icons.cloud_queue_rounded;
+                                  break;
+                                case 'Box':
+                                  iconData = Icons.all_inbox_rounded;
+                                  break;
+                                case 'LAN/SMB':
+                                  iconData = Icons.dns_rounded;
+                                  break;
+                                case 'FTP':
+                                  iconData = Icons.swap_horizontal_circle_rounded;
+                                  break;
+                                case 'SFTP':
+                                  iconData = Icons.vpn_lock_rounded;
+                                  break;
+                                case 'WebDav':
+                                  iconData = Icons.web_rounded;
+                                  break;
+                                default:
+                                  iconData = Broken.wifi;
+                              }
+                              return _buildDrawerTile(
+                                context,
+                                icon: iconData,
+                                title: conn.name,
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => RemoteExplorerScreen(connection: conn),
+                                    ),
+                                  );
+                                },
+                              );
+                            }),
+                            // Temporarily hidden
+                            /*
+                            _buildDrawerTile(
+                              context,
+                              icon: Icons.add_link_rounded,
+                              title: 'Add Remote Connection',
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const NetworkConnectionWizardScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                            */
+                          ],
+                        ),
+                      ),
                     ),
 
                     _buildDivider(context),

@@ -13,6 +13,7 @@ import 'core/icon_fonts/broken_icons.dart';
 import 'providers/file_manager_provider.dart';
 import 'providers/media_provider.dart';
 import 'services/preferences_service.dart';
+import 'services/network_connections_service.dart';
 import 'services/intent_handler_service.dart';
 import 'ui/screens/home_screen.dart';
 
@@ -22,6 +23,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
   await PreferencesService.init();
+  await NetworkConnectionsService.init();
 
   runApp(
     MultiProvider(
