@@ -49,6 +49,7 @@ class _NFileAppState extends State<NFileApp> {
   @override
   void initState() {
     super.initState();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _themeMode = PreferencesService.getThemeMode();
     _initializeApplication();
   }
@@ -172,16 +173,31 @@ class _NFileAppState extends State<NFileApp> {
               darkTheme: AppTheme.getAppTheme(light: false, seed: baseSeedColor, customScheme: activeDarkScheme),
               themeMode: _themeMode,
               builder: (context, child) {
-                final theme = Theme.of(context);
+                final isDark = _themeMode == ThemeMode.system
+                    ? (MediaQuery.platformBrightnessOf(context) == Brightness.dark)
+                    : (_themeMode == ThemeMode.dark);
+                
+                final theme = isDark
+                    ? AppTheme.getAppTheme(light: false, seed: baseSeedColor, customScheme: activeDarkScheme)
+                    : AppTheme.getAppTheme(light: true, seed: baseSeedColor, customScheme: activeLightScheme);
+
+                final navBarColor = theme.scaffoldBackgroundColor ?? theme.colorScheme.surface;
+
+                final style = SystemUiOverlayStyle(
+                  statusBarColor: Colors.transparent,
+                  statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+                  statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+                  systemNavigationBarColor: navBarColor,
+                  systemNavigationBarDividerColor: Colors.transparent,
+                  systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+                  systemNavigationBarContrastEnforced: false,
+                  systemStatusBarContrastEnforced: false,
+                );
+
+                SystemChrome.setSystemUIOverlayStyle(style);
+
                 return AnnotatedRegion<SystemUiOverlayStyle>(
-                  value: SystemUiOverlayStyle(
-                    statusBarColor: Colors.transparent,
-                    statusBarIconBrightness: theme.brightness == Brightness.dark ? Brightness.light : Brightness.dark,
-                    statusBarBrightness: theme.brightness == Brightness.dark ? Brightness.dark : Brightness.light,
-                    systemNavigationBarColor: theme.scaffoldBackgroundColor,
-                    systemNavigationBarDividerColor: Colors.transparent,
-                    systemNavigationBarIconBrightness: theme.brightness == Brightness.dark ? Brightness.light : Brightness.dark,
-                  ),
+                  value: style,
                   child: child!,
                 );
               },
