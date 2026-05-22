@@ -251,7 +251,9 @@ class PreferencesService {
 
   // --- Preferred Media Category default view & Open With preferences ---
   static const String _keyPreferFoldersInMedia = 'prefer_folders_in_media';
+  static const String _keyHideNavigationBar = 'hide_navigation_bar';
   static const String _keyDefaultOpenActionPrefix = 'default_open_action_';
+  static const String _keySkipOpenWithDialog = 'skip_open_with_dialog';
 
   static bool getPreferFoldersInMedia() {
     return _prefs?.getBool(_keyPreferFoldersInMedia) ?? false;
@@ -259,6 +261,22 @@ class PreferencesService {
 
   static Future<void> savePreferFoldersInMedia(bool val) async {
     await _prefs?.setBool(_keyPreferFoldersInMedia, val);
+  }
+
+  static bool getHideNavigationBar() {
+    return _prefs?.getBool(_keyHideNavigationBar) ?? false;
+  }
+
+  static Future<void> saveHideNavigationBar(bool val) async {
+    await _prefs?.setBool(_keyHideNavigationBar, val);
+  }
+
+  static bool getSkipOpenWithDialog() {
+    return _prefs?.getBool(_keySkipOpenWithDialog) ?? true;
+  }
+
+  static Future<void> saveSkipOpenWithDialog(bool val) async {
+    await _prefs?.setBool(_keySkipOpenWithDialog, val);
   }
 
   static String? getDefaultOpenAction(String ext) {

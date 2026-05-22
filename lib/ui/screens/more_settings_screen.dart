@@ -69,6 +69,21 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
             ),
             _buildSettingTile(
               theme,
+              icon: Icons.android,
+              title: 'Hide Android Navigation Bar',
+              subtitle: 'Hide bottom navigation bar to maximize screen real estate (swiping up displays it)',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.hideNavigationBar,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleHideNavigationBar(),
+                ),
+              ),
+              onTap: () => fileManager.toggleHideNavigationBar(),
+            ),
+            _buildSettingTile(
+              theme,
               icon: Broken.refresh_2,
               title: 'Reset Default File Viewers',
               subtitle: 'Clear all remembered "Open With" associations for file viewers',
@@ -83,6 +98,21 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
                   );
                 }
               },
+            ),
+            _buildSettingTile(
+              theme,
+              icon: Broken.setting_3,
+              title: 'Skip "Open With" Dialog',
+              subtitle: 'Bypass the application choice dialog and immediately open files with default viewers',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.skipOpenWithDialog,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleSkipOpenWithDialog(),
+                ),
+              ),
+              onTap: () => fileManager.toggleSkipOpenWithDialog(),
             ),
             _buildSettingTile(
               theme,
@@ -483,7 +513,7 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
         ),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
         subtitle: Text(subtitle, style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withOpacity(0.6))),
-        trailing: trailing,
+        trailing: trailing != null ? IgnorePointer(child: trailing) : null,
         onTap: onTap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),

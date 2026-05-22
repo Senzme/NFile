@@ -4,6 +4,7 @@ import '../../core/icon_fonts/broken_icons.dart';
 import '../../providers/file_manager_provider.dart';
 import '../screens/global_search_screen.dart';
 import '../screens/more_settings_screen.dart';
+import '../screens/vault_lock_screen.dart';
 
 class NFileDrawer extends StatelessWidget {
   final VoidCallback toggleTheme;
@@ -78,6 +79,15 @@ class NFileDrawer extends StatelessWidget {
                       onTap: () {
                         Navigator.pop(context);
                         Navigator.push(context, MaterialPageRoute(builder: (_) => const GlobalSearchScreen()));
+                      },
+                    ),
+                    _buildDrawerTile(
+                      context,
+                      icon: Broken.lock,
+                      title: 'Private Wallet',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const VaultLockScreen()));
                       },
                     ),
 

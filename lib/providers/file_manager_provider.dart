@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import '../models/file_item_model.dart';
@@ -61,6 +62,8 @@ class FileManagerProvider extends ChangeNotifier {
     _accentColorOption = PreferencesService.getAccentColor();
     _folderIconOption = PreferencesService.getFolderIconStyle();
     _pinnedFolderShortcuts = PreferencesService.getPinnedFolderShortcuts();
+    _hideNavigationBar = PreferencesService.getHideNavigationBar();
+    _skipOpenWithDialog = PreferencesService.getSkipOpenWithDialog();
   }
 
   final ValueNotifier<FileOperationProgress?> progressNotifier = ValueNotifier<FileOperationProgress?>(null);
@@ -254,12 +257,35 @@ class FileManagerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool _hideNavigationBar = false;
+  bool get hideNavigationBar => _hideNavigationBar;
+
+  void toggleHideNavigationBar() {
+    _hideNavigationBar = !_hideNavigationBar;
+    PreferencesService.saveHideNavigationBar(_hideNavigationBar);
+    if (_hideNavigationBar) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: [SystemUiOverlay.top]);
+    } else {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    }
+    notifyListeners();
+  }
+
   bool _showMediaPreviews = true;
   bool get showMediaPreviews => _showMediaPreviews;
 
   void toggleMediaPreviews() {
     _showMediaPreviews = !_showMediaPreviews;
     PreferencesService.saveShowMediaPreviews(_showMediaPreviews);
+    notifyListeners();
+  }
+
+  bool _skipOpenWithDialog = true;
+  bool get skipOpenWithDialog => _skipOpenWithDialog;
+
+  void toggleSkipOpenWithDialog() {
+    _skipOpenWithDialog = !_skipOpenWithDialog;
+    PreferencesService.saveSkipOpenWithDialog(_skipOpenWithDialog);
     notifyListeners();
   }
 
@@ -1335,7 +1361,7 @@ class FileManagerProvider extends ChangeNotifier {
       }
     }
 
-    if (showOpenWithPopup && hasNativeViewer(path)) {
+    if (showOpenWithPopup && !_skipOpenWithDialog && hasNativeViewer(path)) {
       if (!context.mounted) return;
       
       final result = await showModalBottomSheet<String>(
