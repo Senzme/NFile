@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
@@ -170,6 +171,20 @@ class _NFileAppState extends State<NFileApp> {
               theme: AppTheme.getAppTheme(light: true, seed: baseSeedColor, customScheme: activeLightScheme),
               darkTheme: AppTheme.getAppTheme(light: false, seed: baseSeedColor, customScheme: activeDarkScheme),
               themeMode: _themeMode,
+              builder: (context, child) {
+                final theme = Theme.of(context);
+                return AnnotatedRegion<SystemUiOverlayStyle>(
+                  value: SystemUiOverlayStyle(
+                    statusBarColor: Colors.transparent,
+                    statusBarIconBrightness: theme.brightness == Brightness.dark ? Brightness.light : Brightness.dark,
+                    statusBarBrightness: theme.brightness == Brightness.dark ? Brightness.dark : Brightness.light,
+                    systemNavigationBarColor: theme.scaffoldBackgroundColor,
+                    systemNavigationBarDividerColor: Colors.transparent,
+                    systemNavigationBarIconBrightness: theme.brightness == Brightness.dark ? Brightness.light : Brightness.dark,
+                  ),
+                  child: child!,
+                );
+              },
               home: _hasPermission == null
                   ? const Scaffold()
                   : (_hasPermission == true

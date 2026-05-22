@@ -197,6 +197,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                  IconButton(
+                    onPressed: widget.toggleTheme,
+                    icon: Icon(
+                      theme.brightness == Brightness.dark ? Broken.sun_1 : Broken.moon,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
                 ],
               ),
             ),
