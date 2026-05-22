@@ -21,10 +21,7 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
-            <!-- Specifies an Android theme to apply to this Activity as soon as
-                 the Android process has started. This theme is visible to the user
-                 while the Flutter UI initializes. After that, this theme continues
-                 to determine the Window background behind the Flutter UI. -->
+            <!-- Boot theme while Flutter initializes -->
             <meta-data
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
@@ -34,7 +31,7 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
 
-            <!-- Intent filter to view PDF files -->
+            <!-- PDF viewer intent -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -43,7 +40,7 @@
                 <data android:mimeType="application/pdf" />
             </intent-filter>
 
-            <!-- Intent filter to view Images -->
+            <!-- Image viewer intent -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -52,7 +49,7 @@
                 <data android:mimeType="image/*" />
             </intent-filter>
 
-            <!-- Intent filter to view Audio, Video, Text, Archives, Docs -->
+            <!-- Standard media and document viewer intent -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -75,7 +72,7 @@
                 <data android:mimeType="application/vnd.openxmlformats-officedocument.presentationml.presentation" />
             </intent-filter>
 
-            <!-- Also intent filter for SEND (sharing to NFile) -->
+            <!-- System share sheet receiver -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -87,8 +84,7 @@
                 <data android:mimeType="*/*" />
             </intent-filter>
         </activity>
-        <!-- Don't delete the meta-data below.
-             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        <!-- Flutter plugin registration metadata -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
@@ -100,13 +96,8 @@
             android:multiprocess="false"
             android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
     </application>
-    <!-- Required to query activities that can process text, see:
-         https://developer.android.com/training/package-visibility and
-         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
-
-         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <!-- Package visibility queries for Android 11+ -->
     <queries>
-        <!-- Required to query packages for external open_filex (Android 11+) -->
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:mimeType="*/*" />
