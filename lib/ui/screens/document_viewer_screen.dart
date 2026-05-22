@@ -48,6 +48,10 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
   bool _isEditing = false;
   late TextEditingController _textController;
 
+  PdfPageLayoutMode _pdfLayoutMode = PdfPageLayoutMode.continuous;
+  PdfScrollDirection _pdfScrollDirection = PdfScrollDirection.vertical;
+  bool _pdfEnableTextSelection = true;
+
   @override
   void initState() {
     super.initState();
@@ -209,6 +213,354 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
     await OpenFilex.open(widget.filePath);
   }
 
+  void _showPdfSettings() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final theme = Theme.of(context);
+            final isDark = theme.brightness == Brightness.dark;
+            return Container(
+              decoration: BoxDecoration(
+                color: theme.scaffoldBackgroundColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(isDark ? 0.4 : 0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              padding: EdgeInsets.only(
+                top: 16,
+                left: 24,
+                right: 24,
+                bottom: MediaQuery.of(context).padding.bottom + 24,
+              ),
+              child: SafeArea(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Handle
+                      Center(
+                        child: Container(
+                          width: 48,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.onSurface.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(2.5),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      // Header
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.speed_rounded,
+                                color: theme.colorScheme.primary,
+                                size: 22,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'PDF Display Settings',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                              ),
+                            ],
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.close_rounded, color: theme.colorScheme.onSurface.withOpacity(0.6)),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Optimize rendering performance for large, design-heavy, or scanned documents.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurface.withOpacity(0.6),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Quick Tuning Presets
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: theme.colorScheme.primary.withOpacity(0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Quick Performance Presets',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            // Preset Buttons
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildPresetButton(
+                                    context: context,
+                                    label: 'Standard Mode',
+                                    subtitle: 'Best for text documents',
+                                    isActive: _pdfLayoutMode == PdfPageLayoutMode.continuous && _pdfEnableTextSelection,
+                                    onTap: () {
+                                      setModalState(() {
+                                        _pdfLayoutMode = PdfPageLayoutMode.continuous;
+                                        _pdfScrollDirection = PdfScrollDirection.vertical;
+                                        _pdfEnableTextSelection = true;
+                                      });
+                                      setState(() {});
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: _buildPresetButton(
+                                    context: context,
+                                    label: 'Lag-Free Mode',
+                                    subtitle: 'Best for brochures & photos',
+                                    isActive: _pdfLayoutMode == PdfPageLayoutMode.single && !_pdfEnableTextSelection,
+                                    onTap: () {
+                                      setModalState(() {
+                                        _pdfLayoutMode = PdfPageLayoutMode.single;
+                                        _pdfScrollDirection = PdfScrollDirection.horizontal;
+                                        _pdfEnableTextSelection = false;
+                                      });
+                                      setState(() {});
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Detail Tuning header
+                      Text(
+                        'Detailed Tuning Options',
+                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Page Layout Option
+                      _buildTuningOption(
+                        context: context,
+                        title: 'Page Layout',
+                        subtitle: _pdfLayoutMode == PdfPageLayoutMode.continuous
+                            ? 'Continuous (Vertical scrolling list)'
+                            : 'Single Page (Instant page-by-page swipe)',
+                        child: SegmentedButton<PdfPageLayoutMode>(
+                          showSelectedIcon: false,
+                          style: SegmentedButton.styleFrom(
+                            selectedBackgroundColor: theme.colorScheme.primary.withOpacity(0.12),
+                            selectedForegroundColor: theme.colorScheme.primary,
+                          ),
+                          segments: const [
+                            ButtonSegment<PdfPageLayoutMode>(
+                              value: PdfPageLayoutMode.continuous,
+                              icon: Icon(Icons.view_day_outlined, size: 18),
+                              label: Text('Continuous'),
+                            ),
+                            ButtonSegment<PdfPageLayoutMode>(
+                              value: PdfPageLayoutMode.single,
+                              icon: Icon(Icons.auto_stories_outlined, size: 18),
+                              label: Text('Single Page'),
+                            ),
+                          ],
+                          selected: {_pdfLayoutMode},
+                          onSelectionChanged: (newSelection) {
+                            setModalState(() {
+                              _pdfLayoutMode = newSelection.first;
+                              if (_pdfLayoutMode == PdfPageLayoutMode.single) {
+                                _pdfScrollDirection = PdfScrollDirection.horizontal;
+                              } else {
+                                _pdfScrollDirection = PdfScrollDirection.vertical;
+                              }
+                            });
+                            setState(() {});
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Scroll Direction Option
+                      _buildTuningOption(
+                        context: context,
+                        title: 'Scroll Direction',
+                        subtitle: _pdfScrollDirection == PdfScrollDirection.vertical
+                            ? 'Vertical (Top to bottom scroll)'
+                            : 'Horizontal (Left to right swipe)',
+                        child: SegmentedButton<PdfScrollDirection>(
+                          showSelectedIcon: false,
+                          style: SegmentedButton.styleFrom(
+                            selectedBackgroundColor: theme.colorScheme.primary.withOpacity(0.12),
+                            selectedForegroundColor: theme.colorScheme.primary,
+                          ),
+                          segments: const [
+                            ButtonSegment<PdfScrollDirection>(
+                              value: PdfScrollDirection.vertical,
+                              icon: Icon(Icons.swap_vert_rounded, size: 18),
+                              label: Text('Vertical'),
+                            ),
+                            ButtonSegment<PdfScrollDirection>(
+                              value: PdfScrollDirection.horizontal,
+                              icon: Icon(Icons.swap_horiz_rounded, size: 18),
+                              label: Text('Horizontal'),
+                            ),
+                          ],
+                          selected: {_pdfScrollDirection},
+                          onSelectionChanged: (newSelection) {
+                            setModalState(() {
+                              _pdfScrollDirection = newSelection.first;
+                            });
+                            setState(() {});
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Text Selection Optimization Section
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.onSurface.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          secondary: Icon(
+                            Icons.text_format_rounded,
+                            color: theme.colorScheme.primary,
+                          ),
+                          title: const Text('Enable Text Selection', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          subtitle: const Text(
+                            'Disable to significantly boost page rendering speed and eliminate scroll stutter.',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          value: _pdfEnableTextSelection,
+                          activeColor: theme.colorScheme.primary,
+                          onChanged: (val) {
+                            setModalState(() {
+                              _pdfEnableTextSelection = val;
+                            });
+                            setState(() {});
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildPresetButton({
+    required BuildContext context,
+    required String label,
+    required String subtitle,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    return Material(
+      color: isActive ? theme.colorScheme.primary : theme.colorScheme.surface,
+      borderRadius: BorderRadius.circular(12),
+      elevation: isActive ? 2 : 0,
+      shadowColor: theme.colorScheme.primary.withOpacity(0.4),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isActive ? Colors.transparent : theme.colorScheme.outline.withOpacity(0.2),
+            ),
+          ),
+          child: Column(
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: isActive ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isActive ? theme.colorScheme.onPrimary.withOpacity(0.8) : theme.colorScheme.onSurface.withOpacity(0.6),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTuningOption({
+    required BuildContext context,
+    required String title,
+    required String subtitle,
+    required Widget child,
+  }) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurface.withOpacity(0.6),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(width: double.infinity, child: child),
+      ],
+    );
+  }
+
   IconData get _fileIcon {
     switch (_ext) {
       case '.pdf':
@@ -300,6 +652,12 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
                 tooltip: 'Edit',
               ),
           ],
+          if (_isPdf)
+            IconButton(
+              icon: const Icon(Icons.tune_rounded),
+              onPressed: _showPdfSettings,
+              tooltip: 'Display Settings',
+            ),
           IconButton(
             icon: const Icon(Icons.open_in_new_rounded),
             onPressed: _openExternal,
@@ -331,6 +689,9 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
         canShowScrollHead: true,
         canShowScrollStatus: true,
         canShowPaginationDialog: true,
+        pageLayoutMode: _pdfLayoutMode,
+        scrollDirection: _pdfScrollDirection,
+        enableTextSelection: _pdfEnableTextSelection,
       ),
     );
   }

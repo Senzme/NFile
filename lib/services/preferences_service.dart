@@ -19,6 +19,7 @@ class PreferencesService {
   static const String _keyShowBottomActionBar = 'show_bottom_action_bar';
   static const String _keyEnableMultipleTabs = 'enable_multiple_tabs';
   static const String _keyEnableSplitScreen = 'enable_split_screen';
+  static const String _keyShowAddressBar = 'show_address_bar';
 
   static SharedPreferences? _prefs;
 
@@ -295,5 +296,14 @@ class PreferencesService {
     for (final key in keysToRemove) {
       await _prefs?.remove(key);
     }
+  }
+
+  // --- Address Bar Settings ---
+  static bool getShowAddressBar() {
+    return _prefs?.getBool(_keyShowAddressBar) ?? true;
+  }
+
+  static Future<void> saveShowAddressBar(bool val) async {
+    await _prefs?.setBool(_keyShowAddressBar, val);
   }
 }

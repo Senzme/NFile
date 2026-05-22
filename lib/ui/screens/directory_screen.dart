@@ -20,6 +20,7 @@ import 'internal_file_picker_screen.dart';
 import '../widgets/restricted_folder_banner.dart';
 import '../widgets/directory_tab_bar.dart';
 import '../widgets/pane_browser.dart';
+import '../widgets/nfile_address_bar.dart';
 
 class DirectoryScreen extends StatefulWidget {
   final VoidCallback toggleTheme;
@@ -771,28 +772,32 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                           ),
                         ],
             ),
-            body: provider.enableSplitScreen
-                ? const Row(
-                    children: [
-                      Expanded(child: PaneBrowser(tabIndex: 0)),
-                      Expanded(child: PaneBrowser(tabIndex: 1)),
-                    ],
-                  )
-                : (provider.isLoading && provider.currentFiles.isEmpty)
-                    ? const Center(child: CircularProgressIndicator())
-                    : provider.needsPermission
-                        ? RestrictedFolderBanner(
-                            onEnableRoot: () => provider.enableRootMode(),
-                            onEnableShizuku: () => provider.enableShizukuMode(),
-                            isRootAvailable: provider.isRootAvailable,
-                          )
-                        : AnimatedOpacity(
-                            duration: const Duration(milliseconds: 300),
-                            opacity: provider.isLoading ? 0.6 : 1.0,
-                            child: CustomScrollView(
-                              controller: _scrollController,
-                              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                              slivers: [
+            body: Column(
+              children: [
+                if (provider.showAddressBar) const NFileAddressBar(),
+                Expanded(
+                  child: provider.enableSplitScreen
+                      ? const Row(
+                          children: [
+                            Expanded(child: PaneBrowser(tabIndex: 0)),
+                            Expanded(child: PaneBrowser(tabIndex: 1)),
+                          ],
+                        )
+                      : (provider.isLoading && provider.currentFiles.isEmpty)
+                          ? const Center(child: CircularProgressIndicator())
+                          : provider.needsPermission
+                              ? RestrictedFolderBanner(
+                                  onEnableRoot: () => provider.enableRootMode(),
+                                  onEnableShizuku: () => provider.enableShizukuMode(),
+                                  isRootAvailable: provider.isRootAvailable,
+                                )
+                              : AnimatedOpacity(
+                                  duration: const Duration(milliseconds: 300),
+                                  opacity: provider.isLoading ? 0.6 : 1.0,
+                                  child: CustomScrollView(
+                                    controller: _scrollController,
+                                    physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                                    slivers: [
                       CupertinoSliverRefreshControl(
                         onRefresh: () => provider.loadDirectory(provider.currentPath),
                       ),
@@ -986,6 +991,9 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                     ],
                   ),
                 ),
+                ),
+              ],
+            ),
             floatingActionButtonLocation: isSelectionMode
                 ? null
                 : provider.showBottomActionBar

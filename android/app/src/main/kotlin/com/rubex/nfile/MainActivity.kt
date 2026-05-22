@@ -4,11 +4,16 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Environment
 import android.os.StatFs
+import android.net.Uri
+import android.provider.OpenableColumns
+import android.webkit.MimeTypeMap
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import rikka.shizuku.Shizuku
 import java.io.BufferedReader
+import java.io.File
+import java.io.FileOutputStream
 import java.io.InputStreamReader
 import java.util.concurrent.Executors
 
@@ -136,6 +141,78 @@ class MainActivity : FlutterActivity() {
                             runOnUiThread { result.success(output) }
                         } catch (e: Exception) {
                             runOnUiThread { result.error("EXEC_ERROR", e.message, null) }
+                        }
+                    }
+                }
+                "resolveContentUri" -> {
+                    val uriString = call.argument<String>("uri") ?: ""
+                    executor.execute {
+                        try {
+                            val uri = Uri.parse(uriString)
+                            val contentResolver = context.contentResolver
+                            
+                            var fileName = "temp_file"
+                            var mimeType = contentResolver.getType(uri) ?: ""
+                            
+                            contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                                if (nameIndex != -1 && cursor.moveToFirst()) {
+                                    fileName = cursor.getString(nameIndex)
+                                }
+                            }
+
+                            if (mimeType.isEmpty()) {
+                                val ext = MimeTypeMap.getFileExtensionFromUrl(uriString)
+                                if (ext != null) {
+                                    mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: ""
+                                }
+                            }
+
+                            val cacheDir = context.cacheDir
+                            val prefix = "incoming_" + System.currentTimeMillis() + "_"
+                            val ext = if (fileName.contains(".")) {
+                                "." + fileName.substringAfterLast(".")
+                            } else {
+                                ""
+                            }
+                            
+                            val tempFile = File.createTempFile(prefix, ext, cacheDir)
+                            
+                            contentResolver.openInputStream(uri)?.use { inputStream ->
+                                FileOutputStream(tempFile).use { outputStream ->
+                                    inputStream.copyTo(outputStream)
+                                }
+                            }
+
+                            val res = mapOf(
+                                "success" to true,
+                                "cachePath" to tempFile.absolutePath,
+                                "fileName" to fileName,
+                                "mimeType" to mimeType
+                            )
+                            runOnUiThread { result.success(res) }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            runOnUiThread { result.error("RESOLVE_ERROR", e.message, null) }
+                        }
+                    }
+                }
+                "writeContentUri" -> {
+                    val uriString = call.argument<String>("uri") ?: ""
+                    val content = call.argument<String>("content") ?: ""
+                    executor.execute {
+                        try {
+                            val uri = Uri.parse(uriString)
+                            val contentResolver = context.contentResolver
+                            
+                            contentResolver.openOutputStream(uri, "w")?.use { outputStream ->
+                                outputStream.write(content.toByteArray(Charsets.UTF_8))
+                            }
+
+                            runOnUiThread { result.success(true) }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            runOnUiThread { result.error("WRITE_ERROR", e.message, null) }
                         }
                     }
                 }

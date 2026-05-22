@@ -64,6 +64,7 @@ class FileManagerProvider extends ChangeNotifier {
     _pinnedFolderShortcuts = PreferencesService.getPinnedFolderShortcuts();
     _hideNavigationBar = PreferencesService.getHideNavigationBar();
     _skipOpenWithDialog = PreferencesService.getSkipOpenWithDialog();
+    _showAddressBar = PreferencesService.getShowAddressBar();
   }
 
   final ValueNotifier<FileOperationProgress?> progressNotifier = ValueNotifier<FileOperationProgress?>(null);
@@ -286,6 +287,15 @@ class FileManagerProvider extends ChangeNotifier {
   void toggleSkipOpenWithDialog() {
     _skipOpenWithDialog = !_skipOpenWithDialog;
     PreferencesService.saveSkipOpenWithDialog(_skipOpenWithDialog);
+    notifyListeners();
+  }
+
+  bool _showAddressBar = true;
+  bool get showAddressBar => _showAddressBar;
+
+  void toggleShowAddressBar() {
+    _showAddressBar = !_showAddressBar;
+    PreferencesService.saveShowAddressBar(_showAddressBar);
     notifyListeners();
   }
 
@@ -1263,7 +1273,7 @@ class FileManagerProvider extends ChangeNotifier {
     return false;
   }
 
-  Future<void> _openFileNatively(BuildContext context, String path) async {
+  Future<void> openFileNatively(BuildContext context, String path) async {
     final mimeType = lookupMimeType(path) ?? '';
     final ext = p.extension(path).toLowerCase();
     const docExts = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.epub', '.odt'];
@@ -1353,7 +1363,7 @@ class FileManagerProvider extends ChangeNotifier {
     if (hasNativeViewer(path)) {
       final defaultAction = PreferencesService.getDefaultOpenAction(ext);
       if (defaultAction == 'native') {
-        await _openFileNatively(context, path);
+        await openFileNatively(context, path);
         return;
       } else if (defaultAction == 'external') {
         await OpenFilex.open(path);
@@ -1382,14 +1392,14 @@ class FileManagerProvider extends ChangeNotifier {
         final selectedType = result.substring('always_'.length);
         await PreferencesService.saveDefaultOpenAction(ext, selectedType);
         if (selectedType == 'native') {
-          await _openFileNatively(context, path);
+          await openFileNatively(context, path);
         } else {
           await OpenFilex.open(path);
         }
       } else if (result.startsWith('just_once_')) {
         final selectedType = result.substring('just_once_'.length);
         if (selectedType == 'native') {
-          await _openFileNatively(context, path);
+          await openFileNatively(context, path);
         } else {
           await OpenFilex.open(path);
         }
@@ -1397,7 +1407,7 @@ class FileManagerProvider extends ChangeNotifier {
       return;
     }
 
-    await _openFileNatively(context, path);
+    await openFileNatively(context, path);
   }
 }
 

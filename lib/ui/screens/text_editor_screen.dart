@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import '../../core/icon_fonts/broken_icons.dart';
 import 'html_viewer_screen.dart';
 import 'markdown_viewer_screen.dart';
+import '../../services/intent_handler_service.dart';
 
 class CodeTextEditingController extends TextEditingController {
   String language;
@@ -282,6 +283,14 @@ class _TextEditorScreenState extends State<TextEditorScreen> {
     try {
       final file = File(widget.filePath);
       await file.writeAsString(_controller.text);
+
+      if (IntentHandlerService.isIncomingCacheFile(widget.filePath)) {
+        final success = await IntentHandlerService.saveContentUriFile(widget.filePath, _controller.text);
+        if (!success) {
+          throw Exception("Failed to save changes back to external storage.");
+        }
+      }
+
       if (mounted) {
         setState(() => _isModified = false);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File saved successfully')));

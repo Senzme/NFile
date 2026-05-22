@@ -43,6 +43,21 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
             _buildSectionHeader(theme, 'Browser Experience'),
             _buildSettingTile(
               theme,
+              icon: Broken.edit,
+              title: 'Show Address Bar',
+              subtitle: 'Display an editable Windows-Explorer-style address bar at the top of file list',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.showAddressBar,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleShowAddressBar(),
+                ),
+              ),
+              onTap: () => fileManager.toggleShowAddressBar(),
+            ),
+            _buildSettingTile(
+              theme,
               icon: Broken.folder_2,
               title: 'Default Album Preferred View',
               subtitle: 'Open Images/Videos quick categories directly in Folders (Albums) preferred view',

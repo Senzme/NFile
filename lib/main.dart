@@ -13,6 +13,7 @@ import 'core/icon_fonts/broken_icons.dart';
 import 'providers/file_manager_provider.dart';
 import 'providers/media_provider.dart';
 import 'services/preferences_service.dart';
+import 'services/intent_handler_service.dart';
 import 'ui/screens/home_screen.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -44,6 +45,7 @@ class _NFileAppState extends State<NFileApp> {
   ThemeMode _themeMode = ThemeMode.system;
   bool? _hasPermission;
   bool _sharingObserverSetup = false;
+  bool _isResolvingIntent = false;
   StreamSubscription<List<SharedMediaFile>>? _sharingIntentSubscription;
 
   @override
@@ -66,6 +68,8 @@ class _NFileAppState extends State<NFileApp> {
       }
     });
     _themeMode = PreferencesService.getThemeMode();
+    // Setup sharing observer immediately to catch incoming intents at the earliest possible frame!
+    _setupSharingIntentObserver();
     _initializeApplication();
   }
 
@@ -77,9 +81,6 @@ class _NFileAppState extends State<NFileApp> {
 
   Future<void> _initializeApplication() async {
     await _checkStoragePermission();
-    if (_hasPermission == true) {
-      _setupSharingIntentObserver();
-    }
   }
 
   Future<void> _checkStoragePermission() async {
@@ -108,14 +109,10 @@ class _NFileAppState extends State<NFileApp> {
         setState(() {
           _hasPermission = manageStorageGranted || standardStorageGranted;
         });
-        if (_hasPermission == true) {
-          _setupSharingIntentObserver();
-        }
       }
     } else {
       if (mounted) {
         setState(() => _hasPermission = true);
-        _setupSharingIntentObserver();
       }
     }
   }
@@ -135,6 +132,9 @@ class _NFileAppState extends State<NFileApp> {
     ReceiveSharingIntent.instance.getInitialMedia().then(
       (List<SharedMediaFile> initialFiles) {
         if (initialFiles.isNotEmpty) {
+          setState(() {
+            _isResolvingIntent = true;
+          });
           _dispatchExternalMediaOpen(initialFiles.first.path);
           ReceiveSharingIntent.instance.reset();
         }
@@ -144,17 +144,44 @@ class _NFileAppState extends State<NFileApp> {
   }
 
   void _dispatchExternalMediaOpen(String absoluteFilePath) {
-    if (absoluteFilePath.isEmpty) return;
+    if (absoluteFilePath.isEmpty) {
+      if (mounted && _isResolvingIntent) {
+        setState(() => _isResolvingIntent = false);
+      }
+      return;
+    }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final primaryContext = navigatorKey.currentContext;
       if (primaryContext != null && primaryContext.mounted) {
-        primaryContext.read<FileManagerProvider>().openFile(primaryContext, absoluteFilePath);
+        try {
+          await IntentHandlerService.handleIncomingIntent(primaryContext, absoluteFilePath);
+        } finally {
+          if (mounted) {
+            setState(() {
+              _isResolvingIntent = false;
+            });
+          }
+        }
       } else {
-        Future.delayed(const Duration(milliseconds: 500), () {
+        Future.delayed(const Duration(milliseconds: 300), () async {
           final fallbackContext = navigatorKey.currentContext;
           if (fallbackContext != null && fallbackContext.mounted) {
-            fallbackContext.read<FileManagerProvider>().openFile(fallbackContext, absoluteFilePath);
+            try {
+              await IntentHandlerService.handleIncomingIntent(fallbackContext, absoluteFilePath);
+            } finally {
+              if (mounted) {
+                setState(() {
+                  _isResolvingIntent = false;
+                });
+              }
+            }
+          } else {
+            if (mounted) {
+              setState(() {
+                _isResolvingIntent = false;
+              });
+            }
           }
         });
       }
@@ -222,15 +249,75 @@ class _NFileAppState extends State<NFileApp> {
                   child: child!,
                 );
               },
-              home: _hasPermission == null
-                  ? const Scaffold()
-                  : (_hasPermission == true
-                      ? HomeScreen(toggleTheme: _toggleTheme)
-                      : _StoragePermissionShield(onRequestPermission: _requestStoragePermission)),
+              home: _isResolvingIntent
+                  ? const _IntentLoadingScreen()
+                  : (_hasPermission == null
+                      ? const Scaffold()
+                      : (_hasPermission == true
+                          ? HomeScreen(toggleTheme: _toggleTheme)
+                          : _StoragePermissionShield(onRequestPermission: _requestStoragePermission))),
             );
           },
         );
       },
+    );
+  }
+}
+
+class _IntentLoadingScreen extends StatelessWidget {
+  const _IntentLoadingScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF0D0D1A) : const Color(0xFFF9F9FF),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withOpacity(0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Broken.document,
+                size: 48,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: 48,
+              child: LinearProgressIndicator(
+                minHeight: 3,
+                backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                color: theme.colorScheme.primary,
+                borderRadius: const BorderRadius.all(Radius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Opening shared document...',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface.withOpacity(0.8),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Resolving secure content stream',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withOpacity(0.5),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
