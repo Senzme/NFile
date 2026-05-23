@@ -268,6 +268,11 @@ class PropertiesModalDialogState extends State<PropertiesModalDialog> {
           folders++;
           final dir = Directory(path);
           if (dir.existsSync()) {
+            if (widget.selectedPaths.length == 1) {
+              final stat = dir.statSync();
+              _lastModified = stat.modified;
+              _permissions = '${(stat.mode & 0x100) != 0 ? "Read" : ""}${(stat.mode & 0x80) != 0 ? " / Write" : ""}';
+            }
             try {
               await for (final entity in dir.list(recursive: true, followLinks: false)) {
                 if (entity is File) {
@@ -375,10 +380,10 @@ class PropertiesModalDialogState extends State<PropertiesModalDialog> {
                       label: 'Size',
                       value: '${FileUtils.formatBytes(_totalBytes, 2)} ($_totalBytes bytes)',
                     ),
-                    if (_folderCount > 0 && _fileCount > 0)
+                    if (_mimeType == 'Folder / Directory')
                       _CopyablePropertyRow(
                         label: 'Contains',
-                        value: '$_folderCount folder(s), $_fileCount file(s)',
+                        value: '${_folderCount - 1} subfolder(s), $_fileCount file(s)',
                       ),
                     if (_lastModified != null)
                       _CopyablePropertyRow(label: 'Modified', value: FileUtils.formatDate(_lastModified!)),

@@ -68,7 +68,7 @@ class FileUtils {
     final mimeType = lookupMimeType(path);
     if (mimeType != null && mimeType.startsWith('video/')) return true;
     final lower = path.toLowerCase();
-    return lower.endsWith('.mp4') || lower.endsWith('.ts') || lower.endsWith('.mkv') || lower.endsWith('.webm') || lower.endsWith('.avi') || lower.endsWith('.mov') || lower.endsWith('.flv');
+    return lower.endsWith('.mp4') || lower.endsWith('.ts') || lower.endsWith('.mts') || lower.endsWith('.mkv') || lower.endsWith('.webm') || lower.endsWith('.avi') || lower.endsWith('.mov') || lower.endsWith('.flv');
   }
 
   static IconData getIconForFile(String path) {

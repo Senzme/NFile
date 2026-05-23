@@ -1319,7 +1319,23 @@ class FileManagerProvider extends ChangeNotifier {
     if (mimeType.startsWith('image/')) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => ImageViewerScreen(imagePath: path)));
     } else if (mimeType.startsWith('video/')) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => VideoPlayerScreen(videoPath: path)));
+      final folderVideoFiles = activeTab.currentFiles
+          .where((f) => !f.isDirectory && (lookupMimeType(f.path)?.startsWith('video/') == true || FileUtils.isVideo(f.path)))
+          .map((f) => f.path)
+          .toList();
+      int initialIndex = folderVideoFiles.indexOf(path);
+      if (initialIndex == -1) initialIndex = 0;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => VideoPlayerScreen(
+            videoPath: path,
+            playlist: folderVideoFiles.isNotEmpty ? folderVideoFiles : [path],
+            initialIndex: initialIndex,
+          ),
+        ),
+      );
     } else if (mimeType.startsWith('audio/')) {
       final folderAudioFiles = activeTab.currentFiles
           .where((f) => !f.isDirectory && (lookupMimeType(f.path)?.startsWith('audio/') == true))

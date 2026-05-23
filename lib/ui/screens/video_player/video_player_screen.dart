@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:photo_manager/photo_manager.dart';
 import 'package:nfile/core/icon_fonts/broken_icons.dart';
 import 'video_loading_indicator.dart';
 import 'video_seek_indicator.dart';
@@ -11,8 +12,17 @@ import 'vertical_slider_widget.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final String videoPath;
+  final List<String>? playlist;
+  final List<AssetEntity>? assetPlaylist;
+  final int? initialIndex;
 
-  const VideoPlayerScreen({super.key, required this.videoPath});
+  const VideoPlayerScreen({
+    super.key,
+    required this.videoPath,
+    this.playlist,
+    this.assetPlaylist,
+    this.initialIndex,
+  });
 
   @override
   State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
@@ -22,6 +32,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     with TickerProviderStateMixin {
   late final Player player;
   late final VideoController controller;
+
+  late int _currentIndex;
+  bool _isResolvingAsset = false;
 
   bool _controlsVisible = true;
   bool _isPlaying = false;
@@ -63,6 +76,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   @override
   void initState() {
     super.initState();
+    _currentIndex = widget.initialIndex ?? 0;
 
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     SystemChrome.setPreferredOrientations([
@@ -162,6 +176,51 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       _hideControls();
     } else {
       _showControls();
+    }
+  }
+
+  Future<void> _playAtIndex(int index) async {
+    if (widget.playlist == null && widget.assetPlaylist == null) return;
+    final playlistLength = widget.playlist?.length ?? widget.assetPlaylist?.length ?? 0;
+    if (index < 0 || index >= playlistLength) return;
+
+    setState(() {
+      _currentIndex = index;
+      _position = Duration.zero;
+      _duration = Duration.zero;
+      _sliderValue = 0;
+      _isBuffering = true;
+    });
+
+    if (widget.playlist != null) {
+      player.open(Media(widget.playlist![index]));
+    } else if (widget.assetPlaylist != null) {
+      setState(() => _isResolvingAsset = true);
+      try {
+        final asset = widget.assetPlaylist![index];
+        final file = await asset.file;
+        if (file != null && mounted) {
+          player.open(Media(file.path));
+        }
+      } catch (e) {
+        debugPrint('Error resolving video asset: $e');
+      } finally {
+        if (mounted) setState(() => _isResolvingAsset = false);
+      }
+    }
+    _startHideTimer();
+  }
+
+  void _onNext() {
+    final playlistLength = widget.playlist?.length ?? widget.assetPlaylist?.length ?? 0;
+    if (_currentIndex + 1 < playlistLength) {
+      _playAtIndex(_currentIndex + 1);
+    }
+  }
+
+  void _onPrevious() {
+    if (_currentIndex - 1 >= 0) {
+      _playAtIndex(_currentIndex - 1);
     }
   }
 
@@ -287,7 +346,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   }
 
   String get _fileName {
-    final name = widget.videoPath.split('/').last;
+    String currentPath = widget.videoPath;
+    if (widget.playlist != null) {
+      currentPath = widget.playlist![_currentIndex];
+    } else if (widget.assetPlaylist != null) {
+      currentPath = widget.assetPlaylist![_currentIndex].title ?? 'Video';
+    }
+    final name = currentPath.split('/').last.split('\\').last;
     return name.length > 40 ? '${name.substring(0, 37)}...' : name;
   }
 
@@ -312,8 +377,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
             ),
           ),
 
-          // Animated Buffering Indicator
-          if (_isBuffering)
+          // Animated Buffering / Asset Resolution Indicator
+          if (_isBuffering || _isResolvingAsset)
             const Center(
               child: VideoLoadingIndicator(),
             ),
@@ -509,6 +574,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                       player.seek(_position + const Duration(seconds: 10));
                       _showControls();
                     },
+                    onPrevious: (widget.playlist != null || widget.assetPlaylist != null) && _currentIndex > 0 ? _onPrevious : null,
+                    onNext: (widget.playlist != null || widget.assetPlaylist != null) && _currentIndex + 1 < (widget.playlist?.length ?? widget.assetPlaylist?.length ?? 0) ? _onNext : null,
                     onToggleFullScreen: _toggleFullScreen,
                     onSelectSpeed: (v) {
                       setState(() => _playbackSpeed = v);

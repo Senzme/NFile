@@ -1118,6 +1118,7 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
     bool isSelected,
     bool showDate,
     String dateStr,
+    List<AssetEntity> videoList,
   ) {
     return Stack(
       key: ValueKey(asset.id),
@@ -1131,7 +1132,16 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
             } else {
               final file = await asset.file;
               if (file != null && mounted) {
-                Navigator.push(context, _slideRoute(VideoPlayerScreen(videoPath: file.path)));
+                Navigator.push(
+                  context,
+                  _slideRoute(
+                    VideoPlayerScreen(
+                      videoPath: file.path,
+                      assetPlaylist: videoList,
+                      initialIndex: videoList.indexOf(asset),
+                    ),
+                  ),
+                );
               }
             }
           },
@@ -1193,7 +1203,7 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
         itemTileBuilder: (asset, showDate) {
           final isSelected = _selectedAssetIds.contains(asset.id);
           final dateStr = FileUtils.formatDate(asset.createDateTime);
-          return _buildVideoTile(asset, theme, isSelected, showDate, dateStr);
+          return _buildVideoTile(asset, theme, isSelected, showDate, dateStr, videos);
         },
       );
     }
@@ -1206,7 +1216,7 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
         final asset = videos[index];
         final isSelected = _selectedAssetIds.contains(asset.id);
         final dateStr = FileUtils.formatDate(asset.createDateTime);
-        return _buildVideoTile(asset, theme, isSelected, isDateWise, dateStr);
+        return _buildVideoTile(asset, theme, isSelected, isDateWise, dateStr, videos);
       },
     );
   }

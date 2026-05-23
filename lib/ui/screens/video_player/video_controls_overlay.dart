@@ -69,6 +69,9 @@ class VideoControlsOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final accentColor = theme.colorScheme.primary;
+
     final maxMs = duration.inMilliseconds.toDouble();
     final safeMax = maxMs > 0 ? maxMs : 1.0;
     final safeVal = sliderValue.clamp(0.0, safeMax);
@@ -88,13 +91,13 @@ class VideoControlsOverlay extends StatelessWidget {
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.5),
                 boxShadow: [
-                  BoxShadow(color: Colors.deepPurpleAccent.withOpacity(0.4), blurRadius: 16),
+                  BoxShadow(color: accentColor.withOpacity(0.4), blurRadius: 16),
                 ],
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Broken.lock, color: Colors.deepPurpleAccent.shade100, size: 22),
+                  Icon(Broken.lock, color: accentColor, size: 22),
                   const SizedBox(width: 8),
                   const Text(
                     'Slide / Tap to Unlock',
@@ -156,9 +159,9 @@ class VideoControlsOverlay extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: Colors.deepPurpleAccent.withOpacity(0.3),
+                                color: accentColor.withOpacity(0.3),
                                 borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: Colors.deepPurpleAccent.shade200, width: 0.8),
+                                border: Border.all(color: accentColor, width: 0.8),
                               ),
                               child: const Text(
                                 'HW Dec',
@@ -205,7 +208,7 @@ class VideoControlsOverlay extends StatelessWidget {
                               child: Text(
                                 '${v}x',
                                 style: TextStyle(
-                                  color: playbackSpeed == v ? Colors.deepPurpleAccent.shade100 : Colors.white,
+                                  color: playbackSpeed == v ? accentColor : Colors.white,
                                   fontWeight: playbackSpeed == v ? FontWeight.bold : FontWeight.normal,
                                 ),
                               ),
@@ -241,10 +244,10 @@ class VideoControlsOverlay extends StatelessWidget {
                       iconSize: 32,
                       padding: const EdgeInsets.all(14),
                       icon: Icon(Broken.previous, color: itemsColor),
-                      onPressed: () {
+                      onPressed: onPrevious != null ? () {
                         onInteract();
                         onPrevious?.call();
-                      },
+                      } : null,
                     ),
                   ),
                 ),
@@ -254,7 +257,7 @@ class VideoControlsOverlay extends StatelessWidget {
                     color: Colors.black.withOpacity(0.55),
                     shape: BoxShape.circle,
                     boxShadow: [
-                      BoxShadow(color: Colors.deepPurpleAccent.withOpacity(isPlaying ? 0.5 : 0.2), blurRadius: 28, spreadRadius: 4),
+                      BoxShadow(color: accentColor.withOpacity(isPlaying ? 0.5 : 0.2), blurRadius: 28, spreadRadius: 4),
                     ],
                     border: Border.all(color: Colors.white.withOpacity(0.15), width: 1.5),
                   ),
@@ -277,10 +280,10 @@ class VideoControlsOverlay extends StatelessWidget {
                       iconSize: 32,
                       padding: const EdgeInsets.all(14),
                       icon: Icon(Broken.next, color: itemsColor),
-                      onPressed: () {
+                      onPressed: onNext != null ? () {
                         onInteract();
                         onNext?.call();
-                      },
+                      } : null,
                     ),
                   ),
                 ),
@@ -316,10 +319,10 @@ class VideoControlsOverlay extends StatelessWidget {
                         trackHeight: 4.5,
                         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
                         overlayShape: const RoundSliderOverlayShape(overlayRadius: 20),
-                        activeTrackColor: Colors.deepPurpleAccent.shade200,
+                        activeTrackColor: accentColor,
                         inactiveTrackColor: Colors.white.withOpacity(0.25),
-                        thumbColor: Colors.deepPurpleAccent.shade200,
-                        overlayColor: Colors.deepPurpleAccent.withOpacity(0.3),
+                        thumbColor: accentColor,
+                        overlayColor: accentColor.withOpacity(0.3),
                       ),
                       child: Slider(
                         value: safeVal,
@@ -365,7 +368,7 @@ class VideoControlsOverlay extends StatelessWidget {
                                   : repeatMode == 1
                                       ? Icons.repeat_one_rounded
                                       : Icons.repeat_rounded,
-                              color: repeatMode != 0 ? Colors.deepPurpleAccent.shade100 : itemsColor.withOpacity(0.7),
+                              color: repeatMode != 0 ? accentColor : itemsColor.withOpacity(0.7),
                               size: 22,
                             ),
                             tooltip: 'Repeat Mode',
@@ -392,9 +395,9 @@ class VideoControlsOverlay extends StatelessWidget {
                             onPressed: () {
                               onInteract();
                               onCopyUrl();
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                                content: Text('Media path copied to clipboard.'),
-                                backgroundColor: Colors.deepPurpleAccent,
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                content: const Text('Media path copied to clipboard.'),
+                                backgroundColor: accentColor,
                               ));
                             },
                           ),
