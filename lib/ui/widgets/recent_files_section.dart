@@ -9,73 +9,66 @@ import '../../providers/media_provider.dart';
 import '../../models/file_item_model.dart';
 import '../screens/all_recent_files_screen.dart';
 
-class RecentFilesSection extends StatefulWidget {
+class RecentFilesSection extends StatelessWidget {
   const RecentFilesSection({super.key});
 
-  @override
-  State<RecentFilesSection> createState() => _RecentFilesSectionState();
-}
-
-class _RecentFilesSectionState extends State<RecentFilesSection> {
-  List<FileItemModel> _recentFiles = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadRecentFiles();
-  }
-
-  Future<void> _loadRecentFiles() async {
-    if (!mounted) return;
-    try {
-      final items = await _scanRecentFiles();
-      if (mounted) {
-        setState(() {
-          _recentFiles = items.take(12).toList();
-          _isLoading = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  Future<List<FileItemModel>> _scanRecentFiles() async {
+  List<FileItemModel> _scanRecentFilesSync(BuildContext context) {
     final list = <File>[];
-    final folders = [
-      '/storage/emulated/0/Download',
-      '/storage/emulated/0/Documents',
-      '/storage/emulated/0/DCIM/Camera',
-      '/storage/emulated/0/Pictures/Screenshots',
-      '/storage/emulated/0/Pictures',
-    ];
+    final seen = <String>{};
 
-    for (final path in folders) {
-      final dir = Directory(path);
-      if (dir.existsSync()) {
-        try {
-          await for (final entity in dir.list(recursive: false)) {
-            if (entity is File) {
-              list.add(entity);
-            } else if (entity is Directory && !p.basename(entity.path).startsWith('.')) {
-              try {
-                await for (final subEntity in entity.list(recursive: false)) {
-                  if (subEntity is File) {
-                    list.add(subEntity);
-                  }
-                }
-              } catch (_) {}
+    final rootDir = Directory('/storage/emulated/0');
+    if (rootDir.existsSync()) {
+      try {
+        final List<String> pathsToScan = [];
+        
+        // Find all non-hidden directories under root storage
+        final rootEntities = rootDir.listSync(recursive: false);
+        for (final entity in rootEntities) {
+          if (entity is Directory) {
+            final name = p.basename(entity.path);
+            if (!name.startsWith('.') && name != 'Android') {
+              pathsToScan.add(entity.path);
             }
           }
-        } catch (_) {}
-      }
+        }
+
+        // Add specific key folders
+        pathsToScan.addAll([
+          '/storage/emulated/0/Android/media',
+          '/storage/emulated/0/Download',
+          '/storage/emulated/0/Documents',
+        ]);
+
+        // Flat synchronous list of root-level directories to catch all copy/pastes and creations
+        for (final path in pathsToScan) {
+          final dir = Directory(path);
+          if (dir.existsSync()) {
+            try {
+              final entities = dir.listSync(recursive: false);
+              for (final entity in entities) {
+                if (entity is File && !seen.contains(entity.path)) {
+                  seen.add(entity.path);
+                  list.add(entity);
+                } else if (entity is Directory && !p.basename(entity.path).startsWith('.')) {
+                  // Scan 1 level deep inside subfolders to catch subfolder creations/copies
+                  try {
+                    final subEntities = entity.listSync(recursive: false);
+                    for (final sub in subEntities) {
+                      if (sub is File && !seen.contains(sub.path)) {
+                        seen.add(sub.path);
+                        list.add(sub);
+                      }
+                    }
+                  } catch (_) {}
+                }
+              }
+            } catch (_) {}
+          }
+        }
+      } catch (_) {}
     }
 
     final mediaProvider = context.read<MediaProvider>();
-    final seen = list.map((f) => f.path).toSet();
 
     void addFromMediaList(List<FileSystemEntity> mediaList) {
       for (final entity in mediaList) {
@@ -139,8 +132,13 @@ class _RecentFilesSectionState extends State<RecentFilesSection> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final provider = context.watch<FileManagerProvider>();
+    
+    // Watch MediaProvider & FileManagerProvider to trigger automated rebuild on any file operation (paste/delete/copy/rename)
+    context.watch<MediaProvider>();
 
-    if (!_isLoading && _recentFiles.isEmpty) return const SizedBox.shrink();
+    final recentFiles = _scanRecentFilesSync(context).take(12).toList();
+
+    if (recentFiles.isEmpty) return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16.0),
@@ -161,7 +159,7 @@ class _RecentFilesSectionState extends State<RecentFilesSection> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const AllRecentFilesScreen()),
-                    ).then((_) => _loadRecentFiles()); // Reload on return
+                    );
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Padding(
@@ -182,153 +180,109 @@ class _RecentFilesSectionState extends State<RecentFilesSection> {
           const SizedBox(height: 14),
           SizedBox(
             height: 135,
-            child: _isLoading
-                ? _buildShimmerLoader(theme, isDark)
-                : ListView.builder(
-                    physics: const BouncingScrollPhysics(),
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    itemCount: _recentFiles.length,
-                    itemBuilder: (context, index) {
-                      final file = _recentFiles[index];
-                      final iconColor = FileUtils.getColorForFile(file.name, context);
+            child: ListView.builder(
+              physics: const BouncingScrollPhysics(),
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              itemCount: recentFiles.length,
+              itemBuilder: (context, index) {
+                final file = recentFiles[index];
+                final iconColor = FileUtils.getColorForFile(file.name, context);
 
-                      return Container(
-                        width: 160,
-                        margin: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF13131A) : Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: isDark ? Colors.black.withAlpha(51) : Colors.black.withAlpha(10),
-                              blurRadius: 12,
-                              offset: const Offset(0, 5),
+                return Container(
+                  width: 160,
+                  margin: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF13131A) : Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isDark ? Colors.black.withAlpha(51) : Colors.black.withAlpha(10),
+                        blurRadius: 12,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                    border: Border.all(
+                      color: isDark ? Colors.white.withAlpha(13) : Colors.grey.withAlpha(26),
+                      width: 1,
+                    ),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(20),
+                    child: InkWell(
+                      onTap: () => provider.openFile(context, file.path),
+                      borderRadius: BorderRadius.circular(20),
+                      splashColor: iconColor.withAlpha(25),
+                      highlightColor: iconColor.withAlpha(13),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: iconColor.withAlpha(38),
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: iconColor.withAlpha(25),
+                                        blurRadius: 6,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(FileUtils.getIconForFile(file.name), color: iconColor, size: 20),
+                                ),
+                                Icon(Broken.document, size: 16, color: theme.dividerColor.withAlpha(51)),
+                              ],
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  file.name,
+                                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, fontSize: 13),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      FileUtils.formatBytes(file.size, 1),
+                                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 10, color: theme.textTheme.bodySmall?.color?.withAlpha(153)),
+                                    ),
+                                    Text(
+                                      _getRelativeTime(file.modified),
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        fontSize: 10,
+                                        color: theme.colorScheme.primary.withAlpha(204),
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ],
-                          border: Border.all(
-                            color: isDark ? Colors.white.withAlpha(13) : Colors.grey.withAlpha(26),
-                            width: 1,
-                          ),
                         ),
-                        child: Material(
-                          color: Colors.transparent,
-                          borderRadius: BorderRadius.circular(20),
-                          child: InkWell(
-                            onTap: () => provider.openFile(context, file.path),
-                            borderRadius: BorderRadius.circular(20),
-                            splashColor: iconColor.withAlpha(25),
-                            highlightColor: iconColor.withAlpha(13),
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Container(
-                                        width: 40,
-                                        height: 40,
-                                        decoration: BoxDecoration(
-                                          color: iconColor.withAlpha(38),
-                                          borderRadius: BorderRadius.circular(12),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: iconColor.withAlpha(25),
-                                              blurRadius: 6,
-                                              offset: const Offset(0, 2),
-                                            ),
-                                          ],
-                                        ),
-                                        child: Icon(FileUtils.getIconForFile(file.name), color: iconColor, size: 20),
-                                      ),
-                                      Icon(Broken.document, size: 16, color: theme.dividerColor.withAlpha(51)),
-                                    ],
-                                  ),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        file.name,
-                                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, fontSize: 13),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            FileUtils.formatBytes(file.size, 1),
-                                            style: theme.textTheme.bodySmall?.copyWith(fontSize: 10, color: theme.textTheme.bodySmall?.color?.withAlpha(153)),
-                                          ),
-                                          Text(
-                                            _getRelativeTime(file.modified),
-                                            style: theme.textTheme.bodySmall?.copyWith(
-                                              fontSize: 10,
-                                              color: theme.colorScheme.primary.withAlpha(204),
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
+                      ),
+                    ),
                   ),
+                );
+              },
+            ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildShimmerLoader(ThemeData theme, bool isDark) {
-    return ListView.builder(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      itemCount: 4,
-      itemBuilder: (context, index) {
-        return Container(
-          width: 160,
-          margin: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E1E2C).withAlpha(127) : Colors.grey.withAlpha(25),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const CircleAvatar(backgroundColor: Colors.grey, radius: 20),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(height: 12, width: 100, color: Colors.grey),
-                    const SizedBox(height: 6),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(height: 8, width: 40, color: Colors.grey),
-                        Container(height: 8, width: 40, color: Colors.grey),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 }

@@ -49,37 +49,59 @@ class _AllRecentFilesScreenState extends State<AllRecentFilesScreen> {
 
   Future<List<FileItemModel>> _scanRecentFiles() async {
     final list = <File>[];
-    final folders = [
-      '/storage/emulated/0/Download',
-      '/storage/emulated/0/Documents',
-      '/storage/emulated/0/DCIM/Camera',
-      '/storage/emulated/0/Pictures/Screenshots',
-      '/storage/emulated/0/Pictures',
-    ];
+    final seen = <String>{};
 
-    for (final path in folders) {
-      final dir = Directory(path);
-      if (dir.existsSync()) {
-        try {
-          await for (final entity in dir.list(recursive: false)) {
-            if (entity is File) {
-              list.add(entity);
-            } else if (entity is Directory && !p.basename(entity.path).startsWith('.')) {
-              try {
-                await for (final subEntity in entity.list(recursive: false)) {
-                  if (subEntity is File) {
-                    list.add(subEntity);
-                  }
-                }
-              } catch (_) {}
+    final rootDir = Directory('/storage/emulated/0');
+    if (rootDir.existsSync()) {
+      try {
+        final List<String> pathsToScan = [];
+        
+        // Dynamic search across all visible folders on internal storage
+        final rootEntities = rootDir.listSync(recursive: false);
+        for (final entity in rootEntities) {
+          if (entity is Directory) {
+            final name = p.basename(entity.path);
+            if (!name.startsWith('.') && name != 'Android') {
+              pathsToScan.add(entity.path);
             }
           }
-        } catch (_) {}
-      }
+        }
+
+        // Add additional standard paths
+        pathsToScan.addAll([
+          '/storage/emulated/0/Android/media',
+          '/storage/emulated/0/Download',
+          '/storage/emulated/0/Documents',
+        ]);
+
+        for (final path in pathsToScan) {
+          final dir = Directory(path);
+          if (dir.existsSync()) {
+            try {
+              final entities = dir.listSync(recursive: false);
+              for (final entity in entities) {
+                if (entity is File && !seen.contains(entity.path)) {
+                  seen.add(entity.path);
+                  list.add(entity);
+                } else if (entity is Directory && !p.basename(entity.path).startsWith('.')) {
+                  try {
+                    final subEntities = entity.listSync(recursive: false);
+                    for (final sub in subEntities) {
+                      if (sub is File && !seen.contains(sub.path)) {
+                        seen.add(sub.path);
+                        list.add(sub);
+                      }
+                    }
+                  } catch (_) {}
+                }
+              }
+            } catch (_) {}
+          }
+        }
+      } catch (_) {}
     }
 
     final mediaProvider = context.read<MediaProvider>();
-    final seen = list.map((f) => f.path).toSet();
 
     void addFromMediaList(List<FileSystemEntity> mediaList) {
       for (final entity in mediaList) {
