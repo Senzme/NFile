@@ -87,15 +87,6 @@ class NFileDrawer extends StatelessWidget {
                         Navigator.push(context, MaterialPageRoute(builder: (_) => const GlobalSearchScreen()));
                       },
                     ),
-                    _buildDrawerTile(
-                      context,
-                      icon: Broken.lock,
-                      title: 'Private Wallet',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const VaultLockScreen()));
-                      },
-                    ),
 
                     _buildDivider(context),
                     Padding(
@@ -113,6 +104,15 @@ class NFileDrawer extends StatelessWidget {
                           collapsedIconColor: theme.colorScheme.onSurface.withOpacity(0.8),
                           tilePadding: const EdgeInsets.symmetric(horizontal: 16.0),
                           children: [
+                            _buildDrawerTile(
+                              context,
+                              icon: Broken.lock,
+                              title: 'Private Wallet',
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => const VaultLockScreen()));
+                              },
+                            ),
                             _buildDrawerTile(
                               context,
                               icon: Broken.wifi,
@@ -134,18 +134,6 @@ class NFileDrawer extends StatelessWidget {
                             ...connections.map((conn) {
                               IconData iconData;
                               switch (conn.type) {
-                                case 'Google Drive':
-                                  iconData = Icons.cloud_circle_rounded;
-                                  break;
-                                case 'Dropbox':
-                                  iconData = Icons.folder_shared_rounded;
-                                  break;
-                                case 'OneDrive':
-                                  iconData = Icons.cloud_queue_rounded;
-                                  break;
-                                case 'Box':
-                                  iconData = Icons.all_inbox_rounded;
-                                  break;
                                 case 'LAN/SMB':
                                   iconData = Icons.dns_rounded;
                                   break;
@@ -176,8 +164,6 @@ class NFileDrawer extends StatelessWidget {
                                 },
                               );
                             }),
-                            // Temporarily hidden
-                            /*
                             _buildDrawerTile(
                               context,
                               icon: Icons.add_link_rounded,
@@ -192,7 +178,6 @@ class NFileDrawer extends StatelessWidget {
                                 );
                               },
                             ),
-                            */
                           ],
                         ),
                       ),

@@ -9,6 +9,7 @@ import '../../providers/file_manager_provider.dart';
 import '../../providers/media_provider.dart';
 import '../../models/file_item_model.dart';
 import '../widgets/file_item.dart';
+import '../widgets/folder_item.dart';
 import '../widgets/file_action_dialogs.dart';
 
 class AllRecentFilesScreen extends StatefulWidget {
@@ -48,7 +49,7 @@ class _AllRecentFilesScreenState extends State<AllRecentFilesScreen> {
   }
 
   Future<List<FileItemModel>> _scanRecentFiles() async {
-    final list = <File>[];
+    final list = <FileSystemEntity>[];
     final seen = <String>{};
 
     final rootDir = Directory('/storage/emulated/0');
@@ -56,7 +57,7 @@ class _AllRecentFilesScreenState extends State<AllRecentFilesScreen> {
       try {
         final List<String> pathsToScan = [];
         
-        // Dynamic search across all visible folders on internal storage
+        // Find all non-hidden directories under root storage to scan their contents
         final rootEntities = rootDir.listSync(recursive: false);
         for (final entity in rootEntities) {
           if (entity is Directory) {
@@ -80,14 +81,15 @@ class _AllRecentFilesScreenState extends State<AllRecentFilesScreen> {
             try {
               final entities = dir.listSync(recursive: false);
               for (final entity in entities) {
-                if (entity is File && !seen.contains(entity.path)) {
+                if (!seen.contains(entity.path)) {
                   seen.add(entity.path);
                   list.add(entity);
-                } else if (entity is Directory && !p.basename(entity.path).startsWith('.')) {
+                }
+                if (entity is Directory && !p.basename(entity.path).startsWith('.')) {
                   try {
                     final subEntities = entity.listSync(recursive: false);
                     for (final sub in subEntities) {
-                      if (sub is File && !seen.contains(sub.path)) {
+                      if (!seen.contains(sub.path)) {
                         seen.add(sub.path);
                         list.add(sub);
                       }
@@ -105,7 +107,7 @@ class _AllRecentFilesScreenState extends State<AllRecentFilesScreen> {
 
     void addFromMediaList(List<FileSystemEntity> mediaList) {
       for (final entity in mediaList) {
-        if (entity is File && !seen.contains(entity.path)) {
+        if (!seen.contains(entity.path)) {
           seen.add(entity.path);
           list.add(entity);
         }
@@ -128,16 +130,35 @@ class _AllRecentFilesScreenState extends State<AllRecentFilesScreen> {
       }
     }
 
+    // Filter out directories that contain other items present in the list
+    final filteredList = <FileSystemEntity>[];
+    for (final entity in list) {
+      if (entity is Directory) {
+        bool hasNestedChild = false;
+        for (final other in list) {
+          if (other.path != entity.path && p.isWithin(entity.path, other.path)) {
+            hasNestedChild = true;
+            break;
+          }
+        }
+        if (hasNestedChild) {
+          continue;
+        }
+      }
+      filteredList.add(entity);
+    }
+
     final items = <FileItemModel>[];
-    for (final f in list) {
+    for (final f in filteredList) {
       try {
         final stat = f.statSync();
+        final isDir = f is Directory;
         items.add(FileItemModel(
           entity: f,
           name: p.basename(f.path),
           path: f.path,
-          isDirectory: false,
-          size: stat.size,
+          isDirectory: isDir,
+          size: isDir ? 0 : stat.size,
           modified: stat.modified,
         ));
       } catch (_) {}
@@ -365,19 +386,35 @@ class _AllRecentFilesScreenState extends State<AllRecentFilesScreen> {
                     final item = _recentFiles[index];
                     final isItemSelected = _selectedPaths.contains(item.path);
 
-                    return FileItem(
-                      file: item,
-                      isSelected: isItemSelected,
-                      onTap: () {
-                        if (_isSelectionMode) {
-                          _toggleSelection(item.path);
-                        } else {
-                          provider.openFile(context, item.path);
-                        }
-                      },
-                      onLongPress: () => _toggleSelection(item.path),
-                      onAction: (action) => _handleAction(context, action, item.path),
-                    );
+                    if (item.isDirectory) {
+                      return FolderItem(
+                        folder: item,
+                        isSelected: isItemSelected,
+                        onTap: () {
+                          if (_isSelectionMode) {
+                            _toggleSelection(item.path);
+                          } else {
+                            provider.loadDirectory(item.path);
+                          }
+                        },
+                        onLongPress: () => _toggleSelection(item.path),
+                        onAction: (action) => _handleAction(context, action, item.path),
+                      );
+                    } else {
+                      return FileItem(
+                        file: item,
+                        isSelected: isItemSelected,
+                        onTap: () {
+                          if (_isSelectionMode) {
+                            _toggleSelection(item.path);
+                          } else {
+                            provider.openFile(context, item.path);
+                          }
+                        },
+                        onLongPress: () => _toggleSelection(item.path),
+                        onAction: (action) => _handleAction(context, action, item.path),
+                      );
+                    }
                   },
                 ),
     );

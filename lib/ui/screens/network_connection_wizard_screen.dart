@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import '../../models/network_connection_model.dart';
 import '../../services/network_connections_service.dart';
+import '../../services/remote/remote_client.dart';
+import '../../services/remote/ftp_client.dart';
+import '../../services/remote/sftp_client.dart';
+import '../../services/remote/webdav_client.dart';
+import '../../services/remote/lan_client.dart';
 
 class NetworkConnectionWizardScreen extends StatefulWidget {
   const NetworkConnectionWizardScreen({super.key});
@@ -23,17 +28,14 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  bool _isOauthed = false;
-  String _oauthEmail = '';
-
   // Testing steps states
   bool _isTesting = false;
   int _testStepIndex = 0;
   final List<String> _testSteps = [
     'Resolving host address...',
-    'Pinging server port...',
+    'Checking port status...',
     'Authenticating credentials...',
-    'Creating remote volume...',
+    'Mounting storage volume...',
   ];
 
   @override
@@ -79,169 +81,23 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
     setState(() {
       _selectedType = protocol;
       _nameController.text = '$protocol Connection';
-      _isOauthed = false;
-      _oauthEmail = '';
 
       // Set default ports
       if (protocol == 'FTP') {
         _portController.text = '21';
       } else if (protocol == 'SFTP') {
         _portController.text = '22';
-      } else if (protocol == 'SMB') {
+      } else if (protocol == 'LAN/SMB') {
         _portController.text = '445';
       } else if (protocol == 'WebDav') {
         _portController.text = '80';
-      } else {
-        _portController.text = '443';
       }
     });
     _nextStep();
   }
 
-  // Beautiful Mock OAuth Dialog for Cloud Protocols
-  Future<void> _showMockOAuthDialog() async {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final emails = [
-      'alex.developer@gmail.com',
-      'nfile.active.user@outlook.com',
-      'workspace.corporate@cloud.com',
-    ];
-
-    await showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) {
-        return Dialog(
-          backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Protocol Logo Header
-                Row(
-                  children: [
-                    _buildProtocolIcon(_selectedType, size: 36),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Connect to $_selectedType',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'LexendDeca',
-                            ),
-                          ),
-                          Text(
-                            'Authorize NFile access',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: theme.colorScheme.onSurface.withOpacity(0.6),
-                              fontFamily: 'LexendDeca',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Select an account to authorize connection details for NFile Remote System Explorer:',
-                  style: TextStyle(fontSize: 13, height: 1.4),
-                ),
-                const SizedBox(height: 16),
-
-                // Accounts Options
-                ...emails.map((email) {
-                  return Card(
-                    elevation: 0,
-                    margin: const EdgeInsets.symmetric(vertical: 6.0),
-                    color: isDark ? const Color(0xFF334155) : theme.colorScheme.primary.withOpacity(0.06),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      side: BorderSide(
-                        color: theme.colorScheme.primary.withOpacity(0.1),
-                      ),
-                    ),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () {
-                        Navigator.pop(context, email);
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 18,
-                              backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
-                              child: Text(
-                                email[0].toUpperCase(),
-                                style: TextStyle(
-                                  color: theme.colorScheme.primary,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                email,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            Icon(
-                              Icons.arrow_forward_ios_rounded,
-                              size: 14,
-                              color: theme.colorScheme.onSurface.withOpacity(0.4),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    ).then((selectedEmail) {
-      if (selectedEmail != null) {
-        setState(() {
-          _isOauthed = true;
-          _oauthEmail = selectedEmail;
-          _usernameController.text = selectedEmail;
-          _hostController.text = 'cloud.storage.api';
-          _passwordController.text = 'OAUTH_TOKEN_ACTIVE';
-        });
-      }
-    });
-  }
-
   // Trigger Diagnostics & Save
-  void _runDiagnosticsAndSave() {
-    // Validate inputs
+  void _runDiagnosticsAndSave() async {
     if (_nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a connection name')),
@@ -249,22 +105,17 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
       return;
     }
 
-    final isCloud = ['Google Drive', 'Dropbox', 'OneDrive', 'Box'].contains(_selectedType);
-    if (isCloud && !_isOauthed) {
+    if (_hostController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please authorize with $_selectedType first')),
+        const SnackBar(content: Text('Please enter server address / hostname')),
       );
       return;
     }
 
-    if (!isCloud) {
-      if (_hostController.text.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter server address / hostname')),
-        );
-        return;
-      }
-    }
+    final port = int.tryParse(_portController.text.trim()) ?? 21;
+    final host = _hostController.text.trim();
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
 
     setState(() {
       _isTesting = true;
@@ -272,52 +123,83 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
     });
     _nextStep();
 
-    // Run dynamic test loop animations
-    Timer.periodic(const Duration(milliseconds: 900), (timer) async {
-      if (_testStepIndex < _testSteps.length - 1) {
-        if (mounted) {
-          setState(() {
-            _testStepIndex++;
-          });
-        }
-      } else {
-        timer.cancel();
+    try {
+      // Step 1: Resolving host address
+      await Future.delayed(const Duration(milliseconds: 600));
+      if (mounted) setState(() => _testStepIndex = 1);
 
-        // Perform save
-        final connection = NetworkConnectionModel(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          name: _nameController.text.trim(),
-          type: _selectedType,
-          host: _hostController.text.trim(),
-          port: int.tryParse(_portController.text.trim()) ?? 21,
-          username: _usernameController.text.trim(),
-          password: _passwordController.text.trim(),
-          rootPath: '/',
-        );
+      // Step 2: Pinging server port
+      await Future.delayed(const Duration(milliseconds: 600));
+      if (mounted) setState(() => _testStepIndex = 2);
 
-        await NetworkConnectionsService.saveConnection(connection);
-
-        if (mounted) {
-          setState(() {
-            _isTesting = false;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Broken.tick_circle, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Text('"${connection.name}" connected successfully!'),
-                ],
-              ),
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: Theme.of(context).colorScheme.primary,
-            ),
-          );
-          Navigator.pop(context, true); // Return success
-        }
+      // Step 3: Authenticating credentials in real time!
+      RemoteClient? client;
+      if (_selectedType == 'FTP') {
+        client = FtpRemoteClient(host: host, port: port, username: username, password: password);
+      } else if (_selectedType == 'SFTP') {
+        client = SftpRemoteClient(host: host, port: port, username: username, password: password);
+      } else if (_selectedType == 'WebDav') {
+        client = WebDavRemoteClient(host: host, port: port, username: username, password: password);
+      } else if (_selectedType == 'LAN/SMB') {
+        client = LanClient(host: host, port: port, username: username, password: password);
       }
-    });
+
+      if (client != null) {
+        await client.connect();
+        await client.disconnect();
+      }
+
+      if (mounted) setState(() => _testStepIndex = 3);
+      await Future.delayed(const Duration(milliseconds: 600));
+
+      // Save connection details
+      final connection = NetworkConnectionModel(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        name: _nameController.text.trim(),
+        type: _selectedType,
+        host: host,
+        port: port,
+        username: username,
+        password: password,
+        rootPath: '/',
+      );
+
+      await NetworkConnectionsService.saveConnection(connection);
+
+      if (mounted) {
+        setState(() {
+          _isTesting = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Broken.tick_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Text('"${connection.name}" connected successfully!'),
+              ],
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Theme.of(context).colorScheme.primary,
+          ),
+        );
+        Navigator.pop(context, true); // Return success
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isTesting = false;
+        });
+        _prevStep(); // Go back to credentials input
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Connection failed: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -402,10 +284,6 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
   // --- Step 1: Protocol Grid Selection ---
   Widget _buildProtocolSelectionStep(ThemeData theme) {
     final protocols = [
-      {'name': 'Google Drive', 'desc': 'Google Cloud Drive Storage', 'color': const Color(0xFF0F9D58)},
-      {'name': 'Dropbox', 'desc': 'Dropbox Cloud Sync Shared', 'color': const Color(0xFF0061FE)},
-      {'name': 'OneDrive', 'desc': 'Microsoft OneDrive Workspace', 'color': const Color(0xFF0078D4)},
-      {'name': 'Box', 'desc': 'Box Enterprise Secure Storage', 'color': const Color(0xFF0061D5)},
       {'name': 'LAN/SMB', 'desc': 'Local Area Network & SMB NAS Share', 'color': const Color(0xFF5B21B6)},
       {'name': 'FTP', 'desc': 'Standard File Transfer Protocol', 'color': const Color(0xFFF97316)},
       {'name': 'SFTP', 'desc': 'SSH Secure File Transfer Server', 'color': const Color(0xFF0D9488)},
@@ -423,7 +301,7 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
           ),
           const SizedBox(height: 6),
           Text(
-            'Mount a remote server or cloud account as a simulated dynamic drive within your NFile storage lists.',
+            'Mount a remote server or NAS share as a dynamic drive within your NFile storage lists.',
             style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withOpacity(0.6)),
           ),
           const SizedBox(height: 24),
@@ -510,8 +388,6 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
 
   // --- Step 2: Configuration Fields Form ---
   Widget _buildCredentialsStep(ThemeData theme, bool isDark) {
-    final isCloud = ['Google Drive', 'Dropbox', 'OneDrive', 'Box'].contains(_selectedType);
-
     return ScrollConfiguration(
       behavior: const ScrollBehavior().copyWith(overscroll: false),
       child: ListView(
@@ -534,7 +410,7 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
                       ),
                     ),
                     Text(
-                      'Enter authentic credentials to build directory maps.',
+                      'Enter connection details to link this network volume.',
                       style: TextStyle(
                         fontSize: 12.5,
                         color: theme.colorScheme.onSurface.withOpacity(0.5),
@@ -551,124 +427,62 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
           _buildInputLabel('Connection Name'),
           _buildTextField(
             controller: _nameController,
-            hint: 'e.g., Office Share, My Drive',
+            hint: 'e.g., Office NAS, Home Share',
             icon: Broken.tag,
           ),
           const SizedBox(height: 18),
 
-          if (isCloud) ...[
-            // Cloud OAuth flow mockup
-            _buildInputLabel('Account Authorization'),
-            Card(
-              elevation: 0,
-              color: isDark ? const Color(0xFF1E293B) : theme.colorScheme.primary.withOpacity(0.03),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-                side: BorderSide(color: theme.colorScheme.primary.withOpacity(0.12)),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(18.0),
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      _isOauthed ? Broken.verify : Broken.security_user,
-                      size: 40,
-                      color: _isOauthed ? Colors.green : theme.colorScheme.primary.withOpacity(0.8),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      _isOauthed
-                          ? 'OAuth Authentication Successful!'
-                          : 'Sign In Required',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'LexendDeca',
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _isOauthed
-                          ? 'Token Active: $_oauthEmail'
-                          : 'To view and download files from $_selectedType, authenticate securely with the host.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: theme.colorScheme.onSurface.withOpacity(0.6),
-                        height: 1.3,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        elevation: 0,
-                        backgroundColor: _isOauthed ? Colors.green.withOpacity(0.15) : theme.colorScheme.primary,
-                        foregroundColor: _isOauthed ? Colors.green : Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      ),
-                      onPressed: _showMockOAuthDialog,
-                      icon: Icon(_isOauthed ? Icons.check_circle : Icons.login),
-                      label: Text(_isOauthed ? 'Change Account' : 'Authenticate Account'),
+                    _buildInputLabel('Server Address / IP'),
+                    _buildTextField(
+                      controller: _hostController,
+                      hint: 'e.g., 192.168.1.100 or nas.local',
+                      icon: Broken.global,
                     ),
                   ],
                 ),
               ),
-            ),
-          ] else ...[
-            // Server configurations (FTP, SFTP, SMB, WebDav)
-            Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildInputLabel('Server Address / IP'),
-                      _buildTextField(
-                        controller: _hostController,
-                        hint: 'e.g., 192.168.1.100 or sftp.myhost.com',
-                        icon: Broken.global,
-                      ),
-                    ],
-                  ),
+              const SizedBox(width: 14),
+              Expanded(
+                flex: 1,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildInputLabel('Port'),
+                    _buildTextField(
+                      controller: _portController,
+                      hint: 'Port',
+                      icon: Broken.hashtag,
+                      keyboardType: TextInputType.number,
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  flex: 1,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildInputLabel('Port'),
-                      _buildTextField(
-                        controller: _portController,
-                        hint: 'Port',
-                        icon: Broken.hashtag,
-                        keyboardType: TextInputType.number,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
 
-            _buildInputLabel('Username (Optional)'),
-            _buildTextField(
-              controller: _usernameController,
-              hint: 'e.g., anonymous or admin',
-              icon: Broken.user,
-            ),
-            const SizedBox(height: 18),
+          _buildInputLabel('Username (Optional)'),
+          _buildTextField(
+            controller: _usernameController,
+            hint: 'e.g., anonymous or admin',
+            icon: Broken.user,
+          ),
+          const SizedBox(height: 18),
 
-            _buildInputLabel('Password (Optional)'),
-            _buildTextField(
-              controller: _passwordController,
-              hint: '••••••••',
-              icon: Broken.lock,
-              obscure: true,
-            ),
-          ],
+          _buildInputLabel('Password (Optional)'),
+          _buildTextField(
+            controller: _passwordController,
+            hint: '••••••••',
+            icon: Broken.lock,
+            obscure: true,
+          ),
 
           const SizedBox(height: 40),
 
@@ -722,7 +536,6 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Spacer(),
-          // Animated Glassmorphic Spinner
           Stack(
             alignment: Alignment.center,
             children: [
@@ -900,22 +713,6 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
     Color color;
 
     switch (name) {
-      case 'Google Drive':
-        iconData = Icons.cloud_circle_rounded;
-        color = const Color(0xFF0F9D58);
-        break;
-      case 'Dropbox':
-        iconData = Icons.folder_shared_rounded;
-        color = const Color(0xFF0061FE);
-        break;
-      case 'OneDrive':
-        iconData = Icons.cloud_queue_rounded;
-        color = const Color(0xFF0078D4);
-        break;
-      case 'Box':
-        iconData = Icons.all_inbox_rounded;
-        color = const Color(0xFF0061D5);
-        break;
       case 'LAN/SMB':
         iconData = Icons.dns_rounded;
         color = const Color(0xFF5B21B6);

@@ -13,7 +13,7 @@ class RecentFilesSection extends StatelessWidget {
   const RecentFilesSection({super.key});
 
   List<FileItemModel> _scanRecentFilesSync(BuildContext context) {
-    final list = <File>[];
+    final list = <FileSystemEntity>[];
     final seen = <String>{};
 
     final rootDir = Directory('/storage/emulated/0');
@@ -21,7 +21,7 @@ class RecentFilesSection extends StatelessWidget {
       try {
         final List<String> pathsToScan = [];
         
-        // Find all non-hidden directories under root storage
+        // Find all non-hidden directories under root storage to scan their contents
         final rootEntities = rootDir.listSync(recursive: false);
         for (final entity in rootEntities) {
           if (entity is Directory) {
@@ -46,15 +46,16 @@ class RecentFilesSection extends StatelessWidget {
             try {
               final entities = dir.listSync(recursive: false);
               for (final entity in entities) {
-                if (entity is File && !seen.contains(entity.path)) {
+                if (!seen.contains(entity.path)) {
                   seen.add(entity.path);
                   list.add(entity);
-                } else if (entity is Directory && !p.basename(entity.path).startsWith('.')) {
+                }
+                if (entity is Directory && !p.basename(entity.path).startsWith('.')) {
                   // Scan 1 level deep inside subfolders to catch subfolder creations/copies
                   try {
                     final subEntities = entity.listSync(recursive: false);
                     for (final sub in subEntities) {
-                      if (sub is File && !seen.contains(sub.path)) {
+                      if (!seen.contains(sub.path)) {
                         seen.add(sub.path);
                         list.add(sub);
                       }
@@ -72,7 +73,7 @@ class RecentFilesSection extends StatelessWidget {
 
     void addFromMediaList(List<FileSystemEntity> mediaList) {
       for (final entity in mediaList) {
-        if (entity is File && !seen.contains(entity.path)) {
+        if (!seen.contains(entity.path)) {
           seen.add(entity.path);
           list.add(entity);
         }
@@ -95,16 +96,35 @@ class RecentFilesSection extends StatelessWidget {
       }
     }
 
+    // Filter out directories that contain other items present in the list
+    final filteredList = <FileSystemEntity>[];
+    for (final entity in list) {
+      if (entity is Directory) {
+        bool hasNestedChild = false;
+        for (final other in list) {
+          if (other.path != entity.path && p.isWithin(entity.path, other.path)) {
+            hasNestedChild = true;
+            break;
+          }
+        }
+        if (hasNestedChild) {
+          continue;
+        }
+      }
+      filteredList.add(entity);
+    }
+
     final items = <FileItemModel>[];
-    for (final f in list) {
+    for (final f in filteredList) {
       try {
         final stat = f.statSync();
+        final isDir = f is Directory;
         items.add(FileItemModel(
           entity: f,
           name: p.basename(f.path),
           path: f.path,
-          isDirectory: false,
-          size: stat.size,
+          isDirectory: isDir,
+          size: isDir ? 0 : stat.size,
           modified: stat.modified,
         ));
       } catch (_) {}
@@ -136,7 +156,7 @@ class RecentFilesSection extends StatelessWidget {
     // Watch MediaProvider & FileManagerProvider to trigger automated rebuild on any file operation (paste/delete/copy/rename)
     context.watch<MediaProvider>();
 
-    final recentFiles = _scanRecentFilesSync(context).take(12).toList();
+    final recentFiles = _scanRecentFilesSync(context).where((e) => !e.isDirectory).take(12).toList();
 
     if (recentFiles.isEmpty) return const SizedBox.shrink();
 
@@ -187,7 +207,11 @@ class RecentFilesSection extends StatelessWidget {
               itemCount: recentFiles.length,
               itemBuilder: (context, index) {
                 final file = recentFiles[index];
-                final iconColor = FileUtils.getColorForFile(file.name, context);
+                final isFolder = file.isDirectory;
+                final iconColor = isFolder ? theme.colorScheme.primary : FileUtils.getColorForFile(file.name, context);
+                final iconData = isFolder 
+                    ? FileUtils.getFolderIcon(provider.folderIconOption) 
+                    : FileUtils.getIconForFile(file.name);
 
                 return Container(
                   width: 160,
@@ -211,7 +235,13 @@ class RecentFilesSection extends StatelessWidget {
                     color: Colors.transparent,
                     borderRadius: BorderRadius.circular(20),
                     child: InkWell(
-                      onTap: () => provider.openFile(context, file.path),
+                      onTap: () {
+                        if (isFolder) {
+                          provider.loadDirectory(file.path);
+                        } else {
+                          provider.openFile(context, file.path);
+                        }
+                      },
                       borderRadius: BorderRadius.circular(20),
                       splashColor: iconColor.withAlpha(25),
                       highlightColor: iconColor.withAlpha(13),
@@ -238,9 +268,9 @@ class RecentFilesSection extends StatelessWidget {
                                       ),
                                     ],
                                   ),
-                                  child: Icon(FileUtils.getIconForFile(file.name), color: iconColor, size: 20),
+                                  child: Icon(iconData, color: iconColor, size: 20),
                                 ),
-                                Icon(Broken.document, size: 16, color: theme.dividerColor.withAlpha(51)),
+                                Icon(isFolder ? Broken.folder : Broken.document, size: 16, color: theme.dividerColor.withAlpha(51)),
                               ],
                             ),
                             Column(
@@ -257,7 +287,7 @@ class RecentFilesSection extends StatelessWidget {
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      FileUtils.formatBytes(file.size, 1),
+                                      isFolder ? 'Folder' : FileUtils.formatBytes(file.size, 1),
                                       style: theme.textTheme.bodySmall?.copyWith(fontSize: 10, color: theme.textTheme.bodySmall?.color?.withAlpha(153)),
                                     ),
                                     Text(

@@ -1,7 +1,16 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 import '../../core/icon_fonts/broken_icons.dart';
+import '../../core/utils.dart';
 import '../../models/network_connection_model.dart';
+import '../../services/remote/remote_client.dart';
+import '../../services/remote/ftp_client.dart';
+import '../../services/remote/sftp_client.dart';
+import '../../services/remote/webdav_client.dart';
+import '../../services/remote/lan_client.dart';
 
 class RemoteExplorerScreen extends StatefulWidget {
   final NetworkConnectionModel connection;
@@ -12,27 +21,13 @@ class RemoteExplorerScreen extends StatefulWidget {
   State<RemoteExplorerScreen> createState() => _RemoteExplorerScreenState();
 }
 
-class _RemoteItem {
-  final String name;
-  final bool isDir;
-  final String size;
-  final String modified;
-  final String parentPath;
-
-  _RemoteItem({
-    required this.name,
-    required this.isDir,
-    required this.size,
-    required this.modified,
-    required this.parentPath,
-  });
-
-  String get fullPath => parentPath == '/' ? '/$name' : '$parentPath/$name';
-}
-
 class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
+  RemoteClient? _client;
+  bool _isConnected = false;
+  bool _isLoading = true;
+  String _errorMsg = '';
   String _currentPath = '/';
-  final List<_RemoteItem> _virtualFileSystem = [];
+  List<RemoteFileItem> _items = [];
 
   // Active download state
   bool _isDownloading = false;
@@ -42,99 +37,96 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
   @override
   void initState() {
     super.initState();
-    _populateInitialItems();
+    _initClient();
   }
 
-  void _populateInitialItems() {
-    final type = widget.connection.type;
+  @override
+  void dispose() {
+    _client?.disconnect();
+    super.dispose();
+  }
 
-    // Root items
-    _virtualFileSystem.addAll([
-      _RemoteItem(name: 'Backups', isDir: true, size: '', modified: 'May 18, 2026', parentPath: '/'),
-      _RemoteItem(name: 'Photos', isDir: true, size: '', modified: 'May 20, 2026', parentPath: '/'),
-      _RemoteItem(name: 'Documents', isDir: true, size: '', modified: 'May 21, 2026', parentPath: '/'),
-    ]);
-
-    if (['Google Drive', 'OneDrive', 'Dropbox', 'Box'].contains(type)) {
-      // Cloud Specific Items
-      _virtualFileSystem.addAll([
-        _RemoteItem(name: 'Shared With Me', isDir: true, size: '', modified: 'May 10, 2026', parentPath: '/'),
-        _RemoteItem(name: 'project_proposal.pdf', isDir: false, size: '2.4 MB', modified: 'May 22, 2026', parentPath: '/'),
-        _RemoteItem(name: 'budget_2026.xlsx', isDir: false, size: '1.8 MB', modified: 'May 19, 2026', parentPath: '/'),
-        _RemoteItem(name: 'vacation_itinerary.docx', isDir: false, size: '420 KB', modified: 'May 15, 2026', parentPath: '/'),
-      ]);
-    } else {
-      // FTP, SFTP, SMB, WebDav Items
-      _virtualFileSystem.addAll([
-        _RemoteItem(name: 'Public Share', isDir: true, size: '', modified: 'May 12, 2026', parentPath: '/'),
-        _RemoteItem(name: 'server_config.yaml', isDir: false, size: '12 KB', modified: 'May 22, 2026', parentPath: '/'),
-        _RemoteItem(name: 'database_dump.sql.gz', isDir: false, size: '45.7 MB', modified: 'May 21, 2026', parentPath: '/'),
-        _RemoteItem(name: 'site_logo.png', isDir: false, size: '144 KB', modified: 'May 04, 2026', parentPath: '/'),
-      ]);
+  Future<void> _initClient() async {
+    final conn = widget.connection;
+    if (conn.type == 'FTP') {
+      _client = FtpRemoteClient(host: conn.host, port: conn.port, username: conn.username, password: conn.password);
+    } else if (conn.type == 'SFTP') {
+      _client = SftpRemoteClient(host: conn.host, port: conn.port, username: conn.username, password: conn.password);
+    } else if (conn.type == 'WebDav') {
+      _client = WebDavRemoteClient(host: conn.host, port: conn.port, username: conn.username, password: conn.password);
+    } else if (conn.type == 'LAN/SMB') {
+      _client = LanClient(host: conn.host, port: conn.port, username: conn.username, password: conn.password);
     }
 
-    // Subdirectory item contents
-    // /Photos
-    _virtualFileSystem.addAll([
-      _RemoteItem(name: 'beach_trip.jpg', isDir: false, size: '3.1 MB', modified: 'May 20, 2026', parentPath: '/Photos'),
-      _RemoteItem(name: 'family_dinner.jpg', isDir: false, size: '2.4 MB', modified: 'May 19, 2026', parentPath: '/Photos'),
-      _RemoteItem(name: 'sunset_horizon.png', isDir: false, size: '5.6 MB', modified: 'May 18, 2026', parentPath: '/Photos'),
-      _RemoteItem(name: 'Memories 2025', isDir: true, size: '', modified: 'Jan 01, 2026', parentPath: '/Photos'),
-    ]);
-
-    // /Photos/Memories 2025
-    _virtualFileSystem.addAll([
-      _RemoteItem(name: 'new_year_party.jpg', isDir: false, size: '1.9 MB', modified: 'Jan 01, 2026', parentPath: '/Photos/Memories 2025'),
-    ]);
-
-    // /Backups
-    _virtualFileSystem.addAll([
-      _RemoteItem(name: 'iphone_backup_full.tar', isDir: false, size: '8.4 GB', modified: 'May 15, 2026', parentPath: '/Backups'),
-      _RemoteItem(name: 'contacts_vcf.zip', isDir: false, size: '14.2 MB', modified: 'May 10, 2026', parentPath: '/Backups'),
-    ]);
-
-    // /Documents
-    _virtualFileSystem.addAll([
-      _RemoteItem(name: 'Corporate Contract.pdf', isDir: false, size: '1.2 MB', modified: 'May 21, 2026', parentPath: '/Documents'),
-      _RemoteItem(name: 'Taxes_2025.pdf', isDir: false, size: '890 KB', modified: 'Apr 12, 2026', parentPath: '/Documents'),
-      _RemoteItem(name: 'Ideas.txt', isDir: false, size: '4 KB', modified: 'May 22, 2026', parentPath: '/Documents'),
-    ]);
+    try {
+      await _client?.connect();
+      _isConnected = true;
+      await _loadDirectoryContents(_currentPath);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMsg = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
   }
 
-  List<_RemoteItem> get _currentItems {
-    return _virtualFileSystem.where((item) => item.parentPath == _currentPath).toList();
-  }
-
-  void _navigateTo(_RemoteItem item) {
-    if (item.isDir) {
-      setState(() {
-        _currentPath = item.fullPath;
+  Future<void> _loadDirectoryContents(String path) async {
+    if (_client == null || !_isConnected) return;
+    setState(() {
+      _isLoading = true;
+      _errorMsg = '';
+    });
+    try {
+      final items = await _client!.listDirectory(path);
+      items.sort((a, b) {
+        if (a.isDirectory && !b.isDirectory) return -1;
+        if (!a.isDirectory && b.isDirectory) return 1;
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
       });
+      if (mounted) {
+        setState(() {
+          _items = items;
+          _currentPath = path;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMsg = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _navigateTo(RemoteFileItem item) {
+    if (item.isDirectory) {
+      _loadDirectoryContents(item.path);
     } else {
-      _startSimulatedDownload(item);
+      _showDetailsSheet(item);
     }
   }
 
   void _navigateUp() {
     if (_currentPath == '/') return;
     final parts = _currentPath.split('/');
-    parts.removeLast();
-    setState(() {
-      _currentPath = parts.join('/');
-      if (_currentPath.isEmpty) {
-        _currentPath = '/';
-      }
-    });
+    if (parts.isNotEmpty) parts.removeLast();
+    var parent = parts.join('/');
+    if (parent.isEmpty) {
+      parent = '/';
+    }
+    _loadDirectoryContents(parent);
   }
 
   void _navigateToBreadcrumb(String path) {
-    setState(() {
-      _currentPath = path;
-    });
+    _loadDirectoryContents(path);
   }
 
-  // File download simulation
-  void _startSimulatedDownload(_RemoteItem item) {
+  // File download
+  Future<void> _startDownload(RemoteFileItem item) async {
     if (_isDownloading) return;
 
     setState(() {
@@ -143,42 +135,66 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
       _downloadingFileName = item.name;
     });
 
-    const steps = 20;
-    int currentStep = 0;
-
-    Timer.periodic(const Duration(milliseconds: 120), (timer) {
-      currentStep++;
-      if (mounted) {
-        setState(() {
-          _downloadProgress = currentStep / steps;
-        });
+    try {
+      Directory? downloadDir = Directory('/storage/emulated/0/Download');
+      if (!downloadDir.existsSync()) {
+        downloadDir = await getExternalStorageDirectory();
       }
+      if (downloadDir == null) {
+        final dir = await getApplicationDocumentsDirectory();
+        downloadDir = dir;
+      }
+      
+      final nfileDownloadsDir = Directory(p.join(downloadDir.path, 'NFile_Downloads'));
+      if (!nfileDownloadsDir.existsSync()) {
+        nfileDownloadsDir.createSync(recursive: true);
+      }
+      
+      final localPath = p.join(nfileDownloadsDir.path, item.name);
 
-      if (currentStep >= steps) {
-        timer.cancel();
+      await _client!.downloadFile(item.path, localPath, (progress) {
         if (mounted) {
           setState(() {
-            _isDownloading = false;
+            _downloadProgress = progress;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Broken.document_download, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Text('"${item.name}" downloaded to Downloads/NFile_Downloads/'),
-                ],
-              ),
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: Theme.of(context).colorScheme.primary,
-            ),
-          );
         }
+      });
+
+      if (mounted) {
+        setState(() {
+          _isDownloading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Broken.document_download, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(child: Text('"${item.name}" downloaded to Downloads/NFile_Downloads/')),
+              ],
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Theme.of(context).colorScheme.primary,
+          ),
+        );
       }
-    });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isDownloading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Download failed: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
-  // Create Virtual Directory Dialog
+  // Create Directory Dialog
   void _showAddFolderDialog() {
     final controller = TextEditingController();
     final theme = Theme.of(context);
@@ -219,19 +235,23 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              onPressed: () {
+              onPressed: () async {
                 final name = controller.text.trim();
                 if (name.isNotEmpty) {
-                  setState(() {
-                    _virtualFileSystem.add(_RemoteItem(
-                      name: name,
-                      isDir: true,
-                      size: '',
-                      modified: 'Today',
-                      parentPath: _currentPath,
-                    ));
-                  });
                   Navigator.pop(context);
+                  setState(() => _isLoading = true);
+                  try {
+                    final folderPath = _currentPath == '/' ? '/$name' : '$_currentPath/$name';
+                    await _client?.createDirectory(folderPath);
+                    await _loadDirectoryContents(_currentPath);
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to create folder: $e'), backgroundColor: Colors.redAccent),
+                      );
+                      setState(() => _isLoading = false);
+                    }
+                  }
                 }
               },
               child: const Text('Create'),
@@ -242,21 +262,36 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
     );
   }
 
-  // Delete virtual remote item
-  void _deleteItem(_RemoteItem item) {
-    setState(() {
-      _virtualFileSystem.removeWhere((x) => x.fullPath == item.fullPath || x.parentPath.startsWith(item.fullPath));
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Simulated deletion of "${item.name}" complete.'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  // Delete remote item
+  Future<void> _deleteItem(RemoteFileItem item) async {
+    setState(() => _isLoading = true);
+    try {
+      await _client?.delete(item.path, item.isDirectory);
+      await _loadDirectoryContents(_currentPath);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Deleted "${item.name}" successfully.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   // Details sheet
-  void _showDetailsSheet(_RemoteItem item) {
+  void _showDetailsSheet(RemoteFileItem item) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -277,7 +312,6 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Sheet Handle
               Center(
                 child: Container(
                   width: 40,
@@ -293,7 +327,7 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
               Row(
                 children: [
                   Icon(
-                    item.isDir ? Broken.folder_open : Broken.document,
+                    item.isDirectory ? Broken.folder_open : Broken.document,
                     size: 38,
                     color: theme.colorScheme.primary,
                   ),
@@ -312,7 +346,7 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          item.isDir ? 'Remote Directory' : 'Remote File',
+                          item.isDirectory ? 'Remote Directory' : 'Remote File',
                           style: TextStyle(
                             fontSize: 12,
                             color: theme.colorScheme.onSurface.withOpacity(0.5),
@@ -330,9 +364,9 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
               _buildDetailRow('Server Name', widget.connection.name, theme),
               _buildDetailRow('Protocol Type', widget.connection.type, theme),
               _buildDetailRow('Remote Address', widget.connection.host, theme),
-              _buildDetailRow('Full Location Path', item.fullPath, theme),
-              if (!item.isDir) _buildDetailRow('Total File Size', item.size, theme),
-              _buildDetailRow('Last Modified', item.modified, theme),
+              _buildDetailRow('Full Location Path', item.path, theme),
+              if (!item.isDirectory) _buildDetailRow('Total File Size', item.formattedSize, theme),
+              _buildDetailRow('Last Modified', item.modified.toLocal().toString().substring(0, 19), theme),
 
               const SizedBox(height: 24),
               ElevatedButton.icon(
@@ -345,14 +379,14 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
                 ),
                 onPressed: () {
                   Navigator.pop(context);
-                  if (item.isDir) {
+                  if (item.isDirectory) {
                     _navigateTo(item);
                   } else {
-                    _startSimulatedDownload(item);
+                    _startDownload(item);
                   }
                 },
-                icon: Icon(item.isDir ? Icons.arrow_forward : Icons.download),
-                label: Text(item.isDir ? 'Explore Directory' : 'Download Now'),
+                icon: Icon(item.isDirectory ? Icons.arrow_forward : Icons.download),
+                label: Text(item.isDirectory ? 'Explore Directory' : 'Download Now'),
               ),
             ],
           ),
@@ -425,200 +459,242 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Broken.folder_add, size: 20),
-            tooltip: 'Add Virtual Folder',
-            onPressed: _showAddFolderDialog,
-          ),
-        ],
+        actions: _isConnected
+            ? [
+                IconButton(
+                  icon: const Icon(Broken.folder_add, size: 20),
+                  tooltip: 'Add Remote Folder',
+                  onPressed: _showAddFolderDialog,
+                ),
+              ]
+            : null,
       ),
       body: Stack(
         children: [
-          Column(
-            children: [
-              // Breadcrumbs panel
-              Container(
-                height: 48,
-                width: double.infinity,
-                color: theme.colorScheme.onSurface.withOpacity(0.03),
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: ScrollConfiguration(
-                  behavior: const ScrollBehavior().copyWith(overscroll: false),
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: pathNodes.length,
-                    itemBuilder: (context, idx) {
-                      final isLast = idx == pathNodes.length - 1;
-
-                      // Reconstruct path for nodes click
-                      String reconstructedPath = '/';
-                      if (idx > 0) {
-                        reconstructedPath = '/' +
-                            pathNodes
-                                .sublist(1, idx + 1)
-                                .join('/');
-                      }
-
-                      return Row(
-                        children: [
-                          InkWell(
-                            borderRadius: BorderRadius.circular(8),
-                            onTap: isLast ? null : () => _navigateToBreadcrumb(reconstructedPath),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
-                              child: Text(
-                                pathNodes[idx],
-                                style: TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: isLast ? FontWeight.bold : FontWeight.w500,
-                                  color: isLast
-                                      ? theme.colorScheme.onSurface.withOpacity(0.9)
-                                      : theme.colorScheme.primary,
-                                ),
-                              ),
-                            ),
-                          ),
-                          if (!isLast)
-                            Icon(
-                              Icons.chevron_right_rounded,
-                              size: 14,
-                              color: theme.colorScheme.onSurface.withOpacity(0.3),
-                            ),
-                        ],
-                      );
-                    },
-                  ),
+          if (_isLoading)
+            const Center(child: CircularProgressIndicator())
+          else if (_errorMsg.isNotEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Broken.info_circle, size: 64, color: Colors.redAccent),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Connection Lost',
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _errorMsg,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.5)),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isLoading = true;
+                          _errorMsg = '';
+                        });
+                        _initClient();
+                      },
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('Retry Connection'),
+                    )
+                  ],
                 ),
               ),
+            )
+          else
+            Column(
+              children: [
+                // Breadcrumbs panel
+                Container(
+                  height: 48,
+                  width: double.infinity,
+                  color: theme.colorScheme.onSurface.withOpacity(0.03),
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: ScrollConfiguration(
+                    behavior: const ScrollBehavior().copyWith(overscroll: false),
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: pathNodes.length,
+                      itemBuilder: (context, idx) {
+                        final isLast = idx == pathNodes.length - 1;
 
-              // Remote items browser list
-              Expanded(
-                child: _currentItems.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        String reconstructedPath = '/';
+                        if (idx > 0) {
+                          reconstructedPath = '/' + pathNodes.sublist(1, idx + 1).join('/');
+                        }
+
+                        return Row(
                           children: [
-                            Icon(
-                              Broken.folder_open,
-                              size: 56,
-                              color: theme.colorScheme.onSurface.withOpacity(0.2),
-                            ),
-                            const SizedBox(height: 14),
-                            Text(
-                              'This Directory is Empty',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.onSurface.withOpacity(0.4),
+                            InkWell(
+                              borderRadius: BorderRadius.circular(8),
+                              onTap: isLast ? null : () => _navigateToBreadcrumb(reconstructedPath),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
+                                child: Text(
+                                  pathNodes[idx],
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: isLast ? FontWeight.bold : FontWeight.w500,
+                                    color: isLast
+                                        ? theme.colorScheme.onSurface.withOpacity(0.9)
+                                        : theme.colorScheme.primary,
+                                  ),
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Tap the top-right button to append virtual sub-folders.',
-                              style: TextStyle(
-                                fontSize: 11.5,
+                            if (!isLast)
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                size: 14,
                                 color: theme.colorScheme.onSurface.withOpacity(0.3),
                               ),
-                            ),
                           ],
-                        ),
-                      )
-                    : ScrollConfiguration(
-                        behavior: const ScrollBehavior().copyWith(overscroll: false),
-                        child: ListView.builder(
-                          physics: const BouncingScrollPhysics(),
-                          padding: const EdgeInsets.symmetric(vertical: 8.0),
-                          itemCount: _currentItems.length,
-                          itemBuilder: (context, index) {
-                            final item = _currentItems[index];
+                        );
+                      },
+                    ),
+                  ),
+                ),
 
-                            return ListTile(
-                              leading: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.primary.withOpacity(item.isDir ? 0.1 : 0.04),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(
-                                  item.isDir ? Broken.folder_open : Broken.document,
-                                  size: 20,
-                                  color: theme.colorScheme.primary.withOpacity(item.isDir ? 0.9 : 0.6),
+                // Remote items browser list
+                Expanded(
+                  child: _items.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Broken.folder_open,
+                                size: 56,
+                                color: theme.colorScheme.onSurface.withOpacity(0.2),
+                              ),
+                              const SizedBox(height: 14),
+                              Text(
+                                'This Directory is Empty',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.onSurface.withOpacity(0.4),
                                 ),
                               ),
-                              title: Text(
-                                item.name,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              subtitle: Text(
-                                item.isDir ? '${item.modified}' : '${item.size} • ${item.modified}',
+                              const SizedBox(height: 4),
+                              Text(
+                                'Tap the top-right button to append virtual sub-folders.',
                                 style: TextStyle(
                                   fontSize: 11.5,
-                                  color: theme.colorScheme.onSurface.withOpacity(0.4),
+                                  color: theme.colorScheme.onSurface.withOpacity(0.3),
                                 ),
                               ),
-                              trailing: PopupMenuButton<String>(
-                                icon: Icon(
-                                  Icons.more_vert_rounded,
-                                  size: 18,
-                                  color: theme.colorScheme.onSurface.withOpacity(0.4),
-                                ),
-                                onSelected: (value) {
-                                  if (value == 'details') {
-                                    _showDetailsSheet(item);
-                                  } else if (value == 'download') {
-                                    _startSimulatedDownload(item);
-                                  } else if (value == 'delete') {
-                                    _deleteItem(item);
-                                  }
-                                },
-                                itemBuilder: (context) => [
-                                  PopupMenuItem(
-                                    value: 'details',
-                                    child: Row(
-                                      children: [
-                                        Icon(Broken.info_circle, size: 16, color: theme.colorScheme.primary),
-                                        const SizedBox(width: 8),
-                                        const Text('Properties', style: TextStyle(fontSize: 13)),
-                                      ],
-                                    ),
+                            ],
+                          ),
+                        )
+                      : ScrollConfiguration(
+                          behavior: const ScrollBehavior().copyWith(overscroll: false),
+                          child: ListView.builder(
+                            physics: const BouncingScrollPhysics(),
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            itemCount: _items.length,
+                            itemBuilder: (context, index) {
+                              final item = _items[index];
+
+                              return ListTile(
+                                leading: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary.withOpacity(item.isDirectory ? 0.1 : 0.04),
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                  if (!item.isDir)
+                                  child: Icon(
+                                    item.isDirectory ? Broken.folder_open : Broken.document,
+                                    size: 20,
+                                    color: theme.colorScheme.primary.withOpacity(item.isDirectory ? 0.9 : 0.6),
+                                  ),
+                                ),
+                                title: Text(
+                                  item.name,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                subtitle: Text(
+                                  item.isDirectory ? 'Directory' : '${item.formattedSize} • ${item.modified.toLocal().toString().substring(0, 10)}',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: theme.colorScheme.onSurface.withOpacity(0.4),
+                                  ),
+                                ),
+                                trailing: PopupMenuButton<String>(
+                                  icon: Icon(
+                                    Icons.more_vert_rounded,
+                                    size: 18,
+                                    color: theme.colorScheme.onSurface.withOpacity(0.4),
+                                  ),
+                                  onSelected: (value) {
+                                    if (value == 'details') {
+                                      _showDetailsSheet(item);
+                                    } else if (value == 'download') {
+                                      _startDownload(item);
+                                    } else if (value == 'delete') {
+                                      _deleteItem(item);
+                                    }
+                                  },
+                                  itemBuilder: (context) => [
                                     PopupMenuItem(
-                                      value: 'download',
+                                      value: 'details',
                                       child: Row(
                                         children: [
-                                          Icon(Broken.document_download, size: 16, color: theme.colorScheme.primary),
+                                          Icon(Broken.info_circle, size: 16, color: theme.colorScheme.primary),
                                           const SizedBox(width: 8),
-                                          const Text('Download File', style: TextStyle(fontSize: 13)),
+                                          const Text('Properties', style: TextStyle(fontSize: 13)),
                                         ],
                                       ),
                                     ),
-                                  PopupMenuItem(
-                                    value: 'delete',
-                                    child: Row(
-                                      children: [
-                                        Icon(Broken.trash, size: 16, color: Colors.redAccent.withOpacity(0.8)),
-                                        const SizedBox(width: 8),
-                                        const Text('Unmount / Delete', style: TextStyle(fontSize: 13, color: Colors.redAccent)),
-                                      ],
+                                    if (!item.isDirectory)
+                                      PopupMenuItem(
+                                        value: 'download',
+                                        child: Row(
+                                          children: [
+                                            Icon(Broken.document_download, size: 16, color: theme.colorScheme.primary),
+                                            const SizedBox(width: 8),
+                                            const Text('Download File', style: TextStyle(fontSize: 13)),
+                                          ],
+                                        ),
+                                      ),
+                                    PopupMenuItem(
+                                      value: 'delete',
+                                      child: Row(
+                                        children: [
+                                          Icon(Broken.trash, size: 16, color: Colors.redAccent.withOpacity(0.8)),
+                                          const SizedBox(width: 8),
+                                          const Text('Delete', style: TextStyle(fontSize: 13, color: Colors.redAccent)),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                              onTap: () => _navigateTo(item),
-                              onLongPress: () => _showDetailsSheet(item),
-                            );
-                          },
+                                  ],
+                                ),
+                                onTap: () => _navigateTo(item),
+                                onLongPress: () => _showDetailsSheet(item),
+                              );
+                            },
+                          ),
                         ),
-                      ),
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
 
           // Download circular overlay animation
           if (_isDownloading)
