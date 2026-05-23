@@ -47,4 +47,4 @@ The application requires the following permissions for full functionality:
 - **Viewers:** `photo_view` & `open_filex`
 
 ## License
-MIT License
+GNU GPL v3 License

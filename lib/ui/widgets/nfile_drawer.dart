@@ -9,6 +9,7 @@ import '../screens/ftp_server_screen.dart';
 import '../../services/network_connections_service.dart';
 import '../screens/network_connection_wizard_screen.dart';
 import '../screens/remote_explorer_screen.dart';
+import '../screens/about_screen.dart';
 import '../screens/web_sharing_screen.dart';
 
 class NFileDrawer extends StatelessWidget {
@@ -215,7 +216,10 @@ class NFileDrawer extends StatelessWidget {
                       title: 'About NFile',
                       onTap: () {
                         Navigator.pop(context);
-                        _showAboutDialog(context, theme);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const AboutNFileScreen()),
+                        );
                       },
                     ),
                     const SizedBox(height: 24),
@@ -357,57 +361,4 @@ class NFileDrawer extends StatelessWidget {
     );
   }
 
-  void _showAboutDialog(BuildContext context, ThemeData theme) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return Dialog(
-          backgroundColor: theme.scaffoldBackgroundColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Broken.folder, color: theme.colorScheme.primary, size: 36),
-                ),
-                const SizedBox(height: 16),
-                Text('NFile', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text('Version 1.0.26', style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.5), fontSize: 13, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 16),
-                Text(
-                  'A premium, fluid, and open-source file manager and offline media hub built with Flutter. Designed for extreme performance and elegance.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.8), fontSize: 13.5, height: 1.4),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.colorScheme.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 0,
-                    ),
-                    child: const Text('Close', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
 }

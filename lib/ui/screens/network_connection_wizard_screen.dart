@@ -432,39 +432,20 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
           ),
           const SizedBox(height: 18),
 
-          Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildInputLabel('Server Address / IP'),
-                    _buildTextField(
-                      controller: _hostController,
-                      hint: 'e.g., 192.168.1.100 or nas.local',
-                      icon: Broken.global,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                flex: 1,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildInputLabel('Port'),
-                    _buildTextField(
-                      controller: _portController,
-                      hint: 'Port',
-                      icon: Broken.hashtag,
-                      keyboardType: TextInputType.number,
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          _buildInputLabel('Server Address / IP'),
+          _buildTextField(
+            controller: _hostController,
+            hint: 'e.g., 192.168.1.100 or nas.local',
+            icon: Broken.global,
+          ),
+          const SizedBox(height: 18),
+
+          _buildInputLabel('Port'),
+          _buildTextField(
+            controller: _portController,
+            hint: '21',
+            icon: Broken.hashtag,
+            keyboardType: TextInputType.number,
           ),
           const SizedBox(height: 18),
 

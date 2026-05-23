@@ -36,4 +36,5 @@ abstract class RemoteClient {
   Future<void> createDirectory(String path);
   Future<void> delete(String path, bool isDir);
   Future<void> downloadFile(String remotePath, String localPath, Function(double progress) onProgress);
+  Future<void> uploadFile(String localPath, String remotePath, Function(double progress) onProgress);
 }

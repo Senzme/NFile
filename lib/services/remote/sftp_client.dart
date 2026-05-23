@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:dartssh2/dartssh2.dart';
 import 'remote_client.dart';
 
@@ -110,5 +111,43 @@ class SftpRemoteClient implements RemoteClient {
       await sink.close();
       await file.close();
     }
+  }
+
+  @override
+  Future<void> uploadFile(
+    String localPath,
+    String remotePath,
+    Function(double progress) onProgress,
+  ) async {
+    if (_sftpClient == null) throw Exception('SFTP not connected');
+
+    final localFile = File(localPath);
+    if (!localFile.existsSync()) throw Exception('Local file not found: $localPath');
+
+    final totalSize = await localFile.length();
+
+    // Open remote file for writing
+    final remoteFile = await _sftpClient!.open(
+      remotePath,
+      mode: SftpFileOpenMode.create | SftpFileOpenMode.truncate | SftpFileOpenMode.write,
+    );
+
+    onProgress(0.0);
+
+    try {
+      final writer = remoteFile.write(
+        localFile.openRead().map((chunk) => Uint8List.fromList(chunk)),
+        onProgress: (bytesWritten) {
+          if (totalSize > 0) {
+            onProgress((bytesWritten / totalSize).clamp(0.0, 1.0));
+          }
+        },
+      );
+      await writer.done;
+    } finally {
+      await remoteFile.close();
+    }
+
+    onProgress(1.0);
   }
 }

@@ -568,45 +568,44 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                   }),
 
                   // Network Connections Section
-                  const SizedBox(height: 24),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Network Connections',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.primary,
-                            fontFamily: 'LexendDeca',
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.add_link_rounded, size: 20),
-                          tooltip: 'Add Network Connection',
-                          onPressed: () async {
-                            Navigator.pop(ctx);
-                            final added = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const NetworkConnectionWizardScreen(),
-                              ),
-                            );
-                            if (added == true) {
-                              _showStorageVolumeModal(context, provider);
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12.0),
-                    child: Divider(height: 8, thickness: 1),
-                  ),
-
                   if (connections.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Network Connections',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.primary,
+                              fontFamily: 'LexendDeca',
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.add_link_rounded, size: 20),
+                            tooltip: 'Add Network Connection',
+                            onPressed: () async {
+                              Navigator.pop(ctx);
+                              final added = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const NetworkConnectionWizardScreen(),
+                                ),
+                              );
+                              if (added == true) {
+                                _showStorageVolumeModal(context, provider);
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12.0),
+                      child: Divider(height: 8, thickness: 1),
+                    ),
                     ...connections.map((conn) {
                       IconData iconData;
                       switch (conn.type) {
@@ -669,53 +668,6 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                         },
                       );
                     }),
-                  ] else ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.onSurface.withOpacity(0.03),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: theme.colorScheme.onSurface.withOpacity(0.05)),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              'No Saved Network Connections',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.onSurface.withOpacity(0.5),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            OutlinedButton.icon(
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: theme.colorScheme.primary.withOpacity(0.5)),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                              ),
-                              icon: const Icon(Icons.add_link_rounded, size: 16),
-                              label: const Text('Add Connection', style: TextStyle(fontSize: 13)),
-                              onPressed: () async {
-                                Navigator.pop(ctx);
-                                final added = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const NetworkConnectionWizardScreen(),
-                                  ),
-                                );
-                                if (added == true) {
-                                  _showStorageVolumeModal(context, provider);
-                                }
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
                   ],
                 ],
               ),

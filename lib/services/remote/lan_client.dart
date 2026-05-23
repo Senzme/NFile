@@ -240,4 +240,36 @@ class LanClient implements RemoteClient {
     await sink.flush();
     await sink.close();
   }
+
+  @override
+  Future<void> uploadFile(
+    String localPath,
+    String remotePath,
+    Function(double progress) onProgress,
+  ) async {
+    final localFile = File(localPath);
+    if (!localFile.existsSync()) throw Exception('Local file not found: $localPath');
+
+    final size = await localFile.length();
+    final name = remotePath.split('/').last;
+
+    onProgress(0.0);
+    // Simulate transfer
+    for (var i = 1; i <= 5; i++) {
+      await Future.delayed(const Duration(milliseconds: 80));
+      onProgress(i / 5);
+    }
+
+    // Add to virtual FS
+    _virtualItems.removeWhere((e) => e.path == remotePath);
+    _virtualItems.add(RemoteFileItem(
+      name: name,
+      path: remotePath,
+      isDirectory: false,
+      size: size,
+      modified: DateTime.now(),
+    ));
+    await _saveStructure();
+    onProgress(1.0);
+  }
 }

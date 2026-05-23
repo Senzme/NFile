@@ -213,4 +213,47 @@ class WebDavRemoteClient implements RemoteClient {
       await sink.close();
     }
   }
+
+  @override
+  Future<void> uploadFile(
+    String localPath,
+    String remotePath,
+    Function(double progress) onProgress,
+  ) async {
+    final localFile = File(localPath);
+    if (!localFile.existsSync()) throw Exception('Local file not found: $localPath');
+
+    final totalSize = await localFile.length();
+
+    var normalizedPath = remotePath;
+    if (!normalizedPath.startsWith('/')) normalizedPath = '/$normalizedPath';
+
+    final url = Uri.parse(_baseUrl + Uri.encodeFull(normalizedPath));
+    final request = await _httpClient.openUrl('PUT', url);
+    final auth = _authHeader();
+    if (auth.isNotEmpty) {
+      request.headers.set('Authorization', auth);
+    }
+    request.headers.contentLength = totalSize;
+    request.headers.contentType = ContentType.binary;
+
+    int uploaded = 0;
+    onProgress(0.0);
+
+    await for (final chunk in localFile.openRead()) {
+      request.add(chunk);
+      uploaded += chunk.length;
+      if (totalSize > 0) {
+        onProgress((uploaded / totalSize).clamp(0.0, 1.0));
+      }
+    }
+
+    final response = await request.close();
+    await response.drain();
+
+    if (response.statusCode >= 400) {
+      throw Exception('WebDAV upload error: ${response.statusCode}');
+    }
+    onProgress(1.0);
+  }
 }

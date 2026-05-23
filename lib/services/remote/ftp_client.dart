@@ -140,4 +140,39 @@ class FtpRemoteClient implements RemoteClient {
     if (!ok) throw Exception('Download failed for: $remotePath');
     onProgress(1.0);
   }
+
+  @override
+  Future<void> uploadFile(
+    String localPath,
+    String remotePath,
+    Function(double progress) onProgress,
+  ) async {
+    if (_ftpConnect == null) throw Exception('FTP not connected');
+
+    final localFile = File(localPath);
+    if (!localFile.existsSync()) throw Exception('Local file not found: $localPath');
+
+    final remoteFileName = p.basename(remotePath);
+    final remoteDir = p.dirname(remotePath);
+
+    // Navigate to the destination directory
+    if (remoteDir.isNotEmpty && remoteDir != '/') {
+      await _ftpConnect!.createFolderIfNotExist(remoteDir);
+      final ok = await _ftpConnect!.changeDirectory(remoteDir);
+      if (!ok) throw Exception('Cannot open remote directory: $remoteDir');
+    }
+
+    onProgress(0.0);
+
+    final ok = await _ftpConnect!.uploadFile(
+      localFile,
+      sRemoteName: remoteFileName,
+      onProgress: (progressPercent, sent, fileSize) {
+        onProgress((progressPercent / 100.0).clamp(0.0, 1.0));
+      },
+    );
+
+    if (!ok) throw Exception('Upload failed for: $localPath');
+    onProgress(1.0);
+  }
 }
