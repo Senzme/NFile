@@ -151,14 +151,19 @@ class _AllRecentFilesScreenState extends State<AllRecentFilesScreen> {
     final items = <FileItemModel>[];
     for (final f in filteredList) {
       try {
-        final stat = f.statSync();
         final isDir = f is Directory;
+        if (isDir) continue;
+
+        final name = p.basename(f.path);
+        if (name.startsWith('.')) continue;
+
+        final stat = f.statSync();
         items.add(FileItemModel(
           entity: f,
-          name: p.basename(f.path),
+          name: name,
           path: f.path,
-          isDirectory: isDir,
-          size: isDir ? 0 : stat.size,
+          isDirectory: false,
+          size: stat.size,
           modified: stat.modified,
         ));
       } catch (_) {}
