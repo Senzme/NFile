@@ -228,12 +228,15 @@ class NFileDrawer extends StatelessWidget {
                               icon: Icons.add_rounded,
                               title: 'Add Shortcut',
                               onTap: () async {
-                                Navigator.pop(context);
                                 final fileManager = context.read<FileManagerProvider>();
+                                final mediaProvider = context.read<MediaProvider>();
                                 final paths = await InternalFilePickerScreen.show(context, rootPath: fileManager.rootPath);
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                }
                                 if (paths != null && paths.isNotEmpty) {
                                   for (final p in paths) {
-                                    context.read<MediaProvider>().addCustomShortcut(p);
+                                    mediaProvider.addCustomShortcut(p);
                                   }
                                 }
                               },
