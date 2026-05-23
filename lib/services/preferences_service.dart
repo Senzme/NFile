@@ -227,6 +227,7 @@ class PreferencesService {
   }
 
   static const String _keyAccentColor = 'accent_color';
+  static const String _keyFontFamily = 'font_family';
 
   static String getAccentColor() {
     return _prefs?.getString(_keyAccentColor) ?? 'blue';
@@ -234,6 +235,14 @@ class PreferencesService {
 
   static Future<void> saveAccentColor(String val) async {
     await _prefs?.setString(_keyAccentColor, val);
+  }
+
+  static String getFontFamily() {
+    return _prefs?.getString(_keyFontFamily) ?? 'default';
+  }
+
+  static Future<void> saveFontFamily(String val) async {
+    await _prefs?.setString(_keyFontFamily, val);
   }
 
   static Color getSeedColor(String name) {

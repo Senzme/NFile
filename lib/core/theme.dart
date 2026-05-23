@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   static const Color seedColor = Color(0xFF369FE7);
   
-  static ThemeData getAppTheme({required bool light, bool pitchBlack = false, Color? seed, ColorScheme? customScheme}) {
+  static ThemeData getAppTheme({
+    required bool light,
+    bool pitchBlack = false,
+    Color? seed,
+    ColorScheme? customScheme,
+    String fontFamily = 'default',
+  }) {
     final rawColor = seed ?? seedColor;
     final brightness = light ? Brightness.light : Brightness.dark;
 
@@ -35,11 +42,55 @@ class AppTheme {
       light ? const Color.fromARGB(255, 255, 255, 255) : pitchGrey,
     );
 
+    // Map font keys to actual font families/themes
+    TextTheme? textTheme;
+    String? effectiveFontFamily;
+
+    switch (fontFamily) {
+      case 'nothing':
+        effectiveFontFamily = 'NType82';
+        textTheme = const TextTheme(
+          displayLarge: TextStyle(fontFamily: 'Ndot57'),
+          displayMedium: TextStyle(fontFamily: 'Ndot57'),
+          displaySmall: TextStyle(fontFamily: 'Ndot57'),
+          headlineLarge: TextStyle(fontFamily: 'Ndot57', fontWeight: FontWeight.bold),
+          headlineMedium: TextStyle(fontFamily: 'Ndot57', fontWeight: FontWeight.bold),
+          headlineSmall: TextStyle(fontFamily: 'Ndot57', fontWeight: FontWeight.bold),
+          titleLarge: TextStyle(fontFamily: 'Ndot57', fontWeight: FontWeight.bold),
+          titleMedium: TextStyle(fontFamily: 'Ndot57', fontWeight: FontWeight.bold),
+          titleSmall: TextStyle(fontFamily: 'Ndot57', fontWeight: FontWeight.bold),
+          bodyLarge: TextStyle(fontFamily: 'NType82'),
+          bodyMedium: TextStyle(fontFamily: 'NType82'),
+          bodySmall: TextStyle(fontFamily: 'NType82'),
+          labelLarge: TextStyle(fontFamily: 'NType82', fontWeight: FontWeight.bold),
+          labelMedium: TextStyle(fontFamily: 'NType82'),
+          labelSmall: TextStyle(fontFamily: 'NType82'),
+        );
+        break;
+      case 'outfit':
+        effectiveFontFamily = 'Outfit';
+        textTheme = GoogleFonts.outfitTextTheme();
+        break;
+      case 'jetbrains':
+        effectiveFontFamily = 'JetBrains Mono';
+        textTheme = GoogleFonts.jetBrainsMonoTextTheme();
+        break;
+      case 'montserrat':
+        effectiveFontFamily = 'Montserrat';
+        textTheme = GoogleFonts.montserratTextTheme();
+        break;
+      case 'default':
+      default:
+        effectiveFontFamily = 'LexendDeca';
+        break;
+    }
+
     return ThemeData(
       brightness: brightness,
       useMaterial3: true,
       colorScheme: colorScheme,
-      fontFamily: 'LexendDeca',
+      fontFamily: effectiveFontFamily,
+      textTheme: textTheme,
       fontFamilyFallback: const ['sans-serif', 'Roboto'],
       scaffoldBackgroundColor: pitchBlackColor ?? (light ? Color.alphaBlend(effectivePrimary.withAlpha(10), Colors.white) : null),
       splashColor: Colors.transparent,
@@ -61,7 +112,7 @@ class AppTheme {
           color: light ? Colors.black.withAlpha(160) : Colors.white.withAlpha(210),
           fontSize: 20,
           fontWeight: FontWeight.w600,
-          fontFamily: 'LexendDeca',
+          fontFamily: effectiveFontFamily,
         ),
       ),
       secondaryHeaderColor: light ? const Color.fromARGB(200, 240, 240, 240) : const Color.fromARGB(222, 10, 10, 10),

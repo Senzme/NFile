@@ -198,16 +198,43 @@ class _MediaThumbnailState extends State<_MediaThumbnail> {
 
   Future<void> _loadVideoThumb() async {
     if (!mounted) return;
-    final mediaProvider = context.read<MediaProvider>();
-    final match = mediaProvider.videos.where((v) => v.title == widget.file.name || '${v.title}.${v.mimeType?.split("/").last}' == widget.file.name).firstOrNull;
-    if (match != null) {
-      final thumb = await ThumbnailCache.get(match);
-      if (mounted && thumb != null) {
-        setState(() {
-          _videoThumb = thumb;
-        });
+    try {
+      final mediaProvider = context.read<MediaProvider>();
+      final match = mediaProvider.videos.where((v) {
+        final titleLower = (v.title ?? '').toLowerCase();
+        final nameLower = widget.file.name.toLowerCase();
+        
+        // Case 1: title matches filename exactly
+        if (titleLower == nameLower) return true;
+        
+        // Case 2: title is basename without extension, e.g. title="my_video", filename="my_video.mp4"
+        final extIndex = nameLower.lastIndexOf('.');
+        final ext = extIndex != -1 ? nameLower.substring(extIndex) : '';
+        if (ext.isNotEmpty) {
+          final baseName = nameLower.substring(0, extIndex);
+          if (titleLower == baseName || '${titleLower}${ext}' == nameLower) {
+            return true;
+          }
+        }
+        
+        // Case 3: Match via mimeType
+        final mimeExt = v.mimeType?.split("/").last.toLowerCase();
+        if (mimeExt != null && '${titleLower}.$mimeExt' == nameLower) {
+          return true;
+        }
+        
+        return false;
+      }).firstOrNull;
+
+      if (match != null) {
+        final thumb = await ThumbnailCache.get(match);
+        if (mounted && thumb != null) {
+          setState(() {
+            _videoThumb = thumb;
+          });
+        }
       }
-    }
+    } catch (_) {}
   }
 
   @override

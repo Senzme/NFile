@@ -636,6 +636,38 @@ class MediaProvider extends ChangeNotifier {
         }
       } catch (_) {}
     }
-    await loadMedia(forceRefresh: true);
+
+    // Local List Optimization - instant updates without full-disk scans
+    if (assetIds.isNotEmpty) {
+      _images.removeWhere((item) => assetIds.contains(item.id));
+      _videos.removeWhere((item) => assetIds.contains(item.id));
+      _screenshots.removeWhere((item) => assetIds.contains(item.id));
+    }
+
+    if (filePaths.isNotEmpty) {
+      // In case any image/video matches by path/title
+      _images.removeWhere((item) => filePaths.contains(item.title));
+      _videos.removeWhere((item) => filePaths.contains(item.title));
+      _screenshots.removeWhere((item) => filePaths.contains(item.title));
+
+      _audios.removeWhere((item) => filePaths.contains(item.data));
+      _documents.removeWhere((item) => filePaths.contains(item.path));
+      _archives.removeWhere((item) => filePaths.contains(item.path));
+      _downloads.removeWhere((item) => filePaths.contains(item.path));
+      _apks.removeWhere((item) => filePaths.contains(item.path));
+    }
+
+    // Update Counts and Cache
+    PreferencesService.saveCategoryCount('Images', _images.length);
+    PreferencesService.saveCategoryCount('Videos', _videos.length);
+    PreferencesService.saveCategoryCount('Audio', _audios.length);
+    PreferencesService.saveCategoryCount('Documents', _documents.length);
+    PreferencesService.saveCategoryCount('Archives', _archives.length);
+    PreferencesService.saveCategoryCount('Downloads', _downloads.length);
+    PreferencesService.saveCategoryCount('APKs', _apks.length);
+    PreferencesService.saveCategoryCount('Screenshots', _screenshots.length);
+
+    await _saveCache();
+    notifyListeners();
   }
 }

@@ -60,6 +60,7 @@ class FileManagerProvider extends ChangeNotifier {
     _enableMultipleTabs = PreferencesService.getEnableMultipleTabs();
     _enableSplitScreen = PreferencesService.getEnableSplitScreen();
     _accentColorOption = PreferencesService.getAccentColor();
+    _fontFamilyOption = PreferencesService.getFontFamily();
     _folderIconOption = PreferencesService.getFolderIconStyle();
     _pinnedFolderShortcuts = PreferencesService.getPinnedFolderShortcuts();
     _hideNavigationBar = PreferencesService.getHideNavigationBar();
@@ -104,6 +105,16 @@ class FileManagerProvider extends ChangeNotifier {
     if (_accentColorOption == val) return;
     _accentColorOption = val;
     PreferencesService.saveAccentColor(val);
+    notifyListeners();
+  }
+
+  String _fontFamilyOption = 'default';
+  String get fontFamilyOption => _fontFamilyOption;
+
+  void setFontFamilyOption(String val) {
+    if (_fontFamilyOption == val) return;
+    _fontFamilyOption = val;
+    PreferencesService.saveFontFamily(val);
     notifyListeners();
   }
 

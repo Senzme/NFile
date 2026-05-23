@@ -213,8 +213,8 @@ class _NFileAppState extends State<NFileApp> {
               navigatorKey: navigatorKey,
               title: 'NFile',
               debugShowCheckedModeBanner: false,
-              theme: AppTheme.getAppTheme(light: true, seed: baseSeedColor, customScheme: activeLightScheme),
-              darkTheme: AppTheme.getAppTheme(light: false, pitchBlack: fileManager.amoledMode, seed: baseSeedColor, customScheme: activeDarkScheme),
+              theme: AppTheme.getAppTheme(light: true, seed: baseSeedColor, customScheme: activeLightScheme, fontFamily: fileManager.fontFamilyOption),
+              darkTheme: AppTheme.getAppTheme(light: false, pitchBlack: fileManager.amoledMode, seed: baseSeedColor, customScheme: activeDarkScheme, fontFamily: fileManager.fontFamilyOption),
               themeMode: _themeMode,
               builder: (context, child) {
                 final isDark = _themeMode == ThemeMode.system
@@ -222,8 +222,8 @@ class _NFileAppState extends State<NFileApp> {
                     : (_themeMode == ThemeMode.dark);
                 
                 final theme = isDark
-                    ? AppTheme.getAppTheme(light: false, pitchBlack: fileManager.amoledMode, seed: baseSeedColor, customScheme: activeDarkScheme)
-                    : AppTheme.getAppTheme(light: true, seed: baseSeedColor, customScheme: activeLightScheme);
+                    ? AppTheme.getAppTheme(light: false, pitchBlack: fileManager.amoledMode, seed: baseSeedColor, customScheme: activeDarkScheme, fontFamily: fileManager.fontFamilyOption)
+                    : AppTheme.getAppTheme(light: true, seed: baseSeedColor, customScheme: activeLightScheme, fontFamily: fileManager.fontFamilyOption);
 
                 final navBarColor = theme.scaffoldBackgroundColor ?? theme.colorScheme.surface;
 

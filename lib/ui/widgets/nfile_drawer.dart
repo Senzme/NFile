@@ -11,6 +11,9 @@ import '../screens/network_connection_wizard_screen.dart';
 import '../screens/remote_explorer_screen.dart';
 import '../screens/about_screen.dart';
 import '../screens/web_sharing_screen.dart';
+import '../../providers/media_provider.dart';
+import 'quick_categories_grid.dart';
+import '../screens/internal_file_picker_screen.dart';
 
 class NFileDrawer extends StatelessWidget {
   final VoidCallback toggleTheme;
@@ -23,7 +26,13 @@ class NFileDrawer extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final fileManager = context.watch<FileManagerProvider>();
+    final mediaProvider = context.watch<MediaProvider>();
     final connections = NetworkConnectionsService.getConnections();
+    final allCategoriesMap = QuickCategoriesGrid.getAllCategoriesMap(context, isDark, onNavigateTab ?? (index) {});
+    final activeList = mediaProvider.categoryOrder
+        .where((label) => mediaProvider.activeCategories.contains(label) && allCategoriesMap.containsKey(label))
+        .map((label) => allCategoriesMap[label]!)
+        .toList();
 
     return Drawer(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -177,6 +186,56 @@ class NFileDrawer extends StatelessWidget {
                                     builder: (_) => const NetworkConnectionWizardScreen(),
                                   ),
                                 );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 2.0),
+                      child: Theme(
+                        data: theme.copyWith(dividerColor: Colors.transparent),
+                        child: ExpansionTile(
+                          leading: Icon(Icons.category_rounded, size: 22, color: theme.colorScheme.onSurface.withOpacity(0.8)),
+                          title: Text(
+                            'Quick Categories',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface.withOpacity(0.9)),
+                          ),
+                          iconColor: theme.colorScheme.primary,
+                          textColor: theme.colorScheme.primary,
+                          collapsedIconColor: theme.colorScheme.onSurface.withOpacity(0.8),
+                          tilePadding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          children: [
+                            ...activeList.map((cat) {
+                              final label = cat['label'] as String;
+                              final icon = cat['icon'] as IconData;
+                              final action = cat['action'] as VoidCallback;
+
+                              return _buildDrawerTile(
+                                context,
+                                icon: icon,
+                                title: label,
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  action();
+                                },
+                              );
+                            }),
+                            _buildDrawerTile(
+                              context,
+                              icon: Icons.add_rounded,
+                              title: 'Add Shortcut',
+                              onTap: () async {
+                                Navigator.pop(context);
+                                final fileManager = context.read<FileManagerProvider>();
+                                final paths = await InternalFilePickerScreen.show(context, rootPath: fileManager.rootPath);
+                                if (paths != null && paths.isNotEmpty) {
+                                  for (final p in paths) {
+                                    context.read<MediaProvider>().addCustomShortcut(p);
+                                  }
+                                }
                               },
                             ),
                           ],

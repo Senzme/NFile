@@ -193,7 +193,7 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
               theme,
               icon: Broken.menu,
               title: 'Show Bottom Navigation Bar',
-              subtitle: 'Enable Prism-style bottom action bar on Browse screen',
+              subtitle: 'Enable bottom action bar on Browse screen',
               trailing: Transform.scale(
                 scale: 0.85,
                 child: Switch(
@@ -281,21 +281,28 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
               subtitle: _getFolderIconLabel(fileManager.folderIconOption),
               onTap: () => _showFolderIconPickerDialog(context, fileManager, theme),
             ),
-            _buildSettingTile(
-              theme,
-              icon: Broken.moon,
-              title: 'AMOLED Black Mode',
-              subtitle: 'Use pitch black background in Dark Mode for AMOLED screens',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: fileManager.amoledMode,
-                  activeColor: theme.colorScheme.primary,
-                  onChanged: (_) => fileManager.toggleAmoledMode(),
-                ),
-              ),
-              onTap: () => fileManager.toggleAmoledMode(),
-            ),
+             _buildSettingTile(
+               theme,
+               icon: Broken.moon,
+               title: 'AMOLED Black Mode',
+               subtitle: 'Use pitch black background in Dark Mode for AMOLED screens',
+               trailing: Transform.scale(
+                 scale: 0.85,
+                 child: Switch(
+                   value: fileManager.amoledMode,
+                   activeColor: theme.colorScheme.primary,
+                   onChanged: (_) => fileManager.toggleAmoledMode(),
+                 ),
+               ),
+               onTap: () => fileManager.toggleAmoledMode(),
+             ),
+             _buildSettingTile(
+               theme,
+               icon: Broken.text,
+               title: 'App Typography / Font Family',
+               subtitle: _getFontFamilyLabel(fileManager.fontFamilyOption),
+               onTap: () => _showFontFamilyPickerDialog(context, fileManager, theme),
+             ),
 
             const SizedBox(height: 24),
             _buildSectionHeader(theme, 'Home Screen'),
@@ -340,6 +347,18 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
       case 'broken':
       default:
         return 'NFile Broken Outline (Default)';
+    }
+  }
+
+  String _getFontFamilyLabel(String option) {
+    switch (option) {
+      case 'nothing': return 'Dot-Matrix & Sans';
+      case 'outfit': return 'Outfit Modern Sans';
+      case 'jetbrains': return 'JetBrains Tech Mono';
+      case 'montserrat': return 'Montserrat Urban Sans';
+      case 'default':
+      default:
+        return 'Signature Default (Lexend Deca)';
     }
   }
 
@@ -498,6 +517,89 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
                         );
                       },
                     ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showFontFamilyPickerDialog(BuildContext context, FileManagerProvider fileManager, ThemeData theme) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) {
+        final current = fileManager.fontFamilyOption;
+        final options = [
+          {'key': 'default', 'name': 'Signature Default (Lexend Deca)', 'desc': 'Original NFile clean geometric look'},
+          {'key': 'nothing', 'name': 'Nothing Dot-Matrix & Sans', 'desc': 'High-tech retro dot matrix headings + clean body'},
+          {'key': 'outfit', 'name': 'Outfit Modern Sans', 'desc': 'Super sleek, minimal, and premium geometric aesthetic'},
+          {'key': 'jetbrains', 'name': 'JetBrains Tech Mono', 'desc': 'Clean and futuristic developer monospaced look'},
+          {'key': 'montserrat', 'name': 'Montserrat Urban Sans', 'desc': 'Bold, modern, and striking typographic scale'},
+        ];
+
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
+            ),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'App Typography',
+                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, fontFamily: 'LexendDeca'),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Select a beautiful typeface to customize NFile\'s overall visual theme',
+                      style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6), fontSize: 13, fontFamily: 'LexendDeca'),
+                    ),
+                    const SizedBox(height: 16),
+                    ...options.map((opt) {
+                      final isSelected = current == opt['key'];
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        title: Text(
+                          opt['name']!,
+                          style: TextStyle(
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                            color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                            fontFamily: 'LexendDeca',
+                          ),
+                        ),
+                        subtitle: Text(
+                          opt['desc']!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: theme.colorScheme.onSurface.withOpacity(0.5),
+                            fontFamily: 'LexendDeca',
+                          ),
+                        ),
+                        trailing: isSelected
+                            ? Icon(Icons.radio_button_checked_rounded, color: theme.colorScheme.primary)
+                            : Icon(Icons.radio_button_off_rounded, color: theme.colorScheme.onSurface.withOpacity(0.3)),
+                        onTap: () {
+                          fileManager.setFontFamilyOption(opt['key']!);
+                          Navigator.pop(ctx);
+                        },
+                      );
+                    }),
                   ],
                 ),
               ),
