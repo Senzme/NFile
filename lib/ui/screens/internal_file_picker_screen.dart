@@ -60,9 +60,10 @@ class _InternalFilePickerScreenState extends State<InternalFilePickerScreen> {
         final folders = <FileItemModel>[];
         final files = <FileItemModel>[];
 
-        for (var entity in entities) {
+        final items = await Future.wait(entities.map((e) => FileItemModel.fromEntityAsync(e)));
+
+        for (var item in items) {
           try {
-            final item = FileItemModel.fromEntity(entity);
             if (item.isDirectory) {
               folders.add(item);
             } else if (!widget.pickDirectory) {
@@ -203,7 +204,7 @@ class _InternalFilePickerScreenState extends State<InternalFilePickerScreen> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Icon(
-                                      isSelected ? Broken.tick_circle : (item.isDirectory ? FileUtils.getFolderIcon(context.watch<FileManagerProvider>().folderIconOption) : FileUtils.getIconForFile(item.name)),
+                                      isSelected ? Broken.tick_circle : (item.isDirectory ? FileUtils.getFolderIcon(context.read<FileManagerProvider>().folderIconOption) : FileUtils.getIconForFile(item.name)),
                                       color: isSelected ? theme.colorScheme.onPrimary : iconColor,
                                       size: 28,
                                     ),

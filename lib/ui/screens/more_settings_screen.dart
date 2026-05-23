@@ -221,6 +221,21 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
             ),
             _buildSettingTile(
               theme,
+              icon: Broken.colorfilter,
+              title: 'Highlight Exited Folder',
+              subtitle: 'Briefly flash and scroll to the folder you just exited when going back',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.enableFolderHighlight,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleEnableFolderHighlight(),
+                ),
+              ),
+              onTap: () => fileManager.toggleEnableFolderHighlight(),
+            ),
+            _buildSettingTile(
+              theme,
               icon: Broken.image,
               title: 'Show Media Previews',
               subtitle: 'Display actual image and video thumbnails instead of generic file icons',
@@ -312,6 +327,21 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
               title: 'Customize Shortcuts',
               subtitle: 'Reorder and toggle visibility of quick category items',
               onTap: () => QuickCategoriesGrid.showCustomizeDialog(context),
+            ),
+            _buildSettingTile(
+              theme,
+              icon: Broken.clock,
+              title: 'Show Recent Files',
+              subtitle: 'Display the list of recently accessed files on the Home screen',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.showRecentFiles,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleShowRecentFiles(),
+                ),
+              ),
+              onTap: () => fileManager.toggleShowRecentFiles(),
             ),
           ],
         ),

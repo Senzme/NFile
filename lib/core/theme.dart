@@ -46,6 +46,8 @@ class AppTheme {
     TextTheme? textTheme;
     String? effectiveFontFamily;
 
+    final baseTextTheme = ThemeData(brightness: brightness).textTheme;
+
     switch (fontFamily) {
       case 'nothing':
         effectiveFontFamily = 'NType82';
@@ -69,15 +71,15 @@ class AppTheme {
         break;
       case 'outfit':
         effectiveFontFamily = 'Outfit';
-        textTheme = GoogleFonts.outfitTextTheme();
+        textTheme = GoogleFonts.outfitTextTheme(baseTextTheme);
         break;
       case 'jetbrains':
         effectiveFontFamily = 'JetBrains Mono';
-        textTheme = GoogleFonts.jetBrainsMonoTextTheme();
+        textTheme = GoogleFonts.jetBrainsMonoTextTheme(baseTextTheme);
         break;
       case 'montserrat':
         effectiveFontFamily = 'Montserrat';
-        textTheme = GoogleFonts.montserratTextTheme();
+        textTheme = GoogleFonts.montserratTextTheme(baseTextTheme);
         break;
       case 'default':
       default:

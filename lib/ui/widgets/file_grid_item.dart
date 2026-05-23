@@ -34,7 +34,7 @@ class FileGridItem extends StatelessWidget {
     final iconColor = FileUtils.getColorForFile(file.path, context);
     final isArchive = FileUtils.isArchive(file.path);
     final isHighlighted = context.select<FileManagerProvider, bool>(
-      (p) => p.highlightedPaths.contains(file.path),
+      (p) => p.enableFolderHighlight && p.highlightedPaths.contains(file.path),
     );
 
     final child = Card(
@@ -247,7 +247,7 @@ class _MediaThumbnailState extends State<_MediaThumbnail> {
 
   @override
   Widget build(BuildContext context) {
-    final showMediaPreviews = context.watch<FileManagerProvider>().showMediaPreviews;
+    final showMediaPreviews = context.select<FileManagerProvider, bool>((p) => p.showMediaPreviews);
     final isImg = FileUtils.isImage(widget.file.path);
     final isVid = FileUtils.isVideo(widget.file.path);
 

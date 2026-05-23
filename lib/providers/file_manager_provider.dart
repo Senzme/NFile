@@ -25,6 +25,7 @@ import '../services/root_shizuku_service.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import '../core/icon_fonts/broken_icons.dart';
 import '../ui/widgets/open_with_sheet.dart';
+import '../ui/widgets/conflict_dialog.dart';
 
 enum FileSortType {
   nameAsc,
@@ -67,6 +68,8 @@ class FileManagerProvider extends ChangeNotifier {
     _skipOpenWithDialog = PreferencesService.getSkipOpenWithDialog();
     _showAddressBar = PreferencesService.getShowAddressBar();
     _amoledMode = PreferencesService.getAmoledMode();
+    _showRecentFiles = PreferencesService.getShowRecentFiles();
+    _enableFolderHighlight = PreferencesService.getEnableFolderHighlight();
   }
 
   final ValueNotifier<FileOperationProgress?> progressNotifier = ValueNotifier<FileOperationProgress?>(null);
@@ -324,6 +327,24 @@ class FileManagerProvider extends ChangeNotifier {
     if (_amoledMode == val) return;
     _amoledMode = val;
     PreferencesService.saveAmoledMode(val);
+    notifyListeners();
+  }
+
+  bool _showRecentFiles = true;
+  bool get showRecentFiles => _showRecentFiles;
+
+  void toggleShowRecentFiles() {
+    _showRecentFiles = !_showRecentFiles;
+    PreferencesService.saveShowRecentFiles(_showRecentFiles);
+    notifyListeners();
+  }
+
+  bool _enableFolderHighlight = false;
+  bool get enableFolderHighlight => _enableFolderHighlight;
+
+  void toggleEnableFolderHighlight() {
+    _enableFolderHighlight = !_enableFolderHighlight;
+    PreferencesService.saveEnableFolderHighlight(_enableFolderHighlight);
     notifyListeners();
   }
 
@@ -766,8 +787,9 @@ class FileManagerProvider extends ChangeNotifier {
         final folders = <FileItemModel>[];
         final files = <FileItemModel>[];
 
-        for (var entity in entities) {
-          final item = FileItemModel.fromEntity(entity);
+        final items = await Future.wait(entities.map((e) => FileItemModel.fromEntityAsync(e)));
+
+        for (var item in items) {
           if (!_showHiddenFiles && item.isHidden) {
             continue;
           }
@@ -911,7 +933,7 @@ class FileManagerProvider extends ChangeNotifier {
     await loadDirectory(currentPath, showLoading: false);
   }
 
-  Future<void> pasteFile({bool clearAfterPaste = true}) async {
+  Future<void> pasteFile(BuildContext context, {bool clearAfterPaste = true}) async {
     if (_clipboardPaths.isEmpty) return;
 
     _isOperationCancelled = false;
@@ -990,6 +1012,10 @@ class FileManagerProvider extends ChangeNotifier {
         bytesProcessed: 0,
       );
 
+      ConflictResult? cachedResolution;
+      final Set<String> skippedPaths = {};
+      final List<String> finalTopLevelDestPaths = [];
+
       // 3. Process items sequentially
       for (int i = 0; i < itemsToProcess.length; i++) {
         if (_isOperationCancelled) {
@@ -998,11 +1024,97 @@ class FileManagerProvider extends ChangeNotifier {
 
         final item = itemsToProcess[i];
         final source = item['source'];
-        final String destPath = item['destPath'];
+        String destPath = item['destPath'];
         final int size = item['size'];
         final bool isDir = item['isDir'];
 
         final fileName = p.basename(source.path);
+
+        // Check if this item is within a skipped directory tree
+        bool isSkipped = false;
+        for (final skipped in skippedPaths) {
+          if (p.isWithin(skipped, destPath) || destPath == skipped) {
+            isSkipped = true;
+            break;
+          }
+        }
+
+        if (isSkipped) {
+          if (!isDir) {
+            totalBytes -= size;
+          }
+          continue;
+        }
+
+        String finalDestPath = destPath;
+        bool shouldProcess = true;
+
+        // Check if there is a conflict
+        final destExists = FileSystemEntity.typeSync(destPath) != FileSystemEntityType.notFound;
+        if (destExists) {
+          ConflictDialogResponse? response;
+          ConflictResult? resolution = cachedResolution;
+
+          if (resolution == null) {
+            if (context.mounted) {
+              response = await ConflictDialog.show(
+                context,
+                fileName: fileName,
+                sourceFile: File(source.path),
+                destFile: File(destPath),
+              );
+
+              if (response != null) {
+                resolution = response.result;
+                if (response.applyToAll &&
+                    (resolution == ConflictResult.overwrite ||
+                     resolution == ConflictResult.keepBoth ||
+                     resolution == ConflictResult.skip)) {
+                  cachedResolution = resolution;
+                }
+              } else {
+                resolution = ConflictResult.cancel;
+              }
+            } else {
+              resolution = ConflictResult.cancel;
+            }
+          }
+
+          if (resolution == ConflictResult.cancel) {
+            throw Exception('Cancelled');
+          } else if (resolution == ConflictResult.skip) {
+            shouldProcess = false;
+            skippedPaths.add(destPath);
+          } else if (resolution == ConflictResult.keepBoth) {
+            finalDestPath = _getUniquePath(destPath, isDir);
+            if (isDir) {
+              _updateSubsequentDestPaths(itemsToProcess, i + 1, destPath, finalDestPath);
+            }
+          } else if (resolution == ConflictResult.rename) {
+            final customName = response?.customName ?? fileName;
+            finalDestPath = p.join(p.dirname(destPath), customName);
+            finalDestPath = _getUniquePath(finalDestPath, isDir);
+            if (isDir) {
+              _updateSubsequentDestPaths(itemsToProcess, i + 1, destPath, finalDestPath);
+            }
+          } else if (resolution == ConflictResult.overwrite) {
+            // Overwrite: we do nothing to the path. If it's a file, it will overwrite it.
+            // If it's a folder, it will merge it.
+          }
+        }
+
+        if (!shouldProcess) {
+          if (!isDir) {
+            totalBytes -= size;
+          }
+          continue;
+        }
+
+        final isTopLevel = _clipboardPaths.contains(source.path);
+        if (isTopLevel) {
+          finalTopLevelDestPaths.add(finalDestPath);
+        }
+
         double basePercent = totalBytes > 0 ? (bytesProcessed / totalBytes) : (i / totalFiles);
         progressNotifier.value = FileOperationProgress(
           totalFiles: totalFiles,
@@ -1018,22 +1130,25 @@ class FileManagerProvider extends ChangeNotifier {
         );
 
         if (isDir) {
-          final destDir = Directory(destPath);
+          final destDir = Directory(finalDestPath);
           if (!destDir.existsSync()) {
             await destDir.create(recursive: true);
           }
         } else {
-          final parentDir = Directory(p.dirname(destPath));
+          final parentDir = Directory(p.dirname(finalDestPath));
           if (!parentDir.existsSync()) {
             await parentDir.create(recursive: true);
           }
 
           final srcFile = source as File;
-          final destFile = File(destPath);
+          final destFile = File(finalDestPath);
 
           if (_isCut) {
             try {
-              await srcFile.rename(destPath);
+              if (destFile.existsSync()) {
+                await destFile.delete();
+              }
+              await srcFile.rename(finalDestPath);
               bytesProcessed += size;
             } catch (_) {
               await _copyFileWithProgress(
@@ -1099,11 +1214,6 @@ class FileManagerProvider extends ChangeNotifier {
         }
       }
 
-      final pastedPaths = _clipboardPaths.map((srcPath) {
-        final fileName = p.basename(srcPath);
-        return p.join(currentPath, fileName);
-      }).toList();
-
       if (_isCut && _sourceArchiveForCut != null && _internalSourcePathsForCut != null) {
         await ArchiveService.deleteItemsFromArchive(
           archivePath: _sourceArchiveForCut!,
@@ -1116,12 +1226,12 @@ class FileManagerProvider extends ChangeNotifier {
       }
       
       _highlightedPaths.clear();
-      _highlightedPaths.addAll(pastedPaths);
+      _highlightedPaths.addAll(finalTopLevelDestPaths);
       _shouldScrollToHighlight = true;
 
       Timer(const Duration(milliseconds: 2000), () {
         bool changed = false;
-        for (final path in pastedPaths) {
+        for (final path in finalTopLevelDestPaths) {
           if (_highlightedPaths.remove(path)) {
             changed = true;
           }
@@ -1138,6 +1248,45 @@ class FileManagerProvider extends ChangeNotifier {
       activeTab.isLoading = false;
       await loadDirectory(currentPath, showLoading: false);
       notifyListeners();
+    }
+  }
+
+  String _getUniquePath(String destPath, bool isDir) {
+    if (isDir) {
+      if (!Directory(destPath).existsSync()) return destPath;
+      int counter = 1;
+      String parent = p.dirname(destPath);
+      String base = p.basename(destPath);
+      while (true) {
+        final candidate = p.join(parent, '$base ($counter)');
+        if (!Directory(candidate).existsSync()) {
+          return candidate;
+        }
+        counter++;
+      }
+    } else {
+      if (!File(destPath).existsSync()) return destPath;
+      int counter = 1;
+      String parent = p.dirname(destPath);
+      String ext = p.extension(destPath);
+      String base = p.basenameWithoutExtension(destPath);
+      while (true) {
+        final candidate = p.join(parent, '$base ($counter)$ext');
+        if (!File(candidate).existsSync()) {
+          return candidate;
+        }
+        counter++;
+      }
+    }
+  }
+
+  void _updateSubsequentDestPaths(List<Map<String, dynamic>> items, int startIndex, String oldParentPath, String newParentPath) {
+    for (int j = startIndex; j < items.length; j++) {
+      final subDest = items[j]['destPath'] as String;
+      if (p.isWithin(oldParentPath, subDest) || subDest == oldParentPath) {
+        final relativePart = p.relative(subDest, from: oldParentPath);
+        items[j]['destPath'] = p.join(newParentPath, relativePart);
+      }
     }
   }
 
@@ -1203,31 +1352,47 @@ class FileManagerProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> createFolder(String name) async {
+  Future<String?> createFolder(String name) async {
     try {
+      String finalName = name;
+      final targetPath = p.join(currentPath, name);
+      if (FileSystemEntity.typeSync(targetPath) != FileSystemEntityType.notFound) {
+        final uniquePath = _getUniquePath(targetPath, true);
+        finalName = p.basename(uniquePath);
+      }
       if (isRestrictedPath(currentPath)) {
-        await RootShizukuService.createFolder(currentPath, name, useRoot: useRootMode);
+        await RootShizukuService.createFolder(currentPath, finalName, useRoot: useRootMode);
       } else {
-        final newPath = p.join(currentPath, name);
+        final newPath = p.join(currentPath, finalName);
         await Directory(newPath).create();
       }
       await loadDirectory(currentPath, showLoading: false);
+      return finalName;
     } catch (e) {
       debugPrint('Error creating folder: $e');
+      return null;
     }
   }
 
-  Future<void> createFile(String name) async {
+  Future<String?> createFile(String name) async {
     try {
+      String finalName = name;
+      final targetPath = p.join(currentPath, name);
+      if (FileSystemEntity.typeSync(targetPath) != FileSystemEntityType.notFound) {
+        final uniquePath = _getUniquePath(targetPath, false);
+        finalName = p.basename(uniquePath);
+      }
       if (isRestrictedPath(currentPath)) {
-        await RootShizukuService.createFile(currentPath, name, useRoot: useRootMode);
+        await RootShizukuService.createFile(currentPath, finalName, useRoot: useRootMode);
       } else {
-        final newPath = p.join(currentPath, name);
+        final newPath = p.join(currentPath, finalName);
         await File(newPath).create();
       }
       await loadDirectory(currentPath, showLoading: false);
+      return finalName;
     } catch (e) {
       debugPrint('Error creating file: $e');
+      return null;
     }
   }
 

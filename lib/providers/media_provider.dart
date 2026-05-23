@@ -16,6 +16,8 @@ enum MediaSortOrder {
   dateWise,
   newestGrouped,
   oldestGrouped,
+  sizeLargest,
+  sizeSmallest,
 }
 
 class ThumbnailCache {
@@ -585,22 +587,54 @@ class MediaProvider extends ChangeNotifier {
     if (_sortOrder == MediaSortOrder.newest ||
         _sortOrder == MediaSortOrder.newestGrouped ||
         _sortOrder == MediaSortOrder.dateWise) {
-        _images.sort((a, b) => b.createDateTime.compareTo(a.createDateTime));
-        _videos.sort((a, b) => b.createDateTime.compareTo(a.createDateTime));
-        _screenshots.sort((a, b) => b.createDateTime.compareTo(a.createDateTime));
-        _audios.sort(
-            (a, b) => (b.dateAdded ?? 0).compareTo(a.dateAdded ?? 0));
+      _images.sort((a, b) => b.createDateTime.compareTo(a.createDateTime));
+      _videos.sort((a, b) => b.createDateTime.compareTo(a.createDateTime));
+      _screenshots.sort((a, b) => b.createDateTime.compareTo(a.createDateTime));
+      _audios.sort(
+          (a, b) => (b.dateAdded ?? 0).compareTo(a.dateAdded ?? 0));
     } else if (_sortOrder == MediaSortOrder.oldest ||
                _sortOrder == MediaSortOrder.oldestGrouped) {
-        _images.sort((a, b) => a.createDateTime.compareTo(b.createDateTime));
-        _videos.sort((a, b) => a.createDateTime.compareTo(b.createDateTime));
-        _screenshots.sort((a, b) => a.createDateTime.compareTo(b.createDateTime));
-        _audios.sort(
-            (a, b) => (a.dateAdded ?? 0).compareTo(b.dateAdded ?? 0));
+      _images.sort((a, b) => a.createDateTime.compareTo(b.createDateTime));
+      _videos.sort((a, b) => a.createDateTime.compareTo(b.createDateTime));
+      _screenshots.sort((a, b) => a.createDateTime.compareTo(b.createDateTime));
+      _audios.sort(
+          (a, b) => (a.dateAdded ?? 0).compareTo(b.dateAdded ?? 0));
+    } else if (_sortOrder == MediaSortOrder.sizeLargest ||
+               _sortOrder == MediaSortOrder.sizeSmallest) {
+      final isSmallest = _sortOrder == MediaSortOrder.sizeSmallest;
+      _images.sort((a, b) {
+        final aRes = a.width * a.height;
+        final bRes = b.width * b.height;
+        return isSmallest ? aRes.compareTo(bRes) : bRes.compareTo(aRes);
+      });
+      _videos.sort((a, b) {
+        final aRes = a.width * a.height;
+        final bRes = b.width * b.height;
+        return isSmallest ? aRes.compareTo(bRes) : bRes.compareTo(aRes);
+      });
+      _screenshots.sort((a, b) {
+        final aRes = a.width * a.height;
+        final bRes = b.width * b.height;
+        return isSmallest ? aRes.compareTo(bRes) : bRes.compareTo(aRes);
+      });
+      _audios.sort((a, b) {
+        final aSize = a.size;
+        final bSize = b.size;
+        return isSmallest ? aSize.compareTo(bSize) : bSize.compareTo(aSize);
+      });
     }
 
     int fileSort(FileSystemEntity a, FileSystemEntity b) {
       try {
+        final isSmallest = _sortOrder == MediaSortOrder.sizeSmallest;
+        final isLargest = _sortOrder == MediaSortOrder.sizeLargest;
+
+        if (isSmallest || isLargest) {
+          final aSize = (a as File).lengthSync();
+          final bSize = (b as File).lengthSync();
+          return isSmallest ? aSize.compareTo(bSize) : bSize.compareTo(aSize);
+        }
+
         final aTime = (a as File).lastModifiedSync();
         final bTime = (b as File).lastModifiedSync();
         return (_sortOrder == MediaSortOrder.oldest || _sortOrder == MediaSortOrder.oldestGrouped)

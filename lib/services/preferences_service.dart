@@ -329,4 +329,23 @@ class PreferencesService {
   static Future<void> saveShowAddressBar(bool val) async {
     await _prefs?.setBool(_keyShowAddressBar, val);
   }
+
+  static const String _keyShowRecentFiles = 'show_recent_files';
+  static const String _keyEnableFolderHighlight = 'enable_folder_highlight';
+
+  static bool getShowRecentFiles() {
+    return _prefs?.getBool(_keyShowRecentFiles) ?? true;
+  }
+
+  static Future<void> saveShowRecentFiles(bool val) async {
+    await _prefs?.setBool(_keyShowRecentFiles, val);
+  }
+
+  static bool getEnableFolderHighlight() {
+    return _prefs?.getBool(_keyEnableFolderHighlight) ?? false;
+  }
+
+  static Future<void> saveEnableFolderHighlight(bool val) async {
+    await _prefs?.setBool(_keyEnableFolderHighlight, val);
+  }
 }

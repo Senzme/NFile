@@ -134,7 +134,7 @@ class SelectionActionBar extends StatelessWidget {
                   }
                 } else if (action == 'paste') {
                   FileOperationProgressDialog.show(context, provider);
-                  await provider.pasteFile();
+                  await provider.pasteFile(context);
                   provider.clearSelection();
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(

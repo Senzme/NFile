@@ -218,6 +218,12 @@ class _PaneBrowserState extends State<PaneBrowser> {
                       ],
                     ),
                   ),
+                  if (tab.isLoading && tab.currentFiles.isNotEmpty)
+                    LinearProgressIndicator(
+                      minHeight: 2.0,
+                      backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                      valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
+                    ),
                   
                   // --- Scrollable Breadcrumbs Path ---
                   Container(
@@ -261,10 +267,7 @@ class _PaneBrowserState extends State<PaneBrowser> {
                                 },
                                 isRootAvailable: tab.isRootAvailable,
                               )
-                            : AnimatedOpacity(
-                                duration: const Duration(milliseconds: 300),
-                                opacity: tab.isLoading ? 0.6 : 1.0,
-                                child: CustomScrollView(
+                            : CustomScrollView(
                                   controller: _scrollController,
                                   physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
                                   slivers: [
@@ -407,7 +410,6 @@ class _PaneBrowserState extends State<PaneBrowser> {
                                     ),
                                   ],
                                 ),
-                              ),
                   ),
                 ],
               ),
@@ -427,7 +429,7 @@ class _PaneBrowserState extends State<PaneBrowser> {
     bool isSelectionMode,
   ) {
     final theme = Theme.of(context);
-    final isHighlighted = provider.highlightedPaths.contains(folder.path);
+    final isHighlighted = provider.enableFolderHighlight && provider.highlightedPaths.contains(folder.path);
 
     return InkWell(
       onTap: () {
@@ -523,7 +525,7 @@ class _PaneBrowserState extends State<PaneBrowser> {
     bool isSelectionMode,
   ) {
     final theme = Theme.of(context);
-    final isHighlighted = provider.highlightedPaths.contains(file.path);
+    final isHighlighted = provider.enableFolderHighlight && provider.highlightedPaths.contains(file.path);
     final iconColor = FileUtils.getColorForFile(file.path, context);
     final isArchive = FileUtils.isArchive(file.path);
 
@@ -682,7 +684,7 @@ class _CompactMediaThumbnailState extends State<_CompactMediaThumbnail> {
 
   @override
   Widget build(BuildContext context) {
-    final showMediaPreviews = context.watch<FileManagerProvider>().showMediaPreviews;
+    final showMediaPreviews = context.select<FileManagerProvider, bool>((p) => p.showMediaPreviews);
     final isImg = FileUtils.isImage(widget.file.path);
     final isVid = FileUtils.isVideo(widget.file.path);
 

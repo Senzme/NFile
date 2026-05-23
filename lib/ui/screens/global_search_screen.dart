@@ -96,13 +96,23 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
     
     // 1. Instant check from MediaProvider indexes if matching filter
     if (_selectedFilter == 'All' || _selectedFilter == 'Docs') {
+      final matchingDocs = <FileSystemEntity>[];
       for (final doc in mediaProvider.documents) {
         if (!isGlobal && !doc.path.startsWith(rootPath)) continue;
         final name = p.basename(doc.path);
         if (name.toLowerCase().contains(qLower) && !seenPaths.contains(doc.path)) {
           seenPaths.add(doc.path);
-          currentBatch.add(FileItemModel.fromEntity(doc));
+          matchingDocs.add(doc);
         }
+      }
+      if (matchingDocs.isNotEmpty) {
+        Future.wait(matchingDocs.map((doc) => FileItemModel.fromEntityAsync(doc))).then((resolvedDocs) {
+          if (mounted) {
+            setState(() {
+              _results.addAll(resolvedDocs);
+            });
+          }
+        });
       }
     }
 
@@ -164,12 +174,13 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
 
           if (matchFilter && !seenPaths.contains(entity.path)) {
             seenPaths.add(entity.path);
-            try {
-              final item = FileItemModel.fromEntity(entity);
-              setState(() {
-                _results.add(item);
-              });
-            } catch (_) {}
+            FileItemModel.fromEntityAsync(entity).then((item) {
+              if (mounted) {
+                setState(() {
+                  _results.add(item);
+                });
+              }
+            });
           }
         }
       },

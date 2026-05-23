@@ -144,7 +144,15 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
           actionText: 'Create',
         );
         if (fileName != null && fileName.isNotEmpty) {
-          await provider.createFile(fileName);
+          final createdName = await provider.createFile(fileName);
+          if (createdName != null && createdName != fileName && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('"$fileName" already exists. Created "$createdName" instead.'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
         }
         break;
       case 'folder':
@@ -155,7 +163,15 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
           actionText: 'Create',
         );
         if (folderName != null && folderName.isNotEmpty) {
-          await provider.createFolder(folderName);
+          final createdName = await provider.createFolder(folderName);
+          if (createdName != null && createdName != folderName && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('"$folderName" already exists. Created "$createdName" instead.'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
         }
         break;
       case 'archive':
@@ -682,6 +698,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
   Widget build(BuildContext context) {
     return Consumer<FileManagerProvider>(
       builder: (context, provider, child) {
+        final theme = Theme.of(context);
         final isSelectionMode = provider.isSelectionMode;
 
         if (provider.shouldScrollToHighlight) {
@@ -867,6 +884,12 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
             body: Column(
               children: [
                 if (provider.showAddressBar) const NFileAddressBar(),
+                if (provider.isLoading && provider.currentFiles.isNotEmpty)
+                  LinearProgressIndicator(
+                    minHeight: 2.5,
+                    backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                    valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
+                  ),
                 Expanded(
                   child: provider.enableSplitScreen
                       ? const Row(
@@ -883,15 +906,12 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                                   onEnableShizuku: () => provider.enableShizukuMode(),
                                   isRootAvailable: provider.isRootAvailable,
                                 )
-                              : AnimatedOpacity(
-                                  duration: const Duration(milliseconds: 300),
-                                  opacity: provider.isLoading ? 0.6 : 1.0,
-                                  child: CustomScrollView(
+                              : CustomScrollView(
                                     controller: _scrollController,
                                     physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
                                     slivers: [
                       CupertinoSliverRefreshControl(
-                        onRefresh: () => provider.loadDirectory(provider.currentPath),
+                        onRefresh: () => provider.loadDirectory(provider.currentPath, showLoading: false),
                       ),
                       if (!isSelectionMode && provider.showFolderFileCount)
                         SliverToBoxAdapter(
@@ -1083,7 +1103,6 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                     ],
                   ),
                 ),
-                ),
               ],
             ),
             floatingActionButtonLocation: isSelectionMode
@@ -1107,7 +1126,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                     },
                     onDoubleTap: () async {
                       FileOperationProgressDialog.show(context, provider);
-                      await provider.pasteFile(clearAfterPaste: false);
+                      await provider.pasteFile(context, clearAfterPaste: false);
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -1120,7 +1139,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                     child: FloatingActionButton.extended(
                       onPressed: () async {
                         FileOperationProgressDialog.show(context, provider);
-                        await provider.pasteFile(clearAfterPaste: true);
+                        await provider.pasteFile(context, clearAfterPaste: true);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(

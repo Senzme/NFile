@@ -689,6 +689,16 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
                       checked: provider.sortOrder == MediaSortOrder.oldestGrouped,
                       child: const Text('Oldest First (Grouped per month)'),
                     ),
+                    CheckedPopupMenuItem(
+                      value: MediaSortOrder.sizeLargest,
+                      checked: provider.sortOrder == MediaSortOrder.sizeLargest,
+                      child: const Text('Size (Large First)'),
+                    ),
+                    CheckedPopupMenuItem(
+                      value: MediaSortOrder.sizeSmallest,
+                      checked: provider.sortOrder == MediaSortOrder.sizeSmallest,
+                      child: const Text('Size (Small First)'),
+                    ),
                   ],
                 );
               },
@@ -757,6 +767,14 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
                   } else if (provider.sortOrder == MediaSortOrder.oldest ||
                              provider.sortOrder == MediaSortOrder.oldestGrouped) {
                     displayAssets.sort((a, b) => a.createDateTime.compareTo(b.createDateTime));
+                  } else if (provider.sortOrder == MediaSortOrder.sizeLargest ||
+                             provider.sortOrder == MediaSortOrder.sizeSmallest) {
+                    final isSmallest = provider.sortOrder == MediaSortOrder.sizeSmallest;
+                    displayAssets.sort((a, b) {
+                      final aRes = a.width * a.height;
+                      final bRes = b.width * b.height;
+                      return isSmallest ? aRes.compareTo(bRes) : bRes.compareTo(aRes);
+                    });
                   }
 
                   final isDateWise = provider.sortOrder == MediaSortOrder.dateWise;

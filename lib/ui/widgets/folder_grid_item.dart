@@ -29,7 +29,7 @@ class FolderGridItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isHighlighted = context.select<FileManagerProvider, bool>(
-      (p) => p.highlightedPaths.contains(folder.path),
+      (p) => p.enableFolderHighlight && p.highlightedPaths.contains(folder.path),
     );
 
     final child = Card(
@@ -69,7 +69,7 @@ class FolderGridItem extends StatelessWidget {
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Icon(
-                            isSelected ? Broken.tick_circle : FileUtils.getFolderIcon(context.watch<FileManagerProvider>().folderIconOption),
+                            isSelected ? Broken.tick_circle : FileUtils.getFolderIcon(context.select<FileManagerProvider, String>((p) => p.folderIconOption)),
                             color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.primary,
                             size: 28 * iconScale,
                           ),

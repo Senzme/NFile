@@ -219,7 +219,8 @@ class _HomeScreenState extends State<HomeScreen> {
               onNavigateTab: (index) => setState(() => _currentIndex = index),
             ),
             const SizedBox(height: 8),
-            const RecentFilesSection(),
+            if (context.select<FileManagerProvider, bool>((p) => p.showRecentFiles))
+              const RecentFilesSection(),
             const SizedBox(height: 24),
           ],
         ),
