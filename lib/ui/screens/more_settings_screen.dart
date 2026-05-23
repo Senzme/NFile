@@ -281,6 +281,21 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
               subtitle: _getFolderIconLabel(fileManager.folderIconOption),
               onTap: () => _showFolderIconPickerDialog(context, fileManager, theme),
             ),
+            _buildSettingTile(
+              theme,
+              icon: Broken.moon,
+              title: 'AMOLED Black Mode',
+              subtitle: 'Use pitch black background in Dark Mode for AMOLED screens',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.amoledMode,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleAmoledMode(),
+                ),
+              ),
+              onTap: () => fileManager.toggleAmoledMode(),
+            ),
 
             const SizedBox(height: 24),
             _buildSectionHeader(theme, 'Home Screen'),
@@ -305,6 +320,10 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
       case 'green': return 'Emerald Green';
       case 'red': return 'Crimson Red';
       case 'gold': return 'Amber Gold';
+      case 'pink': return 'Cyberpunk Pink';
+      case 'sapphire': return 'Sapphire Blue';
+      case 'forest': return 'Forest Green';
+      case 'peach': return 'Sunset Peach';
       case 'blue':
       default:
         return 'Original Default (Signature Blue)';
@@ -340,6 +359,10 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
           {'key': 'green', 'name': 'Emerald Green', 'color': const Color(0xFF00C853)},
           {'key': 'red', 'name': 'Crimson Red', 'color': const Color(0xFFD50000)},
           {'key': 'gold', 'name': 'Amber Gold', 'color': const Color(0xFFFFD600)},
+          {'key': 'pink', 'name': 'Cyberpunk Pink', 'color': const Color(0xFFFF2E93)},
+          {'key': 'sapphire', 'name': 'Sapphire Blue', 'color': const Color(0xFF0F52BA)},
+          {'key': 'forest', 'name': 'Forest Green', 'color': const Color(0xFF228B22)},
+          {'key': 'peach', 'name': 'Sunset Peach', 'color': const Color(0xFFFF7F50)},
         ];
 
         return SafeArea(

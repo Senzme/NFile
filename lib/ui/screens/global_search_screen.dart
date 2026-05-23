@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:share_plus/share_plus.dart';
 import '../../providers/file_manager_provider.dart';
 import '../../providers/media_provider.dart';
 import '../../models/file_item_model.dart';
@@ -12,7 +13,8 @@ import '../widgets/file_action_dialogs.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 
 class GlobalSearchScreen extends StatefulWidget {
-  const GlobalSearchScreen({super.key});
+  final String? searchFolderPath;
+  const GlobalSearchScreen({super.key, this.searchFolderPath});
 
   @override
   State<GlobalSearchScreen> createState() => _GlobalSearchScreenState();
@@ -26,6 +28,9 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
   List<FileItemModel> _results = [];
   bool _isSearching = false;
   StreamSubscription<FileSystemEntity>? _searchSubscription;
+
+  final Set<String> _selectedPaths = {};
+  bool get _isSelectionMode => _selectedPaths.isNotEmpty;
 
   final List<String> _filters = [
     'All',
@@ -59,6 +64,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
 
   void _executeSearch() {
     _searchSubscription?.cancel();
+    _clearSelection();
     if (_query.isEmpty) {
       setState(() {
         _results = [];
@@ -79,9 +85,19 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
 
     final qLower = _query.toLowerCase();
     
+    // Resolve search scope
+    final isGlobal = widget.searchFolderPath == null ||
+                     widget.searchFolderPath == '/storage/emulated/0' ||
+                     widget.searchFolderPath == '/';
+
+    final rootPath = isGlobal
+        ? (Platform.isAndroid ? '/storage/emulated/0' : fileProvider.currentPath)
+        : widget.searchFolderPath!;
+    
     // 1. Instant check from MediaProvider indexes if matching filter
     if (_selectedFilter == 'All' || _selectedFilter == 'Docs') {
       for (final doc in mediaProvider.documents) {
+        if (!isGlobal && !doc.path.startsWith(rootPath)) continue;
         final name = p.basename(doc.path);
         if (name.toLowerCase().contains(qLower) && !seenPaths.contains(doc.path)) {
           seenPaths.add(doc.path);
@@ -93,6 +109,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
     if (_selectedFilter == 'All' || _selectedFilter == 'Audio') {
       for (final song in mediaProvider.audios) {
         final path = song.data;
+        if (!isGlobal && !path.startsWith(rootPath)) continue;
         final name = p.basename(path);
         if (name.toLowerCase().contains(qLower) && !seenPaths.contains(path)) {
           seenPaths.add(path);
@@ -116,7 +133,6 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
     }
 
     // 2. Stream across filesystem for full coverage (Folders and other files)
-    final rootPath = Platform.isAndroid ? '/storage/emulated/0' : fileProvider.currentPath;
     final rootDir = Directory(rootPath);
     if (!rootDir.existsSync()) {
       setState(() {
@@ -188,6 +204,93 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
     return ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.csv'].contains(ext);
   }
 
+  // --- Multi-Selection logic ---
+  void _toggleSelection(String path) {
+    setState(() {
+      if (_selectedPaths.contains(path)) {
+        _selectedPaths.remove(path);
+      } else {
+        _selectedPaths.add(path);
+      }
+    });
+  }
+
+  void _selectAll() {
+    setState(() {
+      for (final item in _results) {
+        _selectedPaths.add(item.path);
+      }
+    });
+  }
+
+  void _clearSelection() {
+    setState(() {
+      _selectedPaths.clear();
+    });
+  }
+
+  void _handleCopySelected() {
+    if (_selectedPaths.isEmpty) return;
+    context.read<FileManagerProvider>().setClipboard(_selectedPaths.toList(), isCut: false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Copied ${_selectedPaths.length} items to clipboard')),
+    );
+    _clearSelection();
+  }
+
+  void _handleCutSelected() {
+    if (_selectedPaths.isEmpty) return;
+    context.read<FileManagerProvider>().setClipboard(_selectedPaths.toList(), isCut: true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Cut ${_selectedPaths.length} items to clipboard')),
+    );
+    _clearSelection();
+  }
+
+  Future<void> _handleShareSelected() async {
+    if (_selectedPaths.isEmpty) return;
+    final shareFiles = <XFile>[];
+    for (final path in _selectedPaths) {
+      if (FileSystemEntity.isFileSync(path)) {
+        shareFiles.add(XFile(path));
+      }
+    }
+    if (shareFiles.isNotEmpty) {
+      try {
+        await Share.shareXFiles(shareFiles);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error sharing: $e')));
+        }
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No files available to share')));
+    }
+    _clearSelection();
+  }
+
+  Future<void> _handleDeleteSelected() async {
+    if (_selectedPaths.isEmpty) return;
+    final confirm = await FileActionDialogs.showConfirmDialog(
+      context,
+      title: 'Delete Selected',
+      content: 'Are you sure you want to delete ${_selectedPaths.length} selected item(s)? This cannot be undone.',
+    );
+
+    if (confirm) {
+      final provider = context.read<FileManagerProvider>();
+      final toDelete = _selectedPaths.toList();
+      for (final path in toDelete) {
+        await provider.deleteFile(path);
+        setState(() {
+          _results.removeWhere((e) => e.path == path);
+        });
+      }
+      _clearSelection();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Successfully deleted items')));
+    }
+  }
+
   void _handleAction(BuildContext context, String action, String path) async {
     final provider = context.read<FileManagerProvider>();
     switch (action) {
@@ -232,36 +335,78 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isGlobal = widget.searchFolderPath == null ||
+                     widget.searchFolderPath == '/storage/emulated/0' ||
+                     widget.searchFolderPath == '/';
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: theme.colorScheme.surface,
-        leading: IconButton(
-          icon: const Icon(Broken.arrow_left),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: TextField(
-          controller: _searchController,
-          autofocus: true,
-          onChanged: _onSearchChanged,
-          style: theme.textTheme.titleMedium,
-          decoration: InputDecoration(
-            hintText: 'Search files, folders, media...',
-            hintStyle: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
-            border: InputBorder.none,
-            suffixIcon: _query.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Broken.close_square, size: 20),
-                    onPressed: () {
-                      _searchController.clear();
-                      _onSearchChanged('');
-                    },
-                  )
-                : null,
-          ),
-        ),
+        leading: _isSelectionMode
+            ? IconButton(
+                icon: const Icon(Broken.close_square),
+                onPressed: _clearSelection,
+              )
+            : IconButton(
+                icon: const Icon(Broken.arrow_left),
+                onPressed: () => Navigator.pop(context),
+              ),
+        title: _isSelectionMode
+            ? Text(
+                '${_selectedPaths.length} Selected',
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              )
+            : TextField(
+                controller: _searchController,
+                autofocus: true,
+                onChanged: _onSearchChanged,
+                style: theme.textTheme.titleMedium,
+                decoration: InputDecoration(
+                  hintText: isGlobal ? 'Search globally...' : 'Search in this folder...',
+                  hintStyle: TextStyle(color: theme.colorScheme.onSurface.withAlpha(102)),
+                  border: InputBorder.none,
+                  suffixIcon: _query.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Broken.close_square, size: 20),
+                          onPressed: () {
+                            _searchController.clear();
+                            _onSearchChanged('');
+                          },
+                        )
+                      : null,
+                ),
+              ),
+        actions: _isSelectionMode
+            ? [
+                IconButton(
+                  icon: const Icon(Broken.document_copy),
+                  tooltip: 'Copy',
+                  onPressed: _handleCopySelected,
+                ),
+                IconButton(
+                  icon: const Icon(Broken.scissor),
+                  tooltip: 'Cut',
+                  onPressed: _handleCutSelected,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.share_outlined),
+                  tooltip: 'Share',
+                  onPressed: _handleShareSelected,
+                ),
+                IconButton(
+                  icon: const Icon(Broken.trash, color: Colors.red),
+                  tooltip: 'Delete',
+                  onPressed: _handleDeleteSelected,
+                ),
+                IconButton(
+                  icon: const Icon(Broken.task_square),
+                  tooltip: 'Select All',
+                  onPressed: _selectAll,
+                ),
+              ]
+            : null,
       ),
       body: Column(
         children: [
@@ -286,13 +431,13 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? theme.colorScheme.primary.withValues(alpha: 0.15)
+                            ? theme.colorScheme.primary.withAlpha(38)
                             : theme.colorScheme.surface,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: isSelected
                               ? theme.colorScheme.primary
-                              : theme.dividerColor.withValues(alpha: 0.2),
+                              : theme.dividerColor.withAlpha(51),
                           width: 1.5,
                         ),
                       ),
@@ -308,7 +453,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                               color: isSelected
                                   ? theme.colorScheme.primary
-                                  : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                  : theme.colorScheme.onSurface.withAlpha(178),
                             ),
                           ),
                         ],
@@ -323,37 +468,65 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
           // Search Progress Indicator
           if (_isSearching)
             LinearProgressIndicator(
-              backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+              backgroundColor: theme.colorScheme.primary.withAlpha(25),
               color: theme.colorScheme.primary,
               minHeight: 2,
             )
           else
             const SizedBox(height: 2),
-
+ 
           // Results List / Empty State
           Expanded(
             child: _query.isEmpty
-                ? _buildEmptyState(theme, Broken.search_normal_1, 'Search your storage', 'Find any file, folder, document or media instantly across your device')
+                ? _buildEmptyState(
+                    theme,
+                    Broken.search_normal_1,
+                    isGlobal ? 'Search your storage' : 'Search this folder',
+                    isGlobal
+                        ? 'Find any file, folder, document or media instantly across your device'
+                        : 'Search files and subfolders in: ${widget.searchFolderPath!.split("/").last}',
+                  )
                 : _results.isEmpty && !_isSearching
-                    ? _buildEmptyState(theme, Broken.document_filter, 'No results found', 'We could not find anything matching "$_query" under $_selectedFilter')
+                    ? _buildEmptyState(
+                        theme,
+                        Broken.document_filter,
+                        'No results found',
+                        'We could not find anything matching "$_query" under $_selectedFilter',
+                      )
                     : ListView.builder(
                         physics: const BouncingScrollPhysics(),
                         itemCount: _results.length,
                         itemBuilder: (context, index) {
                           final item = _results[index];
+                          final isItemSelected = _selectedPaths.contains(item.path);
+
                           if (item.isDirectory) {
                             return FolderItem(
                               folder: item,
+                              isSelected: isItemSelected,
                               onTap: () {
-                                Navigator.pop(context);
-                                context.read<FileManagerProvider>().loadDirectory(item.path);
+                                if (_isSelectionMode) {
+                                  _toggleSelection(item.path);
+                                } else {
+                                  Navigator.pop(context);
+                                  context.read<FileManagerProvider>().loadDirectory(item.path);
+                                }
                               },
+                              onLongPress: () => _toggleSelection(item.path),
                               onAction: (action) => _handleAction(context, action, item.path),
                             );
                           } else {
                             return FileItem(
                               file: item,
-                              onTap: () => context.read<FileManagerProvider>().openFile(context, item.path),
+                              isSelected: isItemSelected,
+                              onTap: () {
+                                if (_isSelectionMode) {
+                                  _toggleSelection(item.path);
+                                } else {
+                                  context.read<FileManagerProvider>().openFile(context, item.path);
+                                }
+                              },
+                              onLongPress: () => _toggleSelection(item.path),
                               onAction: (action) => _handleAction(context, action, item.path),
                             );
                           }
@@ -375,7 +548,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                color: theme.colorScheme.primary.withAlpha(20),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, size: 64, color: theme.colorScheme.primary),
@@ -389,7 +562,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.5), fontSize: 15),
+              style: TextStyle(color: theme.colorScheme.onSurface.withAlpha(127), fontSize: 15),
             ),
           ],
         ),

@@ -65,6 +65,7 @@ class FileManagerProvider extends ChangeNotifier {
     _hideNavigationBar = PreferencesService.getHideNavigationBar();
     _skipOpenWithDialog = PreferencesService.getSkipOpenWithDialog();
     _showAddressBar = PreferencesService.getShowAddressBar();
+    _amoledMode = PreferencesService.getAmoledMode();
   }
 
   final ValueNotifier<FileOperationProgress?> progressNotifier = ValueNotifier<FileOperationProgress?>(null);
@@ -296,6 +297,22 @@ class FileManagerProvider extends ChangeNotifier {
   void toggleShowAddressBar() {
     _showAddressBar = !_showAddressBar;
     PreferencesService.saveShowAddressBar(_showAddressBar);
+    notifyListeners();
+  }
+
+  bool _amoledMode = false;
+  bool get amoledMode => _amoledMode;
+
+  void toggleAmoledMode() {
+    _amoledMode = !_amoledMode;
+    PreferencesService.saveAmoledMode(_amoledMode);
+    notifyListeners();
+  }
+
+  void setAmoledMode(bool val) {
+    if (_amoledMode == val) return;
+    _amoledMode = val;
+    PreferencesService.saveAmoledMode(val);
     notifyListeners();
   }
 

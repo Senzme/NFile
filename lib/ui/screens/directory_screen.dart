@@ -889,7 +889,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                           IconButton(
                             icon: const Icon(Broken.search_normal),
                             onPressed: () {
-                              Navigator.push(context, MaterialPageRoute(builder: (_) => const GlobalSearchScreen()));
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => GlobalSearchScreen(searchFolderPath: provider.currentPath)));
                             },
                           ),
                           IconButton(
@@ -1223,7 +1223,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                         IconButton(
                           icon: const Icon(Broken.search_normal),
                           tooltip: 'Global Search',
-                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GlobalSearchScreen())),
+                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GlobalSearchScreen(searchFolderPath: provider.currentPath))),
                         ),
                         const SizedBox(width: 48), // Center dock slot for FAB
                         IconButton(

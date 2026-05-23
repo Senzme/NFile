@@ -20,6 +20,7 @@ class PreferencesService {
   static const String _keyEnableMultipleTabs = 'enable_multiple_tabs';
   static const String _keyEnableSplitScreen = 'enable_split_screen';
   static const String _keyShowAddressBar = 'show_address_bar';
+  static const String _keyAmoledMode = 'amoled_mode';
 
   static SharedPreferences? _prefs;
 
@@ -40,6 +41,15 @@ class PreferencesService {
     if (mode == ThemeMode.light) str = 'light';
     if (mode == ThemeMode.dark) str = 'dark';
     await _prefs?.setString(_keyThemeMode, str);
+  }
+
+  // --- Amoled Mode ---
+  static bool getAmoledMode() {
+    return _prefs?.getBool(_keyAmoledMode) ?? false;
+  }
+
+  static Future<void> saveAmoledMode(bool val) async {
+    await _prefs?.setBool(_keyAmoledMode, val);
   }
 
   // --- File Manager Settings ---
@@ -233,6 +243,10 @@ class PreferencesService {
       case 'green': return const Color(0xFF00C853);
       case 'red': return const Color(0xFFD50000);
       case 'gold': return const Color(0xFFFFD600);
+      case 'pink': return const Color(0xFFFF2E93);
+      case 'sapphire': return const Color(0xFF0F52BA);
+      case 'forest': return const Color(0xFF228B22);
+      case 'peach': return const Color(0xFFFF7F50);
       case 'blue': return const Color(0xFF369FE7);
       case 'dynamic':
       default:
