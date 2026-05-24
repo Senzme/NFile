@@ -199,8 +199,19 @@ class FileManagerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool _matchesFilter(String path) {
-    switch (_filterType) {
+  bool _hideFoldersInFilter = false;
+  bool get hideFoldersInFilter => _hideFoldersInFilter;
+
+  void toggleHideFoldersInFilter() {
+    _hideFoldersInFilter = !_hideFoldersInFilter;
+    if (_tabs.isNotEmpty) {
+      loadDirectory(currentPath, showLoading: false);
+    }
+    notifyListeners();
+  }
+
+  static bool matchesFilterForType(String path, FileFilterType filter) {
+    switch (filter) {
       case FileFilterType.all:
         return true;
       case FileFilterType.documents:
@@ -215,6 +226,56 @@ class FileManagerProvider extends ChangeNotifier {
         return FileUtils.isVideo(path);
       case FileFilterType.archives:
         return FileUtils.isArchive(path);
+    }
+  }
+
+  bool _matchesFilter(String path) {
+    return matchesFilterForType(path, _filterType);
+  }
+
+  final Map<String, int> _folderMatchingFileCounts = {};
+
+  Future<int> getMatchingFileCount(String folderPath, FileFilterType filter) async {
+    final cacheKey = '$folderPath:${filter.name}';
+    if (_folderMatchingFileCounts.containsKey(cacheKey)) {
+      return _folderMatchingFileCounts[cacheKey]!;
+    }
+
+    int count = 0;
+    try {
+      final dir = Directory(folderPath);
+      if (await dir.exists()) {
+        final List<FileSystemEntity> entities = await dir.list().toList();
+        for (var entity in entities) {
+          if (entity is File) {
+            if (matchesFilterForType(entity.path, filter)) {
+              count++;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error counting matching files in $folderPath: $e');
+    }
+
+    _folderMatchingFileCounts[cacheKey] = count;
+    return count;
+  }
+
+  String getFilterTypeName(FileFilterType filter, int count) {
+    switch (filter) {
+      case FileFilterType.all:
+        return '';
+      case FileFilterType.documents:
+        return count == 1 ? 'document' : 'documents';
+      case FileFilterType.images:
+        return count == 1 ? 'image' : 'images';
+      case FileFilterType.audio:
+        return count == 1 ? 'audio' : 'audios';
+      case FileFilterType.videos:
+        return count == 1 ? 'video' : 'videos';
+      case FileFilterType.archives:
+        return count == 1 ? 'archive' : 'archives';
     }
   }
 
@@ -836,7 +897,7 @@ class FileManagerProvider extends ChangeNotifier {
         final filteredFiles = _filterType == FileFilterType.all
             ? files
             : files.where((e) => _matchesFilter(e.path)).toList();
-        final filteredFolders = _filterType == FileFilterType.all ? folders : <FileItemModel>[];
+        final filteredFolders = (_filterType != FileFilterType.all && _hideFoldersInFilter) ? <FileItemModel>[] : folders;
 
         _sortList(filteredFolders, path);
         _sortList(filteredFiles, path);
@@ -879,7 +940,7 @@ class FileManagerProvider extends ChangeNotifier {
         final filteredFiles = _filterType == FileFilterType.all
             ? files
             : files.where((e) => _matchesFilter(e.path)).toList();
-        final filteredFolders = _filterType == FileFilterType.all ? folders : <FileItemModel>[];
+        final filteredFolders = (_filterType != FileFilterType.all && _hideFoldersInFilter) ? <FileItemModel>[] : folders;
 
         _sortList(filteredFolders, path);
         _sortList(filteredFiles, path);
@@ -918,7 +979,7 @@ class FileManagerProvider extends ChangeNotifier {
         final filteredFiles = _filterType == FileFilterType.all
             ? files
             : files.where((e) => _matchesFilter(e.path)).toList();
-        final filteredFolders = _filterType == FileFilterType.all ? folders : <FileItemModel>[];
+        final filteredFolders = (_filterType != FileFilterType.all && _hideFoldersInFilter) ? <FileItemModel>[] : folders;
 
         _sortList(filteredFolders, path);
         _sortList(filteredFiles, path);

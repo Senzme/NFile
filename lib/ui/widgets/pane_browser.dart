@@ -503,14 +503,39 @@ class _PaneBrowserState extends State<PaneBrowser> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 1),
-                  Text(
-                    FileUtils.formatDate(folder.modified),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.textTheme.bodySmall?.color?.withOpacity(0.55),
-                      fontSize: 10.5,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Consumer<FileManagerProvider>(
+                    builder: (context, provider, _) {
+                      final activeFilter = provider.filterType;
+                      if (activeFilter != FileFilterType.all) {
+                        return FutureBuilder<int>(
+                          future: provider.getMatchingFileCount(folder.path, activeFilter),
+                          builder: (context, snapshot) {
+                            final count = snapshot.data ?? 0;
+                            final name = provider.getFilterTypeName(activeFilter, count);
+                            return Text(
+                              '$count $name',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 10.5,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            );
+                          },
+                        );
+                      } else {
+                        return Text(
+                          FileUtils.formatDate(folder.modified),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.textTheme.bodySmall?.color?.withOpacity(0.55),
+                            fontSize: 10.5,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        );
+                      }
+                    },
                   ),
                 ],
               ),
@@ -678,6 +703,23 @@ class _PaneBrowserState extends State<PaneBrowser> {
                 ),
               ),
             ),
+            InkWell(
+              onTap: () => provider.toggleHideFoldersInFilter(),
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  provider.hideFoldersInFilter ? Broken.folder : Broken.folder_connection,
+                  color: color,
+                  size: 13,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
             InkWell(
               onTap: () => provider.setFilterType(FileFilterType.all),
               borderRadius: BorderRadius.circular(10),

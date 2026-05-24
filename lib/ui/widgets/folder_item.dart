@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/file_item_model.dart';
+import '../../models/file_filter_type.dart';
 import 'package:provider/provider.dart';
 import '../../providers/file_manager_provider.dart';
 import '../../core/utils.dart';
@@ -87,11 +88,35 @@ class FolderItem extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      FileUtils.formatDate(folder.modified),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
-                      ),
+                    Consumer<FileManagerProvider>(
+                      builder: (context, provider, _) {
+                        final activeFilter = provider.filterType;
+                        if (activeFilter != FileFilterType.all) {
+                          return FutureBuilder<int>(
+                            future: provider.getMatchingFileCount(folder.path, activeFilter),
+                            builder: (context, snapshot) {
+                              final count = snapshot.data ?? 0;
+                              final name = provider.getFilterTypeName(activeFilter, count);
+                              return Text(
+                                '$count $name',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              );
+                            },
+                          );
+                        } else {
+                          return Text(
+                            FileUtils.formatDate(folder.modified),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
+                            ),
+                          );
+                        }
+                      },
                     ),
                   ],
                 ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/file_item_model.dart';
+import '../../models/file_filter_type.dart';
 import 'package:provider/provider.dart';
 import '../../providers/file_manager_provider.dart';
 import '../../core/utils.dart';
@@ -87,14 +88,39 @@ class FolderGridItem extends StatelessWidget {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        FileUtils.formatDate(folder.modified),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontSize: 10 * (1 + (iconScale - 1) * 0.2),
-                          color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      Consumer<FileManagerProvider>(
+                        builder: (context, provider, _) {
+                          final activeFilter = provider.filterType;
+                          if (activeFilter != FileFilterType.all) {
+                            return FutureBuilder<int>(
+                              future: provider.getMatchingFileCount(folder.path, activeFilter),
+                              builder: (context, snapshot) {
+                                final count = snapshot.data ?? 0;
+                                final name = provider.getFilterTypeName(activeFilter, count);
+                                return Text(
+                                  '$count $name',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontSize: 10 * (1 + (iconScale - 1) * 0.2),
+                                    color: theme.colorScheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                );
+                              },
+                            );
+                          } else {
+                            return Text(
+                              FileUtils.formatDate(folder.modified),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontSize: 10 * (1 + (iconScale - 1) * 0.2),
+                                color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            );
+                          }
+                        },
                       ),
                     ],
                   ),

@@ -1344,6 +1344,28 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                 ),
               ),
             ),
+            TextButton.icon(
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                backgroundColor: color.withOpacity(0.15),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () => provider.toggleHideFoldersInFilter(),
+              icon: Icon(
+                provider.hideFoldersInFilter ? Broken.folder : Broken.folder_connection,
+                color: color,
+                size: 15,
+              ),
+              label: Text(
+                provider.hideFoldersInFilter ? 'Show Folders' : 'Hide Folders',
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
             InkWell(
               onTap: () => provider.setFilterType(FileFilterType.all),
               borderRadius: BorderRadius.circular(12),
