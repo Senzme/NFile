@@ -960,7 +960,27 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                     valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
                   ),
                 Expanded(
-                  child: provider.enableSplitScreen
+                  child: GestureDetector(
+                    onHorizontalDragEnd: (details) {
+                      if (!provider.enableMultipleTabs || provider.enableSplitScreen || isSelectionMode) {
+                        return;
+                      }
+                      final velocity = details.primaryVelocity ?? 0.0;
+                      // Swipe Left (moves right-to-left) -> Next Tab
+                      if (velocity < -300) {
+                        if (provider.activeTabIndex < provider.tabs.length - 1) {
+                          provider.setActiveTab(provider.activeTabIndex + 1);
+                        }
+                      }
+                      // Swipe Right (moves left-to-right) -> Previous Tab
+                      else if (velocity > 300) {
+                        if (provider.activeTabIndex > 0) {
+                          provider.setActiveTab(provider.activeTabIndex - 1);
+                        }
+                      }
+                    },
+                    behavior: HitTestBehavior.translucent,
+                    child: provider.enableSplitScreen
                       ? const Row(
                           children: [
                             Expanded(child: PaneBrowser(tabIndex: 0)),
@@ -1195,6 +1215,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                         ),
                     ],
                   ),
+                ),
                 ),
               ],
             ),
