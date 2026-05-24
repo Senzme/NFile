@@ -1,8 +1,10 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:path/path.dart' as p;
 import '../../providers/file_manager_provider.dart';
+import '../../models/drag_payload.dart';
 import '../../services/root_shizuku_service.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import 'package:flutter/services.dart';
@@ -25,6 +27,7 @@ class _NFileAddressBarState extends State<NFileAddressBar> {
   final TextEditingController _controller = TextEditingController();
   final LayerLink _layerLink = LayerLink();
   final ScrollController _breadcrumbsScrollController = ScrollController();
+  final Map<String, Timer> _hoverTimers = {};
   
   OverlayEntry? _overlayEntry;
   bool _isEditing = false;
@@ -46,6 +49,10 @@ class _NFileAddressBarState extends State<NFileAddressBar> {
     _focusNode.dispose();
     _controller.dispose();
     _breadcrumbsScrollController.dispose();
+    for (final timer in _hoverTimers.values) {
+      timer.cancel();
+    }
+    _hoverTimers.clear();
     super.dispose();
   }
 
@@ -482,27 +489,137 @@ class _NFileAddressBarState extends State<NFileAddressBar> {
                             final segment = breadcrumbs[index];
                             final isLast = index == breadcrumbs.length - 1;
 
+                            bool isDragOverSegment = false;
+
                             return Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                InkWell(
-                                  borderRadius: BorderRadius.circular(8),
-                                  onTap: () {
-                                    provider.loadDirectory(segment.path);
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                                    child: Text(
-                                      segment.name,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: isLast ? FontWeight.bold : FontWeight.w500,
-                                        color: isLast
-                                            ? theme.colorScheme.primary
-                                            : theme.colorScheme.onSurface.withOpacity(0.8),
+                                StatefulBuilder(
+                                  builder: (context, setStateSegment) {
+                                    Widget segmentWidget = InkWell(
+                                      borderRadius: BorderRadius.circular(8),
+                                      onTap: () {
+                                        provider.loadDirectory(segment.path);
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                        child: Text(
+                                          segment.name,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: isLast ? FontWeight.bold : FontWeight.w500,
+                                            color: isLast
+                                                ? theme.colorScheme.primary
+                                                : theme.colorScheme.onSurface.withOpacity(0.8),
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
+                                    );
+
+                                    if (provider.enableDragDrop) {
+                                      final feedback = Material(
+                                        color: Colors.transparent,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                          decoration: BoxDecoration(
+                                            color: theme.colorScheme.surface.withOpacity(0.92),
+                                            borderRadius: BorderRadius.circular(16),
+                                            border: Border.all(color: theme.colorScheme.primary.withOpacity(0.35), width: 1.5),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: theme.colorScheme.shadow.withOpacity(0.18),
+                                                blurRadius: 16,
+                                                offset: const Offset(0, 8),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Broken.folder,
+                                                color: theme.colorScheme.primary,
+                                                size: 22,
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Text(
+                                                segment.name,
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 14,
+                                                  color: theme.colorScheme.onSurface,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+
+                                      segmentWidget = LongPressDraggable<DragPayload>(
+                                        data: DragPayload(path: segment.path, isDirectory: true),
+                                        feedback: feedback,
+                                        dragAnchorStrategy: childDragAnchorStrategy,
+                                        feedbackOffset: const Offset(0, -30),
+                                        delay: const Duration(milliseconds: 500),
+                                        child: segmentWidget,
+                                      );
+                                    }
+
+                                    return DragTarget<DragPayload>(
+                                      onWillAccept: (data) {
+                                        if (data == null || data.path == segment.path) return false;
+                                        if (segment.path.startsWith(data.path + p.separator)) return false;
+
+                                        setStateSegment(() {
+                                          isDragOverSegment = true;
+                                        });
+
+                                        _hoverTimers[segment.path]?.cancel();
+                                        _hoverTimers[segment.path] = Timer(const Duration(milliseconds: 900), () {
+                                          if (mounted) {
+                                            provider.loadDirectory(segment.path);
+                                          }
+                                        });
+
+                                        return true;
+                                      },
+                                      onLeave: (data) {
+                                        setStateSegment(() {
+                                          isDragOverSegment = false;
+                                        });
+                                        _hoverTimers[segment.path]?.cancel();
+                                        _hoverTimers.remove(segment.path);
+                                      },
+                                      onAccept: (data) {
+                                        setStateSegment(() {
+                                          isDragOverSegment = false;
+                                        });
+                                        _hoverTimers[segment.path]?.cancel();
+                                        _hoverTimers.remove(segment.path);
+
+                                        provider.moveItem(context, data.path, segment.path).then((_) {
+                                          if (mounted) {
+                                            provider.loadDirectory(segment.path);
+                                          }
+                                        });
+                                      },
+                                      builder: (context, candidateData, rejectedData) {
+                                        return AnimatedContainer(
+                                          duration: const Duration(milliseconds: 200),
+                                          decoration: BoxDecoration(
+                                            color: isDragOverSegment
+                                                ? theme.colorScheme.primary.withOpacity(0.18)
+                                                : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: isDragOverSegment
+                                                ? Border.all(color: theme.colorScheme.primary, width: 1.5)
+                                                : null,
+                                          ),
+                                          child: segmentWidget,
+                                        );
+                                      },
+                                    );
+                                  },
                                 ),
                                 if (!isLast)
                                   Icon(
