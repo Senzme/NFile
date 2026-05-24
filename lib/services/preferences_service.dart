@@ -382,4 +382,32 @@ class PreferencesService {
   static Future<void> saveEnableDragDrop(bool val) async {
     await _prefs?.setBool(_keyEnableDragDrop, val);
   }
+
+  static const String _keyUse24HourFormat = 'use_24_hour_format';
+  static const String _keyHideTimeAndDate = 'hide_time_and_date';
+  static const String _keyShowFolderContentsCount = 'show_folder_contents_count';
+
+  static bool getUse24HourFormat() {
+    return _prefs?.getBool(_keyUse24HourFormat) ?? false;
+  }
+
+  static Future<void> saveUse24HourFormat(bool val) async {
+    await _prefs?.setBool(_keyUse24HourFormat, val);
+  }
+
+  static bool getHideTimeAndDate() {
+    return _prefs?.getBool(_keyHideTimeAndDate) ?? false;
+  }
+
+  static Future<void> saveHideTimeAndDate(bool val) async {
+    await _prefs?.setBool(_keyHideTimeAndDate, val);
+  }
+
+  static bool getShowFolderContentsCount() {
+    return _prefs?.getBool(_keyShowFolderContentsCount) ?? false;
+  }
+
+  static Future<void> saveShowFolderContentsCount(bool val) async {
+    await _prefs?.setBool(_keyShowFolderContentsCount, val);
+  }
 }

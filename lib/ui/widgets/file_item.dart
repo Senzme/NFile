@@ -97,22 +97,28 @@ class FileItem extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Text(
-                          FileUtils.formatDate(file.modified),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          FileUtils.formatBytes(file.size, 2),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
-                          ),
-                        ),
-                      ],
+                    Consumer<FileManagerProvider>(
+                      builder: (context, provider, _) {
+                        return Row(
+                          children: [
+                            if (!provider.hideTimeAndDate) ...[
+                              Text(
+                                FileUtils.formatDate(file.modified, use24Hour: provider.use24HourFormat),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                            ],
+                            Text(
+                              FileUtils.formatBytes(file.size, 2),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ],
                 ),

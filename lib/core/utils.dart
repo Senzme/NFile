@@ -16,8 +16,9 @@ class FileUtils {
     return '${b.toStringAsFixed(decimals)} ${suffixes[i]}';
   }
 
-  static String formatDate(DateTime date) {
-    return DateFormat('MMM dd, yyyy  HH:mm').format(date);
+  static String formatDate(DateTime date, {bool use24Hour = true}) {
+    final timePattern = use24Hour ? 'HH:mm' : 'hh:mm a';
+    return DateFormat('MMM dd, yyyy  $timePattern').format(date);
   }
 
   static bool isArchive(String path) {

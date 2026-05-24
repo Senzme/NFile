@@ -110,15 +110,49 @@ class FolderGridItem extends StatelessWidget {
                               },
                             );
                           } else {
-                            return Text(
-                              FileUtils.formatDate(folder.modified),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                fontSize: 10 * (1 + (iconScale - 1) * 0.2),
-                                color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            );
+                            if (provider.hideTimeAndDate && !provider.showFolderContentsCount) {
+                              return const SizedBox.shrink();
+                            }
+                            if (provider.showFolderContentsCount) {
+                              return FutureBuilder<int>(
+                                future: provider.getFolderItemCount(folder.path),
+                                builder: (context, snapshot) {
+                                  final count = snapshot.data ?? 0;
+                                  final countStr = count == 1 ? '1 item' : '$count items';
+                                  if (provider.hideTimeAndDate) {
+                                    return Text(
+                                      countStr,
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        fontSize: 10 * (1 + (iconScale - 1) * 0.2),
+                                        color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    );
+                                  } else {
+                                    return Text(
+                                      '$countStr • ${FileUtils.formatDate(folder.modified, use24Hour: provider.use24HourFormat)}',
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        fontSize: 10 * (1 + (iconScale - 1) * 0.2),
+                                        color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    );
+                                  }
+                                },
+                              );
+                            } else {
+                              return Text(
+                                FileUtils.formatDate(folder.modified, use24Hour: provider.use24HourFormat),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontSize: 10 * (1 + (iconScale - 1) * 0.2),
+                                  color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              );
+                            }
                           }
                         },
                       ),

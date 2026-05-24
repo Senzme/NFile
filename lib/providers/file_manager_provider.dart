@@ -73,6 +73,9 @@ class FileManagerProvider extends ChangeNotifier {
     _enableFolderHighlight = PreferencesService.getEnableFolderHighlight();
     _folderSortTypes = PreferencesService.getFolderSortTypes();
     _enableDragDrop = PreferencesService.getEnableDragDrop();
+    _use24HourFormat = PreferencesService.getUse24HourFormat();
+    _hideTimeAndDate = PreferencesService.getHideTimeAndDate();
+    _showFolderContentsCount = PreferencesService.getShowFolderContentsCount();
   }
 
   final ValueNotifier<FileOperationProgress?> progressNotifier = ValueNotifier<FileOperationProgress?>(null);
@@ -386,6 +389,64 @@ class FileManagerProvider extends ChangeNotifier {
     _showFolderFileCount = !_showFolderFileCount;
     PreferencesService.saveShowFolderFileCount(_showFolderFileCount);
     notifyListeners();
+  }
+
+  bool _use24HourFormat = false;
+  bool get use24HourFormat => _use24HourFormat;
+
+  void toggleUse24HourFormat() {
+    _use24HourFormat = !_use24HourFormat;
+    PreferencesService.saveUse24HourFormat(_use24HourFormat);
+    notifyListeners();
+  }
+
+  bool _hideTimeAndDate = false;
+  bool get hideTimeAndDate => _hideTimeAndDate;
+
+  void toggleHideTimeAndDate() {
+    _hideTimeAndDate = !_hideTimeAndDate;
+    PreferencesService.saveHideTimeAndDate(_hideTimeAndDate);
+    notifyListeners();
+  }
+
+  bool _showFolderContentsCount = false;
+  bool get showFolderContentsCount => _showFolderContentsCount;
+
+  void toggleFolderContentsCount() {
+    _showFolderContentsCount = !_showFolderContentsCount;
+    PreferencesService.saveShowFolderContentsCount(_showFolderContentsCount);
+    notifyListeners();
+  }
+
+  final Map<String, int> _folderItemCounts = {};
+
+  Future<int> getFolderItemCount(String folderPath) async {
+    if (_folderItemCounts.containsKey(folderPath)) {
+      return _folderItemCounts[folderPath]!;
+    }
+
+    int count = 0;
+    try {
+      final dir = Directory(folderPath);
+      if (await dir.exists()) {
+        final entities = await dir.list().toList();
+        final showHidden = _showHiddenFiles;
+        for (var entity in entities) {
+          final name = p.basename(entity.path);
+          if (!showHidden && name.startsWith('.')) {
+            continue;
+          }
+          count++;
+        }
+      }
+    } catch (_) {}
+
+    _folderItemCounts[folderPath] = count;
+    return count;
+  }
+
+  void clearFolderItemCountsCache() {
+    _folderItemCounts.clear();
   }
 
   bool _showBottomActionBar = false;
@@ -864,6 +925,7 @@ class FileManagerProvider extends ChangeNotifier {
   }
 
   Future<void> loadDirectory(String path, {bool showLoading = true}) async {
+    clearFolderItemCountsCache();
     if (currentPath != path) {
       _highlightedPaths.clear();
     }

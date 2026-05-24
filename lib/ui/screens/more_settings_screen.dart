@@ -191,6 +191,51 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
             ),
             _buildSettingTile(
               theme,
+              icon: Icons.access_time_rounded,
+              title: 'Use 24-Hour Time Format',
+              subtitle: 'Toggle between 12-hour (AM/PM) and 24-hour time formatting across lists',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.use24HourFormat,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleUse24HourFormat(),
+                ),
+              ),
+              onTap: () => fileManager.toggleUse24HourFormat(),
+            ),
+            _buildSettingTile(
+              theme,
+              icon: Icons.visibility_off_rounded,
+              title: 'Hide Time & Date from Lists',
+              subtitle: 'Completely hide modification dates and times under files and folders',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.hideTimeAndDate,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleHideTimeAndDate(),
+                ),
+              ),
+              onTap: () => fileManager.toggleHideTimeAndDate(),
+            ),
+            _buildSettingTile(
+              theme,
+              icon: Broken.folder_open,
+              title: 'Show Folder Content Count',
+              subtitle: 'Calculate and display total files and folders inside directory listings',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.showFolderContentsCount,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleFolderContentsCount(),
+                ),
+              ),
+              onTap: () => fileManager.toggleFolderContentsCount(),
+            ),
+            _buildSettingTile(
+              theme,
               icon: Broken.menu,
               title: 'Show Bottom Navigation Bar',
               subtitle: 'Enable bottom action bar on Browse screen',
