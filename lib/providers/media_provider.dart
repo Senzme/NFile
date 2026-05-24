@@ -362,6 +362,14 @@ class MediaProvider extends ChangeNotifier {
 
     final futures = <Future<void>>[];
     if (ps.isAuth || isStorageGranted) {
+      if (isStorageGranted && !ps.isAuth) {
+        try {
+          PhotoManager.setIgnorePermissionCheck(true);
+        } catch (_) {}
+      }
+      try {
+        PhotoManager.clearFileCache();
+      } catch (_) {}
       futures.add(_loadImagesAndVideos());
     }
     if (hasAudioPermission || isStorageGranted) {

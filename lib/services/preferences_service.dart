@@ -358,7 +358,7 @@ class PreferencesService {
   static const String _keyEnableFolderHighlight = 'enable_folder_highlight';
 
   static bool getShowRecentFiles() {
-    return _prefs?.getBool(_keyShowRecentFiles) ?? false;
+    return _prefs?.getBool(_keyShowRecentFiles) ?? true;
   }
 
   static Future<void> saveShowRecentFiles(bool val) async {
