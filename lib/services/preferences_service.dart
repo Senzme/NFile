@@ -21,6 +21,7 @@ class PreferencesService {
   static const String _keyEnableSplitScreen = 'enable_split_screen';
   static const String _keyShowAddressBar = 'show_address_bar';
   static const String _keyAmoledMode = 'amoled_mode';
+  static const String _keyFolderSortTypes = 'folder_sort_types';
 
   static SharedPreferences? _prefs;
 
@@ -163,6 +164,29 @@ class PreferencesService {
 
   static Future<void> saveSortType(FileSortType type) async {
     await _prefs?.setInt(_keySortType, type.index);
+  }
+
+  static Map<String, FileSortType> getFolderSortTypes() {
+    final str = _prefs?.getString(_keyFolderSortTypes);
+    if (str == null) return {};
+    try {
+      final map = jsonDecode(str) as Map<String, dynamic>;
+      return map.map((key, value) {
+        final idx = value as int;
+        if (idx >= 0 && idx < FileSortType.values.length) {
+          return MapEntry(key, FileSortType.values[idx]);
+        }
+        return MapEntry(key, FileSortType.nameAsc);
+      });
+    } catch (e) {
+      debugPrint('Error loading folder sort types: $e');
+      return {};
+    }
+  }
+
+  static Future<void> saveFolderSortTypes(Map<String, FileSortType> map) async {
+    final jsonMap = map.map((key, value) => MapEntry(key, value.index));
+    await _prefs?.setString(_keyFolderSortTypes, jsonEncode(jsonMap));
   }
 
   // --- Home Screen Shortcuts ---
@@ -334,7 +358,7 @@ class PreferencesService {
   static const String _keyEnableFolderHighlight = 'enable_folder_highlight';
 
   static bool getShowRecentFiles() {
-    return _prefs?.getBool(_keyShowRecentFiles) ?? true;
+    return _prefs?.getBool(_keyShowRecentFiles) ?? false;
   }
 
   static Future<void> saveShowRecentFiles(bool val) async {

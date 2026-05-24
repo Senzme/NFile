@@ -71,6 +71,7 @@ class FileManagerProvider extends ChangeNotifier {
     _amoledMode = PreferencesService.getAmoledMode();
     _showRecentFiles = PreferencesService.getShowRecentFiles();
     _enableFolderHighlight = PreferencesService.getEnableFolderHighlight();
+    _folderSortTypes = PreferencesService.getFolderSortTypes();
   }
 
   final ValueNotifier<FileOperationProgress?> progressNotifier = ValueNotifier<FileOperationProgress?>(null);
@@ -135,15 +136,54 @@ class FileManagerProvider extends ChangeNotifier {
   FileSortType _sortType = FileSortType.nameAsc;
   FileSortType get sortType => _sortType;
 
+  Map<String, FileSortType> _folderSortTypes = {};
+  Map<String, FileSortType> get folderSortTypes => _folderSortTypes;
+
+  bool isFolderOverrideEnabled(String path) {
+    return _folderSortTypes.containsKey(path);
+  }
+
+  void setFolderOverrideEnabled(String path, bool enabled) {
+    if (enabled) {
+      _folderSortTypes[path] = getSortTypeForPath(path);
+    } else {
+      _folderSortTypes.remove(path);
+    }
+    PreferencesService.saveFolderSortTypes(_folderSortTypes);
+    
+    if (_tabs.isNotEmpty && currentPath == path) {
+      final folders = currentFiles.where((e) => e.isDirectory).toList();
+      final files = currentFiles.where((e) => !e.isDirectory).toList();
+      _sortList(folders, path);
+      _sortList(files, path);
+      activeTab.currentFiles = [...folders, ...files];
+    }
+    notifyListeners();
+  }
+
+  FileSortType getSortTypeForPath(String path) {
+    return _folderSortTypes[path] ?? _sortType;
+  }
+
   void setSortType(FileSortType type) {
-    if (_sortType == type) return;
-    _sortType = type;
-    PreferencesService.saveSortType(_sortType);
+    final path = currentPath;
+    final hasOverride = isFolderOverrideEnabled(path);
+    
+    if (hasOverride) {
+      if (_folderSortTypes[path] == type) return;
+      _folderSortTypes[path] = type;
+      PreferencesService.saveFolderSortTypes(_folderSortTypes);
+    } else {
+      if (_sortType == type) return;
+      _sortType = type;
+      PreferencesService.saveSortType(_sortType);
+    }
+    
     if (_tabs.isNotEmpty) {
       final folders = currentFiles.where((e) => e.isDirectory).toList();
       final files = currentFiles.where((e) => !e.isDirectory).toList();
-      _sortList(folders);
-      _sortList(files);
+      _sortList(folders, path);
+      _sortList(files, path);
       activeTab.currentFiles = [...folders, ...files];
     }
     notifyListeners();
@@ -216,8 +256,9 @@ class FileManagerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _sortList(List<FileItemModel> items) {
-    switch (_sortType) {
+  void _sortList(List<FileItemModel> items, String path) {
+    final activeSort = getSortTypeForPath(path);
+    switch (activeSort) {
       case FileSortType.nameAsc:
         items.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
         break;
@@ -360,7 +401,7 @@ class FileManagerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool _showRecentFiles = true;
+  bool _showRecentFiles = false;
   bool get showRecentFiles => _showRecentFiles;
 
   void toggleShowRecentFiles() {
@@ -797,8 +838,8 @@ class FileManagerProvider extends ChangeNotifier {
             : files.where((e) => _matchesFilter(e.path)).toList();
         final filteredFolders = _filterType == FileFilterType.all ? folders : <FileItemModel>[];
 
-        _sortList(filteredFolders);
-        _sortList(filteredFiles);
+        _sortList(filteredFolders, path);
+        _sortList(filteredFiles, path);
         activeTab.currentFiles = [...filteredFolders, ...filteredFiles];
       } catch (e) {
         debugPrint('Error loading restricted directory: $e');
@@ -840,8 +881,8 @@ class FileManagerProvider extends ChangeNotifier {
             : files.where((e) => _matchesFilter(e.path)).toList();
         final filteredFolders = _filterType == FileFilterType.all ? folders : <FileItemModel>[];
 
-        _sortList(filteredFolders);
-        _sortList(filteredFiles);
+        _sortList(filteredFolders, path);
+        _sortList(filteredFiles, path);
 
         activeTab.currentFiles = [...filteredFolders, ...filteredFiles];
       }
@@ -879,8 +920,8 @@ class FileManagerProvider extends ChangeNotifier {
             : files.where((e) => _matchesFilter(e.path)).toList();
         final filteredFolders = _filterType == FileFilterType.all ? folders : <FileItemModel>[];
 
-        _sortList(filteredFolders);
-        _sortList(filteredFiles);
+        _sortList(filteredFolders, path);
+        _sortList(filteredFiles, path);
         activeTab.currentFiles = [...filteredFolders, ...filteredFiles];
       } catch (err) {
         debugPrint('Error loading restricted directory fallback: $err');

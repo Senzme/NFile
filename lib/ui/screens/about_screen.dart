@@ -163,7 +163,7 @@ class AboutNFileScreen extends StatelessWidget {
                       border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
                     ),
                     child: Text(
-                      'v1.0.26 (Stable)',
+                      'v1.0.33 (Stable)',
                       style: TextStyle(
                         color: theme.colorScheme.primary,
                         fontSize: 12.5,
@@ -273,6 +273,13 @@ class AboutNFileScreen extends StatelessWidget {
                     icon: Broken.magic_star,
                     label: 'Star on Repository',
                     onTap: () => _launchUrl(context, 'https://github.com/Senzme/NFile'),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildSocialAction(
+                    context,
+                    icon: Icons.send_rounded,
+                    label: 'Join Telegram Channel',
+                    onTap: () => _launchUrl(context, 'https://t.me/NFiley'),
                   ),
                   const SizedBox(height: 10),
                   _buildSocialAction(

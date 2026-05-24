@@ -425,6 +425,64 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                         _buildSortChip(context, provider, setStateModal, 'Type', FileSortType.type),
                       ],
                     ),
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: provider.isFolderOverrideEnabled(provider.currentPath)
+                            ? theme.colorScheme.primary.withOpacity(0.08)
+                            : theme.colorScheme.surfaceVariant.withOpacity(0.4),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: provider.isFolderOverrideEnabled(provider.currentPath)
+                              ? theme.colorScheme.primary.withOpacity(0.25)
+                              : theme.dividerColor.withOpacity(0.08),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Broken.folder_favorite,
+                            color: provider.isFolderOverrideEnabled(provider.currentPath)
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.onSurface.withOpacity(0.65),
+                            size: 24,
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Only this folder',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Enable custom sorting specific to this folder',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurface.withOpacity(0.55),
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch.adaptive(
+                            value: provider.isFolderOverrideEnabled(provider.currentPath),
+                            activeColor: theme.colorScheme.primary,
+                            onChanged: (val) {
+                              provider.setFolderOverrideEnabled(provider.currentPath, val);
+                              setStateModal(() {});
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -438,7 +496,8 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
 
   Widget _buildSortChip(BuildContext context, FileManagerProvider provider, StateSetter setStateModal, String label, FileSortType sortType) {
     final theme = Theme.of(context);
-    final isSelected = provider.sortType == sortType;
+    final activeSort = provider.getSortTypeForPath(provider.currentPath);
+    final isSelected = activeSort == sortType;
     return ActionChip(
       label: Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface)),
       backgroundColor: isSelected ? theme.colorScheme.primary : theme.colorScheme.surfaceVariant,
