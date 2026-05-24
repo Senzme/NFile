@@ -251,6 +251,21 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
             ),
             _buildSettingTile(
               theme,
+              icon: Broken.folder_connection,
+              title: 'Enable Drag & Drop',
+              subtitle: 'Long press and drag folders or files to move them into other folders',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.enableDragDrop,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleEnableDragDrop(),
+                ),
+              ),
+              onTap: () => fileManager.toggleEnableDragDrop(),
+            ),
+            _buildSettingTile(
+              theme,
               icon: Broken.category,
               title: 'Enable Multiple Tabs',
               subtitle: 'Allow opening multiple folders in separate tabs for quick navigation',

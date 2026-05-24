@@ -9,6 +9,7 @@ import '../widgets/file_item.dart';
 import '../widgets/folder_item.dart';
 import '../widgets/file_grid_item.dart';
 import '../widgets/folder_grid_item.dart';
+import '../widgets/drag_drop_handler.dart';
 import '../widgets/file_action_dialogs.dart';
 import '../widgets/create_archive_dialog.dart';
 import '../widgets/batch_rename_dialog.dart';
@@ -1065,48 +1066,60 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                                       final item = provider.currentFiles[index];
                                       final isSelected = provider.selectedPaths.contains(item.path);
                                       if (item.isDirectory) {
-                                        return FolderGridItem(
-                                          folder: item,
-                                          isSelected: isSelected,
-                                          iconScale: provider.iconScale,
-                                          itemPaddingMultiplier: provider.itemPaddingMultiplier,
-                                          onTap: () {
-                                            if (isSelectionMode) {
-                                              provider.toggleSelection(item.path);
-                                            } else {
-                                              _openFolder(provider, item.path);
-                                            }
-                                          },
-                                          onLongPress: () {
-                                            if (isSelectionMode && isSelected) {
-                                              SelectionContextBottomSheet.show(context, provider, item.path);
-                                            } else {
-                                              provider.toggleSelection(item.path);
-                                            }
-                                          },
-                                          onAction: (action) => _handleAction(context, action, item.path),
+                                        final itemLongPress = () {
+                                          if (isSelectionMode && isSelected) {
+                                            SelectionContextBottomSheet.show(context, provider, item.path);
+                                          } else {
+                                            provider.toggleSelection(item.path);
+                                          }
+                                        };
+                                        return DragDropHandler(
+                                          path: item.path,
+                                          isDirectory: true,
+                                          onLongPress: itemLongPress,
+                                          child: FolderGridItem(
+                                            folder: item,
+                                            isSelected: isSelected,
+                                            iconScale: provider.iconScale,
+                                            itemPaddingMultiplier: provider.itemPaddingMultiplier,
+                                            onTap: () {
+                                              if (isSelectionMode) {
+                                                provider.toggleSelection(item.path);
+                                              } else {
+                                                _openFolder(provider, item.path);
+                                              }
+                                            },
+                                            onLongPress: provider.enableDragDrop ? null : itemLongPress,
+                                            onAction: (action) => _handleAction(context, action, item.path),
+                                          ),
                                         );
                                       } else {
-                                        return FileGridItem(
-                                          file: item,
-                                          isSelected: isSelected,
-                                          iconScale: provider.iconScale,
-                                          itemPaddingMultiplier: provider.itemPaddingMultiplier,
-                                          onTap: () {
-                                            if (isSelectionMode) {
-                                              provider.toggleSelection(item.path);
-                                            } else {
-                                              provider.openFile(context, item.path, showOpenWithPopup: true);
-                                            }
-                                          },
-                                          onLongPress: () {
-                                            if (isSelectionMode && isSelected) {
-                                              SelectionContextBottomSheet.show(context, provider, item.path);
-                                            } else {
-                                              provider.toggleSelection(item.path);
-                                            }
-                                          },
-                                          onAction: (action) => _handleAction(context, action, item.path),
+                                        final itemLongPress = () {
+                                          if (isSelectionMode && isSelected) {
+                                            SelectionContextBottomSheet.show(context, provider, item.path);
+                                          } else {
+                                            provider.toggleSelection(item.path);
+                                          }
+                                        };
+                                        return DragDropHandler(
+                                          path: item.path,
+                                          isDirectory: false,
+                                          onLongPress: itemLongPress,
+                                          child: FileGridItem(
+                                            file: item,
+                                            isSelected: isSelected,
+                                            iconScale: provider.iconScale,
+                                            itemPaddingMultiplier: provider.itemPaddingMultiplier,
+                                            onTap: () {
+                                              if (isSelectionMode) {
+                                                provider.toggleSelection(item.path);
+                                              } else {
+                                                provider.openFile(context, item.path, showOpenWithPopup: true);
+                                              }
+                                            },
+                                            onLongPress: provider.enableDragDrop ? null : itemLongPress,
+                                            onAction: (action) => _handleAction(context, action, item.path),
+                                          ),
                                         );
                                       }
                                     },
@@ -1119,48 +1132,60 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                                       final item = provider.currentFiles[index];
                                       final isSelected = provider.selectedPaths.contains(item.path);
                                       if (item.isDirectory) {
-                                        return FolderItem(
-                                          folder: item,
-                                          isSelected: isSelected,
-                                          iconScale: provider.iconScale,
-                                          itemPaddingMultiplier: provider.itemPaddingMultiplier,
-                                          onTap: () {
-                                            if (isSelectionMode) {
-                                              provider.toggleSelection(item.path);
-                                            } else {
-                                              _openFolder(provider, item.path);
-                                            }
-                                          },
-                                          onLongPress: () {
-                                            if (isSelectionMode && isSelected) {
-                                              SelectionContextBottomSheet.show(context, provider, item.path);
-                                            } else {
-                                              provider.toggleSelection(item.path);
-                                            }
-                                          },
-                                          onAction: (action) => _handleAction(context, action, item.path),
+                                        final itemLongPress = () {
+                                          if (isSelectionMode && isSelected) {
+                                            SelectionContextBottomSheet.show(context, provider, item.path);
+                                          } else {
+                                            provider.toggleSelection(item.path);
+                                          }
+                                        };
+                                        return DragDropHandler(
+                                          path: item.path,
+                                          isDirectory: true,
+                                          onLongPress: itemLongPress,
+                                          child: FolderItem(
+                                            folder: item,
+                                            isSelected: isSelected,
+                                            iconScale: provider.iconScale,
+                                            itemPaddingMultiplier: provider.itemPaddingMultiplier,
+                                            onTap: () {
+                                              if (isSelectionMode) {
+                                                provider.toggleSelection(item.path);
+                                              } else {
+                                                _openFolder(provider, item.path);
+                                              }
+                                            },
+                                            onLongPress: provider.enableDragDrop ? null : itemLongPress,
+                                            onAction: (action) => _handleAction(context, action, item.path),
+                                          ),
                                         );
                                       } else {
-                                        return FileItem(
-                                          file: item,
-                                          isSelected: isSelected,
-                                          iconScale: provider.iconScale,
-                                          itemPaddingMultiplier: provider.itemPaddingMultiplier,
-                                          onTap: () {
-                                            if (isSelectionMode) {
-                                              provider.toggleSelection(item.path);
-                                            } else {
-                                              provider.openFile(context, item.path, showOpenWithPopup: true);
-                                            }
-                                          },
-                                          onLongPress: () {
-                                            if (isSelectionMode && isSelected) {
-                                              SelectionContextBottomSheet.show(context, provider, item.path);
-                                            } else {
-                                              provider.toggleSelection(item.path);
-                                            }
-                                          },
-                                          onAction: (action) => _handleAction(context, action, item.path),
+                                        final itemLongPress = () {
+                                          if (isSelectionMode && isSelected) {
+                                            SelectionContextBottomSheet.show(context, provider, item.path);
+                                          } else {
+                                            provider.toggleSelection(item.path);
+                                          }
+                                        };
+                                        return DragDropHandler(
+                                          path: item.path,
+                                          isDirectory: false,
+                                          onLongPress: itemLongPress,
+                                          child: FileItem(
+                                            file: item,
+                                            isSelected: isSelected,
+                                            iconScale: provider.iconScale,
+                                            itemPaddingMultiplier: provider.itemPaddingMultiplier,
+                                            onTap: () {
+                                              if (isSelectionMode) {
+                                                provider.toggleSelection(item.path);
+                                              } else {
+                                                provider.openFile(context, item.path, showOpenWithPopup: true);
+                                              }
+                                            },
+                                            onLongPress: provider.enableDragDrop ? null : itemLongPress,
+                                            onAction: (action) => _handleAction(context, action, item.path),
+                                          ),
                                         );
                                       }
                                     },

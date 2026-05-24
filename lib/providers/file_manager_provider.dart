@@ -72,6 +72,7 @@ class FileManagerProvider extends ChangeNotifier {
     _showRecentFiles = PreferencesService.getShowRecentFiles();
     _enableFolderHighlight = PreferencesService.getEnableFolderHighlight();
     _folderSortTypes = PreferencesService.getFolderSortTypes();
+    _enableDragDrop = PreferencesService.getEnableDragDrop();
   }
 
   final ValueNotifier<FileOperationProgress?> progressNotifier = ValueNotifier<FileOperationProgress?>(null);
@@ -477,6 +478,15 @@ class FileManagerProvider extends ChangeNotifier {
   void toggleEnableFolderHighlight() {
     _enableFolderHighlight = !_enableFolderHighlight;
     PreferencesService.saveEnableFolderHighlight(_enableFolderHighlight);
+    notifyListeners();
+  }
+
+  bool _enableDragDrop = false;
+  bool get enableDragDrop => _enableDragDrop;
+
+  void toggleEnableDragDrop() {
+    _enableDragDrop = !_enableDragDrop;
+    PreferencesService.saveEnableDragDrop(_enableDragDrop);
     notifyListeners();
   }
 
@@ -1764,6 +1774,77 @@ class FileManagerProvider extends ChangeNotifier {
     }
 
     await openFileNatively(context, path);
+  }
+
+  Future<void> moveItem(BuildContext context, String sourcePath, String destFolderPath) async {
+    final name = p.basename(sourcePath);
+    final destPath = p.join(destFolderPath, name);
+
+    if (sourcePath == destPath || destFolderPath.startsWith(sourcePath + p.separator)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot move a folder inside itself or same location')),
+      );
+      return;
+    }
+
+    activeTab.isLoading = true;
+    notifyListeners();
+
+    try {
+      final isDir = FileSystemEntity.isDirectorySync(sourcePath);
+      if (isRestrictedPath(sourcePath) || isRestrictedPath(destFolderPath)) {
+        await RootShizukuService.moveItem(sourcePath, destPath, useRoot: activeTab.useRootMode);
+      } else {
+        if (isDir) {
+          final sourceDir = Directory(sourcePath);
+          final destDir = Directory(destPath);
+          if (!destDir.existsSync()) {
+            await destDir.create(recursive: true);
+          }
+          try {
+            await sourceDir.rename(destPath);
+          } catch (e) {
+            await _copyDirectory(sourceDir, destDir);
+            await sourceDir.delete(recursive: true);
+          }
+        } else {
+          final sourceFile = File(sourcePath);
+          final destFile = File(destPath);
+          try {
+            if (destFile.existsSync()) {
+              await destFile.delete();
+            }
+            await sourceFile.rename(destPath);
+          } catch (e) {
+            await sourceFile.copy(destPath);
+            await sourceFile.delete();
+          }
+        }
+      }
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Moved $name successfully')),
+      );
+    } catch (e) {
+      debugPrint('Error moving item: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to move item: $e')),
+      );
+    }
+
+    await loadDirectory(currentPath, showLoading: false);
+  }
+
+  Future<void> _copyDirectory(Directory source, Directory destination) async {
+    await for (var entity in source.list(recursive: false)) {
+      if (entity is Directory) {
+        final newDirectory = Directory(p.join(destination.absolute.path, p.basename(entity.path)));
+        await newDirectory.create();
+        await _copyDirectory(entity.absolute, newDirectory);
+      } else if (entity is File) {
+        await entity.copy(p.join(destination.path, p.basename(entity.path)));
+      }
+    }
   }
 }
 

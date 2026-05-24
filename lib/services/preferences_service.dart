@@ -372,4 +372,14 @@ class PreferencesService {
   static Future<void> saveEnableFolderHighlight(bool val) async {
     await _prefs?.setBool(_keyEnableFolderHighlight, val);
   }
+
+  static const String _keyEnableDragDrop = 'enable_drag_drop';
+
+  static bool getEnableDragDrop() {
+    return _prefs?.getBool(_keyEnableDragDrop) ?? false;
+  }
+
+  static Future<void> saveEnableDragDrop(bool val) async {
+    await _prefs?.setBool(_keyEnableDragDrop, val);
+  }
 }

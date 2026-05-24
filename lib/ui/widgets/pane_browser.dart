@@ -16,6 +16,7 @@ import 'file_item.dart';
 import 'folder_item.dart';
 import 'file_grid_item.dart';
 import 'folder_grid_item.dart';
+import 'drag_drop_handler.dart';
 import 'restricted_folder_banner.dart';
 import 'selection_context_bottom_sheet.dart';
 import 'file_action_dialogs.dart';
@@ -333,52 +334,64 @@ class _PaneBrowserState extends State<PaneBrowser> {
                                                   final item = tab.currentFiles[index];
                                                   final isSelected = tab.selectedPaths.contains(item.path);
                                                   if (item.isDirectory) {
-                                                    return FolderGridItem(
-                                                      folder: item,
-                                                      isSelected: isSelected,
-                                                      iconScale: provider.iconScale,
-                                                      itemPaddingMultiplier: provider.itemPaddingMultiplier,
-                                                      onTap: () {
-                                                        _activatePane(provider);
-                                                        if (isSelectionMode) {
-                                                          provider.toggleSelection(item.path);
-                                                        } else {
-                                                          _openFolder(provider, item.path);
-                                                        }
-                                                      },
-                                                      onLongPress: () {
-                                                        _activatePane(provider);
-                                                        if (isSelectionMode && isSelected) {
-                                                          SelectionContextBottomSheet.show(context, provider, item.path);
-                                                        } else {
-                                                          provider.toggleSelection(item.path);
-                                                        }
-                                                      },
-                                                      onAction: (action) => _handleAction(context, action, item.path),
+                                                    final itemLongPress = () {
+                                                      _activatePane(provider);
+                                                      if (isSelectionMode && isSelected) {
+                                                        SelectionContextBottomSheet.show(context, provider, item.path);
+                                                      } else {
+                                                        provider.toggleSelection(item.path);
+                                                      }
+                                                    };
+                                                    return DragDropHandler(
+                                                      path: item.path,
+                                                      isDirectory: true,
+                                                      onLongPress: itemLongPress,
+                                                      child: FolderGridItem(
+                                                        folder: item,
+                                                        isSelected: isSelected,
+                                                        iconScale: provider.iconScale,
+                                                        itemPaddingMultiplier: provider.itemPaddingMultiplier,
+                                                        onTap: () {
+                                                          _activatePane(provider);
+                                                          if (isSelectionMode) {
+                                                            provider.toggleSelection(item.path);
+                                                          } else {
+                                                            _openFolder(provider, item.path);
+                                                          }
+                                                        },
+                                                        onLongPress: provider.enableDragDrop ? null : itemLongPress,
+                                                        onAction: (action) => _handleAction(context, action, item.path),
+                                                      ),
                                                     );
                                                   } else {
-                                                    return FileGridItem(
-                                                      file: item,
-                                                      isSelected: isSelected,
-                                                      iconScale: provider.iconScale,
-                                                      itemPaddingMultiplier: provider.itemPaddingMultiplier,
-                                                      onTap: () {
-                                                        _activatePane(provider);
-                                                        if (isSelectionMode) {
-                                                          provider.toggleSelection(item.path);
-                                                        } else {
-                                                          provider.openFile(context, item.path, showOpenWithPopup: true);
-                                                        }
-                                                      },
-                                                      onLongPress: () {
-                                                        _activatePane(provider);
-                                                        if (isSelectionMode && isSelected) {
-                                                          SelectionContextBottomSheet.show(context, provider, item.path);
-                                                        } else {
-                                                          provider.toggleSelection(item.path);
-                                                        }
-                                                      },
-                                                      onAction: (action) => _handleAction(context, action, item.path),
+                                                    final itemLongPress = () {
+                                                      _activatePane(provider);
+                                                      if (isSelectionMode && isSelected) {
+                                                        SelectionContextBottomSheet.show(context, provider, item.path);
+                                                      } else {
+                                                        provider.toggleSelection(item.path);
+                                                      }
+                                                    };
+                                                    return DragDropHandler(
+                                                      path: item.path,
+                                                      isDirectory: false,
+                                                      onLongPress: itemLongPress,
+                                                      child: FileGridItem(
+                                                        file: item,
+                                                        isSelected: isSelected,
+                                                        iconScale: provider.iconScale,
+                                                        itemPaddingMultiplier: provider.itemPaddingMultiplier,
+                                                        onTap: () {
+                                                          _activatePane(provider);
+                                                          if (isSelectionMode) {
+                                                            provider.toggleSelection(item.path);
+                                                          } else {
+                                                            provider.openFile(context, item.path, showOpenWithPopup: true);
+                                                          }
+                                                        },
+                                                        onLongPress: provider.enableDragDrop ? null : itemLongPress,
+                                                        onAction: (action) => _handleAction(context, action, item.path),
+                                                      ),
                                                     );
                                                   }
                                                 },
@@ -435,112 +448,119 @@ class _PaneBrowserState extends State<PaneBrowser> {
     final theme = Theme.of(context);
     final isHighlighted = provider.enableFolderHighlight && provider.highlightedPaths.contains(folder.path);
 
-    return InkWell(
-      onTap: () {
-        _activatePane(provider);
-        if (isSelectionMode) {
-          provider.toggleSelection(folder.path);
-        } else {
-          _openFolder(provider, folder.path);
-        }
-      },
-      onLongPress: () {
-        _activatePane(provider);
-        if (isSelectionMode && isSelected) {
-          SelectionContextBottomSheet.show(context, provider, folder.path);
-        } else {
-          provider.toggleSelection(folder.path);
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? theme.colorScheme.primaryContainer.withOpacity(0.4)
-              : isHighlighted
-                  ? theme.colorScheme.primary.withOpacity(0.05)
-                  : Colors.transparent,
-          border: isHighlighted
-              ? Border(
-                  left: BorderSide(color: theme.colorScheme.primary, width: 3),
-                )
-              : null,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(6),
+    final itemLongPress = () {
+      _activatePane(provider);
+      if (isSelectionMode && isSelected) {
+        SelectionContextBottomSheet.show(context, provider, folder.path);
+      } else {
+        provider.toggleSelection(folder.path);
+      }
+    };
+
+    return DragDropHandler(
+      path: folder.path,
+      isDirectory: true,
+      onLongPress: itemLongPress,
+      child: InkWell(
+        onTap: () {
+          _activatePane(provider);
+          if (isSelectionMode) {
+            provider.toggleSelection(folder.path);
+          } else {
+            _openFolder(provider, folder.path);
+          }
+        },
+        onLongPress: provider.enableDragDrop ? null : itemLongPress,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? theme.colorScheme.primaryContainer.withOpacity(0.4)
+                : isHighlighted
+                    ? theme.colorScheme.primary.withOpacity(0.05)
+                    : Colors.transparent,
+            border: isHighlighted
+                ? Border(
+                    left: BorderSide(color: theme.colorScheme.primary, width: 3),
+                  )
+                : null,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Icon(
+                  isSelected
+                      ? Broken.tick_circle
+                      : FileUtils.getFolderIcon(provider.folderIconOption),
+                  color: isSelected
+                      ? theme.colorScheme.onPrimary
+                      : theme.colorScheme.primary,
+                  size: 18,
+                ),
               ),
-              child: Icon(
-                isSelected
-                    ? Broken.tick_circle
-                    : FileUtils.getFolderIcon(provider.folderIconOption),
-                color: isSelected
-                    ? theme.colorScheme.onPrimary
-                    : theme.colorScheme.primary,
-                size: 18,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    folder.name,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      folder.name,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 1),
-                  Consumer<FileManagerProvider>(
-                    builder: (context, provider, _) {
-                      final activeFilter = provider.filterType;
-                      if (activeFilter != FileFilterType.all) {
-                        return FutureBuilder<int>(
-                          future: provider.getMatchingFileCount(folder.path, activeFilter),
-                          builder: (context, snapshot) {
-                            final count = snapshot.data ?? 0;
-                            final name = provider.getFilterTypeName(activeFilter, count);
-                            return Text(
-                              '$count $name',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.primary,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 10.5,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            );
-                          },
-                        );
-                      } else {
-                        return Text(
-                          FileUtils.formatDate(folder.modified),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.textTheme.bodySmall?.color?.withOpacity(0.55),
-                            fontSize: 10.5,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        );
-                      }
-                    },
-                  ),
-                ],
+                    const SizedBox(height: 1),
+                    Consumer<FileManagerProvider>(
+                      builder: (context, provider, _) {
+                        final activeFilter = provider.filterType;
+                        if (activeFilter != FileFilterType.all) {
+                          return FutureBuilder<int>(
+                            future: provider.getMatchingFileCount(folder.path, activeFilter),
+                            builder: (context, snapshot) {
+                              final count = snapshot.data ?? 0;
+                              final name = provider.getFilterTypeName(activeFilter, count);
+                              return Text(
+                                '$count $name',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 10.5,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              );
+                            },
+                          );
+                        } else {
+                          return Text(
+                            FileUtils.formatDate(folder.modified),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.textTheme.bodySmall?.color?.withOpacity(0.55),
+                              fontSize: 10.5,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ]
+            ]
+          ),
         ),
       ),
     );
@@ -558,86 +578,93 @@ class _PaneBrowserState extends State<PaneBrowser> {
     final iconColor = FileUtils.getColorForFile(file.path, context);
     final isArchive = FileUtils.isArchive(file.path);
 
-    return InkWell(
-      onTap: () {
-        _activatePane(provider);
-        if (isSelectionMode) {
-          provider.toggleSelection(file.path);
-        } else {
-          provider.openFile(context, file.path, showOpenWithPopup: true);
-        }
-      },
-      onLongPress: () {
-        _activatePane(provider);
-        if (isSelectionMode && isSelected) {
-          SelectionContextBottomSheet.show(context, provider, file.path);
-        } else {
-          provider.toggleSelection(file.path);
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? theme.colorScheme.primaryContainer.withOpacity(0.4)
-              : isHighlighted
-                  ? theme.colorScheme.primary.withOpacity(0.05)
-                  : Colors.transparent,
-          border: isHighlighted
-              ? Border(
-                  left: BorderSide(color: theme.colorScheme.primary, width: 3),
-                )
-              : null,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? theme.colorScheme.primary
-                    : iconColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: _CompactMediaThumbnail(
-                  file: file,
-                  isSelected: isSelected,
-                  iconColor: iconColor,
+    final itemLongPress = () {
+      _activatePane(provider);
+      if (isSelectionMode && isSelected) {
+        SelectionContextBottomSheet.show(context, provider, file.path);
+      } else {
+        provider.toggleSelection(file.path);
+      }
+    };
+
+    return DragDropHandler(
+      path: file.path,
+      isDirectory: false,
+      onLongPress: itemLongPress,
+      child: InkWell(
+        onTap: () {
+          _activatePane(provider);
+          if (isSelectionMode) {
+            provider.toggleSelection(file.path);
+          } else {
+            provider.openFile(context, file.path, showOpenWithPopup: true);
+          }
+        },
+        onLongPress: provider.enableDragDrop ? null : itemLongPress,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? theme.colorScheme.primaryContainer.withOpacity(0.4)
+                : isHighlighted
+                    ? theme.colorScheme.primary.withOpacity(0.05)
+                    : Colors.transparent,
+            border: isHighlighted
+                ? Border(
+                    left: BorderSide(color: theme.colorScheme.primary, width: 3),
+                  )
+                : null,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? theme.colorScheme.primary
+                      : iconColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: _CompactMediaThumbnail(
+                    file: file,
+                    isSelected: isSelected,
+                    iconColor: iconColor,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    file.name,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      file.name,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 1),
-                  Text(
-                    "${FileUtils.formatDate(file.modified)}   ${FileUtils.formatBytes(file.size, 1)}",
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.textTheme.bodySmall?.color?.withOpacity(0.55),
-                      fontSize: 10.5,
+                    const SizedBox(height: 1),
+                    Text(
+                      "${FileUtils.formatDate(file.modified)}   ${FileUtils.formatBytes(file.size, 1)}",
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.textTheme.bodySmall?.color?.withOpacity(0.55),
+                        fontSize: 10.5,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ]
+            ]
+          ),
         ),
       ),
     );
