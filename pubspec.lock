@@ -153,6 +153,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.9"
+  dart_lz4:
+    dependency: "direct main"
+    description:
+      name: dart_lz4
+      sha256: e2e9c30fdf83a7a1e63bc6c4d90786cf795c38eefee40b1f4c35ea6480c91db9
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.2.0"
   dartssh2:
     dependency: "direct main"
     description:
@@ -488,6 +496,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.4.16"
+  just_zstd:
+    dependency: "direct main"
+    description:
+      name: just_zstd
+      sha256: b2fa7bd191709f51577912a9807382fc08fa3a6c7147c7b7c9bdb01f54edb2ba
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.0"
   leak_tracker:
     dependency: transitive
     description:

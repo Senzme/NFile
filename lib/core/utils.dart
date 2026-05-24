@@ -28,6 +28,13 @@ class FileUtils {
         lower.endsWith('.tgz') ||
         lower.endsWith('.tar.bz2') ||
         lower.endsWith('.tbz2') ||
+        lower.endsWith('.tar.lz4') ||
+        lower.endsWith('.tlz4') ||
+        lower.endsWith('.lz4') ||
+        lower.endsWith('.tar.zst') ||
+        lower.endsWith('.tzst') ||
+        lower.endsWith('.zst') ||
+        lower.endsWith('.zstd') ||
         lower.endsWith('.gz') ||
         lower.endsWith('.bz2') ||
         lower.endsWith('.7z') ||

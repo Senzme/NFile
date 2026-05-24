@@ -127,6 +127,8 @@ class _CreateArchiveDialogState extends State<CreateArchiveDialog> {
                   DropdownMenuItem(value: 'tar', child: Text('TAR')),
                   DropdownMenuItem(value: 'tar.gz', child: Text('TAR.GZ')),
                   DropdownMenuItem(value: 'tar.bz2', child: Text('TAR.BZ2')),
+                  DropdownMenuItem(value: 'tar.lz4', child: Text('TAR.LZ4')),
+                  DropdownMenuItem(value: 'tar.zst', child: Text('TAR.ZSTD')),
                 ],
                 onChanged: (val) {
                   if (val != null) {
