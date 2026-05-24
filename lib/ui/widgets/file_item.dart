@@ -7,6 +7,7 @@ import '../../core/utils.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import '../../providers/media_provider.dart';
 import '../../providers/file_manager_provider.dart';
+import 'package:on_audio_query/on_audio_query.dart';
 
 class FileItem extends StatelessWidget {
   final FileItemModel file;
@@ -187,13 +188,37 @@ class _MediaThumbnail extends StatefulWidget {
 
 class _MediaThumbnailState extends State<_MediaThumbnail> {
   Uint8List? _videoThumb;
+  Uint8List? _audioThumb;
 
   @override
   void initState() {
     super.initState();
     if (FileUtils.isVideo(widget.file.path)) {
       _loadVideoThumb();
+    } else if (FileUtils.isAudio(widget.file.path)) {
+      _loadAudioThumb();
     }
+  }
+
+  Future<void> _loadAudioThumb() async {
+    if (!mounted) return;
+    try {
+      final mediaProvider = context.read<MediaProvider>();
+      final match = mediaProvider.audios.where((s) => s.data == widget.file.path).firstOrNull;
+      if (match != null) {
+        final artwork = await OnAudioQuery().queryArtwork(
+          match.id,
+          ArtworkType.AUDIO,
+          size: 200,
+          quality: 60,
+        );
+        if (mounted && artwork != null && artwork.isNotEmpty) {
+          setState(() {
+            _audioThumb = artwork;
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadVideoThumb() async {
@@ -242,6 +267,7 @@ class _MediaThumbnailState extends State<_MediaThumbnail> {
     final showMediaPreviews = context.select<FileManagerProvider, bool>((p) => p.showMediaPreviews);
     final isImg = FileUtils.isImage(widget.file.path);
     final isVid = FileUtils.isVideo(widget.file.path);
+    final isAud = FileUtils.isAudio(widget.file.path);
 
     if (widget.isSelected) {
       return Icon(Broken.tick_circle, color: Theme.of(context).colorScheme.onPrimary, size: 28 * widget.iconScale);
@@ -255,7 +281,7 @@ class _MediaThumbnailState extends State<_MediaThumbnail> {
       );
     }
 
-    if (isImg) {
+    if (isImg && widget.file.size > 16) {
       return Image.file(
         File(widget.file.path),
         fit: BoxFit.cover,
@@ -270,12 +296,40 @@ class _MediaThumbnailState extends State<_MediaThumbnail> {
       return Stack(
         fit: StackFit.expand,
         children: [
-          Image.memory(_videoThumb!, fit: BoxFit.cover, width: double.infinity, height: double.infinity),
+          Image.memory(
+            _videoThumb!,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (context, error, stackTrace) => Icon(Broken.video, color: widget.iconColor, size: 28 * widget.iconScale),
+          ),
           Center(
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), shape: BoxShape.circle),
               child: Icon(Broken.video, color: Colors.white, size: 16 * widget.iconScale),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (isAud && _audioThumb != null) {
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.memory(
+            _audioThumb!,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (context, error, stackTrace) => Icon(Broken.music, color: widget.iconColor, size: 28 * widget.iconScale),
+          ),
+          Center(
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), shape: BoxShape.circle),
+              child: Icon(Broken.music, color: Colors.white, size: 16 * widget.iconScale),
             ),
           ),
         ],

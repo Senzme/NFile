@@ -53,12 +53,11 @@ class _AllRecentFilesScreenState extends State<AllRecentFilesScreen> {
     final seen = <String>{};
 
     final rootDir = Directory('/storage/emulated/0');
-    if (rootDir.existsSync()) {
+    if (await rootDir.exists()) {
       try {
         final List<String> pathsToScan = [];
         
-        // Find all non-hidden directories under root storage to scan their contents
-        final rootEntities = rootDir.listSync(recursive: false);
+        final rootEntities = await rootDir.list(recursive: false).toList();
         for (final entity in rootEntities) {
           if (entity is Directory) {
             final name = p.basename(entity.path);
@@ -68,18 +67,17 @@ class _AllRecentFilesScreenState extends State<AllRecentFilesScreen> {
           }
         }
 
-        // Add additional standard paths
         pathsToScan.addAll([
           '/storage/emulated/0/Android/media',
           '/storage/emulated/0/Download',
           '/storage/emulated/0/Documents',
         ]);
 
-        for (final path in pathsToScan) {
+        await Future.wait(pathsToScan.map((path) async {
           final dir = Directory(path);
-          if (dir.existsSync()) {
+          if (await dir.exists()) {
             try {
-              final entities = dir.listSync(recursive: false);
+              final entities = await dir.list(recursive: false).toList();
               for (final entity in entities) {
                 if (!seen.contains(entity.path)) {
                   seen.add(entity.path);
@@ -87,7 +85,7 @@ class _AllRecentFilesScreenState extends State<AllRecentFilesScreen> {
                 }
                 if (entity is Directory && !p.basename(entity.path).startsWith('.')) {
                   try {
-                    final subEntities = entity.listSync(recursive: false);
+                    final subEntities = await entity.list(recursive: false).toList();
                     for (final sub in subEntities) {
                       if (!seen.contains(sub.path)) {
                         seen.add(sub.path);
@@ -99,7 +97,7 @@ class _AllRecentFilesScreenState extends State<AllRecentFilesScreen> {
               }
             } catch (_) {}
           }
-        }
+        }));
       } catch (_) {}
     }
 
@@ -125,12 +123,11 @@ class _AllRecentFilesScreenState extends State<AllRecentFilesScreen> {
         seen.add(path);
         try {
           final f = File(path);
-          if (f.existsSync()) list.add(f);
+          if (await f.exists()) list.add(f);
         } catch (_) {}
       }
     }
 
-    // Filter out directories that contain other items present in the list
     final filteredList = <FileSystemEntity>[];
     for (final entity in list) {
       if (entity is Directory) {
@@ -149,15 +146,15 @@ class _AllRecentFilesScreenState extends State<AllRecentFilesScreen> {
     }
 
     final items = <FileItemModel>[];
-    for (final f in filteredList) {
+    await Future.wait(filteredList.map((f) async {
       try {
         final isDir = f is Directory;
-        if (isDir) continue;
+        if (isDir) return;
 
         final name = p.basename(f.path);
-        if (name.startsWith('.')) continue;
+        if (name.startsWith('.')) return;
 
-        final stat = f.statSync();
+        final stat = await f.stat();
         items.add(FileItemModel(
           entity: f,
           name: name,
@@ -167,7 +164,7 @@ class _AllRecentFilesScreenState extends State<AllRecentFilesScreen> {
           modified: stat.modified,
         ));
       } catch (_) {}
-    }
+    }));
 
     items.sort((a, b) => b.modified.compareTo(a.modified));
     return items;

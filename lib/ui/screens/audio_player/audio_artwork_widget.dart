@@ -204,6 +204,7 @@ class _AudioArtworkWidgetState extends State<AudioArtworkWidget>
                             width: maxSize,
                             height: maxSize,
                             gaplessPlayback: true,
+                            errorBuilder: (context, error, stackTrace) => _defaultArtworkIcon(maxSize),
                           )
                         : _defaultArtworkIcon(maxSize),
               ),

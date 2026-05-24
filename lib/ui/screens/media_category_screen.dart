@@ -1767,6 +1767,10 @@ class _CachedImageTileState extends State<_CachedImageTile> {
                   width: double.infinity,
                   height: double.infinity,
                   gaplessPlayback: true,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    color: Colors.grey.withOpacity(0.1),
+                    child: const Center(child: Icon(Broken.image, size: 24, color: Colors.grey)),
+                  ),
                 )
               : const _ThumbnailShimmerPlaceholder(key: ValueKey('shimmer')),
         ),
@@ -1852,6 +1856,10 @@ class _CachedVideoTileState extends State<_CachedVideoTile> {
                       width: double.infinity,
                       height: double.infinity,
                       gaplessPlayback: true,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        color: Colors.grey.withOpacity(0.1),
+                        child: const Center(child: Icon(Broken.video, size: 24, color: Colors.grey)),
+                      ),
                     )
                   : const _ThumbnailShimmerPlaceholder(key: ValueKey('shimmer')),
             ),

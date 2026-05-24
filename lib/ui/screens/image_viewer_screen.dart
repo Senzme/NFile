@@ -6,6 +6,7 @@ import 'package:photo_view/photo_view_gallery.dart';
 import 'package:mime/mime.dart';
 import 'package:photo_manager/photo_manager.dart';
 import '../../providers/media_provider.dart';
+import '../../core/icon_fonts/broken_icons.dart';
 
 final Uint8List _kTransparentImage = Uint8List.fromList([
   0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
@@ -213,7 +214,9 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
                   imgFile = File(path);
                 }
 
-                final ImageProvider provider = (imgFile != null && imgFile.existsSync())
+                final bool isValidFile = imgFile != null && imgFile.existsSync() && imgFile.lengthSync() > 16;
+
+                final ImageProvider provider = isValidFile
                     ? FileImage(imgFile) as ImageProvider
                     : (thumbData != null ? MemoryImage(thumbData) : MemoryImage(_kTransparentImage));
 
@@ -223,6 +226,21 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
                   minScale: PhotoViewComputedScale.contained,
                   maxScale: PhotoViewComputedScale.covered * 4,
                   heroAttributes: PhotoViewHeroAttributes(tag: tagKey),
+                  errorBuilder: (context, error, stackTrace) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Broken.image, size: 64, color: Colors.white.withOpacity(0.5)),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Failed to load image',
+                            style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 16, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                   onTapUp: (context, details, controllerValue) {
                     setState(() {
                       _showUI = !_showUI;

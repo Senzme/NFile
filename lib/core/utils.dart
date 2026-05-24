@@ -71,6 +71,13 @@ class FileUtils {
     return lower.endsWith('.mp4') || lower.endsWith('.ts') || lower.endsWith('.mts') || lower.endsWith('.mkv') || lower.endsWith('.webm') || lower.endsWith('.avi') || lower.endsWith('.mov') || lower.endsWith('.flv');
   }
 
+  static bool isAudio(String path) {
+    final mimeType = lookupMimeType(path);
+    if (mimeType != null && mimeType.startsWith('audio/')) return true;
+    final lower = path.toLowerCase();
+    return lower.endsWith('.mp3') || lower.endsWith('.wav') || lower.endsWith('.m4a') || lower.endsWith('.ogg') || lower.endsWith('.flac') || lower.endsWith('.aac') || lower.endsWith('.wma') || lower.endsWith('.opus');
+  }
+
   static IconData getIconForFile(String path) {
     if (isArchive(path)) return Broken.archive;
     if (isTextOrCode(path)) return Broken.document_code;

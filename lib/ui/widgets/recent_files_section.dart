@@ -9,20 +9,61 @@ import '../../providers/media_provider.dart';
 import '../../models/file_item_model.dart';
 import '../screens/all_recent_files_screen.dart';
 
-class RecentFilesSection extends StatelessWidget {
+class RecentFilesSection extends StatefulWidget {
   const RecentFilesSection({super.key});
 
-  List<FileItemModel> _scanRecentFilesSync(BuildContext context) {
+  @override
+  State<RecentFilesSection> createState() => _RecentFilesSectionState();
+}
+
+class _RecentFilesSectionState extends State<RecentFilesSection> {
+  List<FileItemModel> _recentFiles = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadRecentFiles();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Watch MediaProvider & FileManagerProvider to trigger automated rebuild on any file operation
+    context.watch<MediaProvider>();
+    _loadRecentFiles();
+  }
+
+  Future<void> _loadRecentFiles() async {
+    try {
+      final items = await _scanRecentFilesAsync(context);
+      if (mounted) {
+        setState(() {
+          _recentFiles = items;
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<List<FileItemModel>> _scanRecentFilesAsync(BuildContext context) async {
     final list = <FileSystemEntity>[];
     final seen = <String>{};
 
     final rootDir = Directory('/storage/emulated/0');
-    if (rootDir.existsSync()) {
+    if (await rootDir.exists()) {
       try {
         final List<String> pathsToScan = [];
         
-        // Find all non-hidden directories under root storage to scan their contents
-        final rootEntities = rootDir.listSync(recursive: false);
+        final rootEntities = await rootDir.list(recursive: false).toList();
         for (final entity in rootEntities) {
           if (entity is Directory) {
             final name = p.basename(entity.path);
@@ -32,28 +73,25 @@ class RecentFilesSection extends StatelessWidget {
           }
         }
 
-        // Add specific key folders
         pathsToScan.addAll([
           '/storage/emulated/0/Android/media',
           '/storage/emulated/0/Download',
           '/storage/emulated/0/Documents',
         ]);
 
-        // Flat synchronous list of root-level directories to catch all copy/pastes and creations
-        for (final path in pathsToScan) {
+        await Future.wait(pathsToScan.map((path) async {
           final dir = Directory(path);
-          if (dir.existsSync()) {
+          if (await dir.exists()) {
             try {
-              final entities = dir.listSync(recursive: false);
+              final entities = await dir.list(recursive: false).toList();
               for (final entity in entities) {
                 if (!seen.contains(entity.path)) {
                   seen.add(entity.path);
                   list.add(entity);
                 }
                 if (entity is Directory && !p.basename(entity.path).startsWith('.')) {
-                  // Scan 1 level deep inside subfolders to catch subfolder creations/copies
                   try {
-                    final subEntities = entity.listSync(recursive: false);
+                    final subEntities = await entity.list(recursive: false).toList();
                     for (final sub in subEntities) {
                       if (!seen.contains(sub.path)) {
                         seen.add(sub.path);
@@ -65,7 +103,7 @@ class RecentFilesSection extends StatelessWidget {
               }
             } catch (_) {}
           }
-        }
+        }));
       } catch (_) {}
     }
 
@@ -91,12 +129,11 @@ class RecentFilesSection extends StatelessWidget {
         seen.add(path);
         try {
           final f = File(path);
-          if (f.existsSync()) list.add(f);
+          if (await f.exists()) list.add(f);
         } catch (_) {}
       }
     }
 
-    // Filter out directories that contain other items present in the list
     final filteredList = <FileSystemEntity>[];
     for (final entity in list) {
       if (entity is Directory) {
@@ -115,15 +152,15 @@ class RecentFilesSection extends StatelessWidget {
     }
 
     final items = <FileItemModel>[];
-    for (final f in filteredList) {
+    await Future.wait(filteredList.map((f) async {
       try {
         final isDir = f is Directory;
-        if (isDir) continue;
+        if (isDir) return;
 
         final name = p.basename(f.path);
-        if (name.startsWith('.')) continue;
+        if (name.startsWith('.')) return;
 
-        final stat = f.statSync();
+        final stat = await f.stat();
         items.add(FileItemModel(
           entity: f,
           name: name,
@@ -133,7 +170,7 @@ class RecentFilesSection extends StatelessWidget {
           modified: stat.modified,
         ));
       } catch (_) {}
-    }
+    }));
 
     items.sort((a, b) => b.modified.compareTo(a.modified));
     return items;
@@ -154,16 +191,17 @@ class RecentFilesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading || _recentFiles.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final provider = context.watch<FileManagerProvider>();
-    
-    // Watch MediaProvider & FileManagerProvider to trigger automated rebuild on any file operation (paste/delete/copy/rename)
-    context.watch<MediaProvider>();
 
-    final recentFiles = _scanRecentFilesSync(context).where((e) => !e.isDirectory).take(12).toList();
+    final displayFiles = _recentFiles.where((e) => !e.isDirectory).take(12).toList();
 
-    if (recentFiles.isEmpty) return const SizedBox.shrink();
+    if (displayFiles.isEmpty) return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16.0),
@@ -209,9 +247,9 @@ class RecentFilesSection extends StatelessWidget {
               physics: const BouncingScrollPhysics(),
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              itemCount: recentFiles.length,
+              itemCount: displayFiles.length,
               itemBuilder: (context, index) {
-                final file = recentFiles[index];
+                final file = displayFiles[index];
                 final isFolder = file.isDirectory;
                 final iconColor = isFolder ? theme.colorScheme.primary : FileUtils.getColorForFile(file.name, context);
                 final iconData = isFolder 

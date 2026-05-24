@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:on_audio_query/on_audio_query.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import '../services/preferences_service.dart';
@@ -354,11 +355,16 @@ class MediaProvider extends ChangeNotifier {
       }
     } catch (_) {}
 
+    bool isStorageGranted = false;
+    try {
+      isStorageGranted = await Permission.storage.isGranted || await Permission.manageExternalStorage.isGranted;
+    } catch (_) {}
+
     final futures = <Future<void>>[];
-    if (ps.isAuth) {
+    if (ps.isAuth || isStorageGranted) {
       futures.add(_loadImagesAndVideos());
     }
-    if (hasAudioPermission) {
+    if (hasAudioPermission || isStorageGranted) {
       futures.add(_loadAudios());
     }
     futures.add(_loadDocuments());
