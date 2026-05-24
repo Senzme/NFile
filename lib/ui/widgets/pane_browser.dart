@@ -8,6 +8,7 @@ import '../../providers/file_manager_provider.dart';
 import '../../providers/media_provider.dart';
 import '../../models/file_item_model.dart';
 import '../../models/folder_tab_model.dart';
+import '../../models/file_filter_type.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import '../../core/utils.dart';
@@ -251,6 +252,8 @@ class _PaneBrowserState extends State<PaneBrowser> {
                       ),
                     ),
                   ),
+                  if (provider.filterType != FileFilterType.all)
+                    _buildActiveFilterBanner(context, provider),
                   
                   // --- Pane Body ---
                   Expanded(
@@ -610,6 +613,84 @@ class _PaneBrowserState extends State<PaneBrowser> {
               ),
             ),
           ]
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActiveFilterBanner(BuildContext context, FileManagerProvider provider) {
+    final theme = Theme.of(context);
+    final filter = provider.filterType;
+    String label = '';
+    IconData icon = Broken.category;
+    Color color = theme.colorScheme.primary;
+
+    switch (filter) {
+      case FileFilterType.all:
+        break;
+      case FileFilterType.documents:
+        label = 'Documents only';
+        icon = Broken.document;
+        color = Colors.blueAccent;
+        break;
+      case FileFilterType.images:
+        label = 'Images only';
+        icon = Broken.image;
+        color = Colors.purpleAccent;
+        break;
+      case FileFilterType.audio:
+        label = 'Audio only';
+        icon = Broken.music;
+        color = Colors.greenAccent;
+        break;
+      case FileFilterType.videos:
+        label = 'Videos only';
+        icon = Broken.video;
+        color = Colors.redAccent;
+        break;
+      case FileFilterType.archives:
+        label = 'Archives only';
+        icon = Broken.archive;
+        color = Colors.brown;
+        break;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withOpacity(0.25), width: 1.2),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 16),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '$label Active',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: theme.colorScheme.onSurface.withOpacity(0.9),
+                ),
+              ),
+            ),
+            InkWell(
+              onTap: () => provider.setFilterType(FileFilterType.all),
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Broken.close_square, color: color, size: 13),
+              ),
+            ),
+          ],
         ),
       ),
     );

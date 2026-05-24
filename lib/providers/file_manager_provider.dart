@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import '../models/file_item_model.dart';
 import '../models/folder_tab_model.dart';
+import '../models/file_filter_type.dart';
 import 'package:mime/mime.dart';
 import 'package:open_filex/open_filex.dart';
 import '../ui/screens/image_viewer_screen.dart';
@@ -146,6 +147,35 @@ class FileManagerProvider extends ChangeNotifier {
       activeTab.currentFiles = [...folders, ...files];
     }
     notifyListeners();
+  }
+
+  FileFilterType _filterType = FileFilterType.all;
+  FileFilterType get filterType => _filterType;
+
+  void setFilterType(FileFilterType type) {
+    if (_filterType == type) return;
+    _filterType = type;
+    loadDirectory(currentPath, showLoading: false);
+    notifyListeners();
+  }
+
+  bool _matchesFilter(String path) {
+    switch (_filterType) {
+      case FileFilterType.all:
+        return true;
+      case FileFilterType.documents:
+        final lower = path.toLowerCase();
+        const docExts = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.csv', '.odt', '.ods', '.odp', '.rtf', '.epub'];
+        return docExts.any((ext) => lower.endsWith(ext)) || FileUtils.isTextOrCode(path);
+      case FileFilterType.images:
+        return FileUtils.isImage(path);
+      case FileFilterType.audio:
+        return FileUtils.isAudio(path);
+      case FileFilterType.videos:
+        return FileUtils.isVideo(path);
+      case FileFilterType.archives:
+        return FileUtils.isArchive(path);
+    }
   }
 
   bool _isGridView = false;
@@ -762,9 +792,14 @@ class FileManagerProvider extends ChangeNotifier {
         final folders = items.where((e) => e.isDirectory).toList();
         final files = items.where((e) => !e.isDirectory).toList();
 
-        _sortList(folders);
-        _sortList(files);
-        activeTab.currentFiles = [...folders, ...files];
+        final filteredFiles = _filterType == FileFilterType.all
+            ? files
+            : files.where((e) => _matchesFilter(e.path)).toList();
+        final filteredFolders = _filterType == FileFilterType.all ? folders : <FileItemModel>[];
+
+        _sortList(filteredFolders);
+        _sortList(filteredFiles);
+        activeTab.currentFiles = [...filteredFolders, ...filteredFiles];
       } catch (e) {
         debugPrint('Error loading restricted directory: $e');
         activeTab.currentFiles = [];
@@ -800,10 +835,15 @@ class FileManagerProvider extends ChangeNotifier {
           }
         }
 
-        _sortList(folders);
-        _sortList(files);
+        final filteredFiles = _filterType == FileFilterType.all
+            ? files
+            : files.where((e) => _matchesFilter(e.path)).toList();
+        final filteredFolders = _filterType == FileFilterType.all ? folders : <FileItemModel>[];
 
-        activeTab.currentFiles = [...folders, ...files];
+        _sortList(filteredFolders);
+        _sortList(filteredFiles);
+
+        activeTab.currentFiles = [...filteredFolders, ...filteredFiles];
       }
     } catch (e) {
       debugPrint('Error loading directory: $e. Fallback to restricted mode.');
@@ -834,9 +874,14 @@ class FileManagerProvider extends ChangeNotifier {
         final folders = items.where((e) => e.isDirectory).toList();
         final files = items.where((e) => !e.isDirectory).toList();
 
-        _sortList(folders);
-        _sortList(files);
-        activeTab.currentFiles = [...folders, ...files];
+        final filteredFiles = _filterType == FileFilterType.all
+            ? files
+            : files.where((e) => _matchesFilter(e.path)).toList();
+        final filteredFolders = _filterType == FileFilterType.all ? folders : <FileItemModel>[];
+
+        _sortList(filteredFolders);
+        _sortList(filteredFiles);
+        activeTab.currentFiles = [...filteredFolders, ...filteredFiles];
       } catch (err) {
         debugPrint('Error loading restricted directory fallback: $err');
         activeTab.currentFiles = [];

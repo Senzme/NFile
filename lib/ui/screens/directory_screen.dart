@@ -3,6 +3,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:path/path.dart' as p;
 import '../../providers/file_manager_provider.dart';
+import '../../models/file_filter_type.dart';
+import '../widgets/file_filter_bottom_sheet.dart';
 import '../widgets/file_item.dart';
 import '../widgets/folder_item.dart';
 import '../widgets/file_grid_item.dart';
@@ -442,7 +444,12 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
       backgroundColor: isSelected ? theme.colorScheme.primary : theme.colorScheme.surfaceVariant,
       onPressed: () {
         provider.setSortType(sortType);
-        setStateModal(() {});
+        if (sortType == FileSortType.type) {
+          Navigator.pop(context); // Close the sort sheet
+          FileFilterBottomSheet.show(context); // Open filter sheet
+        } else {
+          setStateModal(() {});
+        }
       },
     );
   }
@@ -884,6 +891,8 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
             body: Column(
               children: [
                 if (provider.showAddressBar) const NFileAddressBar(),
+                if (provider.filterType != FileFilterType.all)
+                  _buildActiveFilterBanner(context, provider),
                 if (provider.isLoading && provider.currentFiles.isNotEmpty)
                   LinearProgressIndicator(
                     minHeight: 2.5,
@@ -1213,6 +1222,84 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildActiveFilterBanner(BuildContext context, FileManagerProvider provider) {
+    final theme = Theme.of(context);
+    final filter = provider.filterType;
+    String label = '';
+    IconData icon = Broken.category;
+    Color color = theme.colorScheme.primary;
+
+    switch (filter) {
+      case FileFilterType.all:
+        break;
+      case FileFilterType.documents:
+        label = 'Documents only';
+        icon = Broken.document;
+        color = Colors.blueAccent;
+        break;
+      case FileFilterType.images:
+        label = 'Images only';
+        icon = Broken.image;
+        color = Colors.purpleAccent;
+        break;
+      case FileFilterType.audio:
+        label = 'Audio only';
+        icon = Broken.music;
+        color = Colors.greenAccent;
+        break;
+      case FileFilterType.videos:
+        label = 'Videos only';
+        icon = Broken.video;
+        color = Colors.redAccent;
+        break;
+      case FileFilterType.archives:
+        label = 'Archives only';
+        icon = Broken.archive;
+        color = Colors.brown;
+        break;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.25), width: 1.5),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '$label Filter Active',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13.5,
+                  color: theme.colorScheme.onSurface.withOpacity(0.9),
+                ),
+              ),
+            ),
+            InkWell(
+              onTap: () => provider.setFilterType(FileFilterType.all),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Broken.close_square, color: color, size: 16),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
