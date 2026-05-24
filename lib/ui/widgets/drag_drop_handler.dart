@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:path/path.dart' as p;
@@ -28,6 +29,69 @@ class DragDropHandler extends StatefulWidget {
 class _DragDropHandlerState extends State<DragDropHandler> {
   bool _isDragOver = false;
   bool _hasMoved = false;
+  Timer? _hoverTimer;
+  Timer? _scrollTimer;
+  Offset? _currentDragPosition;
+
+  @override
+  void dispose() {
+    _hoverTimer?.cancel();
+    _scrollTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startScrollTimerIfNeeded() {
+    if (_scrollTimer != null) return;
+    
+    _scrollTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+      if (_currentDragPosition == null || !mounted) {
+        timer.cancel();
+        _scrollTimer = null;
+        return;
+      }
+      
+      final scrollable = Scrollable.maybeOf(context);
+      if (scrollable == null) {
+        timer.cancel();
+        _scrollTimer = null;
+        return;
+      }
+      
+      final renderBox = scrollable.context.findRenderObject() as RenderBox?;
+      if (renderBox == null) return;
+      
+      final scrollableHeight = renderBox.size.height;
+      final localY = renderBox.globalToLocal(_currentDragPosition!).dy;
+      
+      const double edgeThreshold = 70.0;
+      const double baseScrollSpeed = 16.0;
+      
+      if (localY < edgeThreshold && localY > 0) {
+        final fraction = (edgeThreshold - localY) / edgeThreshold;
+        final speed = baseScrollSpeed * fraction.clamp(0.2, 1.0);
+        final target = (scrollable.position.pixels - speed).clamp(
+          scrollable.position.minScrollExtent,
+          scrollable.position.maxScrollExtent,
+        );
+        if (target != scrollable.position.pixels) {
+          scrollable.position.jumpTo(target);
+        }
+      } else if (localY > scrollableHeight - edgeThreshold && localY < scrollableHeight) {
+        final fraction = (localY - (scrollableHeight - edgeThreshold)) / edgeThreshold;
+        final speed = baseScrollSpeed * fraction.clamp(0.2, 1.0);
+        final target = (scrollable.position.pixels + speed).clamp(
+          scrollable.position.minScrollExtent,
+          scrollable.position.maxScrollExtent,
+        );
+        if (target != scrollable.position.pixels) {
+          scrollable.position.jumpTo(target);
+        }
+      } else {
+        timer.cancel();
+        _scrollTimer = null;
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -93,11 +157,21 @@ class _DragDropHandlerState extends State<DragDropHandler> {
         if (details.delta.dx.abs() > 1.0 || details.delta.dy.abs() > 1.0) {
           _hasMoved = true;
         }
+        _currentDragPosition = details.globalPosition;
+        _startScrollTimerIfNeeded();
       },
       onDragEnd: (details) {
+        _scrollTimer?.cancel();
+        _scrollTimer = null;
+        _currentDragPosition = null;
         if (!_hasMoved && widget.onLongPress != null) {
           widget.onLongPress!();
         }
+      },
+      onDraggableCanceled: (velocity, offset) {
+        _scrollTimer?.cancel();
+        _scrollTimer = null;
+        _currentDragPosition = null;
       },
       childWhenDragging: Opacity(
         opacity: 0.35,
@@ -110,24 +184,33 @@ class _DragDropHandlerState extends State<DragDropHandler> {
     if (widget.isDirectory) {
       return DragTarget<DragPayload>(
         onWillAccept: (data) {
-          // Cannot drop an item onto itself, or move a folder inside its own subdirectory hierarchy
           if (data == null || data.path == widget.path) return false;
           if (widget.path.startsWith(data.path + p.separator)) return false;
           
           setState(() {
             _isDragOver = true;
           });
+
+          _hoverTimer?.cancel();
+          _hoverTimer = Timer(const Duration(milliseconds: 900), () {
+            if (mounted) {
+              provider.loadDirectory(widget.path);
+            }
+          });
+
           return true;
         },
         onLeave: (data) {
           setState(() {
             _isDragOver = false;
           });
+          _hoverTimer?.cancel();
         },
         onAccept: (data) {
           setState(() {
             _isDragOver = false;
           });
+          _hoverTimer?.cancel();
           provider.moveItem(context, data.path, widget.path);
         },
         builder: (context, candidateData, rejectedData) {
