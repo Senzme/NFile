@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:on_audio_query/on_audio_query.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/media_provider.dart';
 
 class AudioArtworkCache {
   static final Map<int, Uint8List?> _cache = {};
@@ -32,6 +34,7 @@ class AudioArtworkCache {
 
 class AudioArtworkWidget extends StatefulWidget {
   final int audioId;
+  final String? audioPath;
   final Color accentColor;
   final bool isPlaying;
   final VoidCallback? onDoubleTap;
@@ -40,6 +43,7 @@ class AudioArtworkWidget extends StatefulWidget {
   const AudioArtworkWidget({
     super.key,
     required this.audioId,
+    this.audioPath,
     required this.accentColor,
     required this.isPlaying,
     this.onDoubleTap,
@@ -74,13 +78,45 @@ class _AudioArtworkWidgetState extends State<AudioArtworkWidget>
   @override
   void didUpdateWidget(covariant AudioArtworkWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.audioId != widget.audioId) {
+    if (oldWidget.audioId != widget.audioId || oldWidget.audioPath != widget.audioPath) {
       _loadArtwork();
     }
   }
 
   Future<void> _loadArtwork() async {
-    if (widget.audioId == 0) {
+    int resolvedId = widget.audioId;
+
+    if (widget.audioPath != null) {
+      try {
+        final mediaProvider = Provider.of<MediaProvider>(context, listen: false);
+        final match = mediaProvider.audios.cast<SongModel?>().firstWhere(
+          (s) => s?.data == widget.audioPath,
+          orElse: () => null,
+        );
+        if (match != null) {
+          resolvedId = match.id;
+        }
+      } catch (_) {}
+
+      if (resolvedId == widget.audioId && (resolvedId <= 100 || resolvedId == 0)) {
+        try {
+          final songs = await OnAudioQuery().querySongs(
+            sortType: null,
+            orderType: OrderType.ASC_OR_SMALLER,
+            uriType: UriType.EXTERNAL,
+            ignoreCase: true,
+          );
+          for (final s in songs) {
+            if (s.data == widget.audioPath) {
+              resolvedId = s.id;
+              break;
+            }
+          }
+        } catch (_) {}
+      }
+    }
+
+    if (resolvedId == 0) {
       if (mounted) {
         setState(() {
           _artworkBytes = null;
@@ -90,7 +126,7 @@ class _AudioArtworkWidgetState extends State<AudioArtworkWidget>
       return;
     }
 
-    final cached = AudioArtworkCache._cache[widget.audioId];
+    final cached = AudioArtworkCache._cache[resolvedId];
     if (cached != null) {
       if (mounted) {
         setState(() {
@@ -102,7 +138,7 @@ class _AudioArtworkWidgetState extends State<AudioArtworkWidget>
     }
 
     setState(() => _isLoading = true);
-    final data = await AudioArtworkCache.getArtwork(widget.audioId);
+    final data = await AudioArtworkCache.getArtwork(resolvedId);
     if (mounted) {
       setState(() {
         _artworkBytes = data;

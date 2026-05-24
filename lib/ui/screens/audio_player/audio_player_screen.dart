@@ -486,6 +486,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
                         // Large Premium Rounded Rectangular Artwork matching Screenshot 2
                         AudioArtworkWidget(
                           audioId: _currentId,
+                          audioPath: _currentPath,
                           accentColor: accent,
                           isPlaying: isPlaying,
                           onDoubleTap: _showLyricsDialog,
