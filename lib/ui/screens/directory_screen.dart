@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:path/path.dart' as p;
 import '../../providers/file_manager_provider.dart';
 import '../../models/file_filter_type.dart';
+import '../../models/drag_payload.dart';
 import '../widgets/file_filter_bottom_sheet.dart';
 import '../widgets/file_item.dart';
 import '../widgets/folder_item.dart';
@@ -960,7 +961,20 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                     valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
                   ),
                 Expanded(
-                  child: GestureDetector(
+                  child: DragTarget<DragPayload>(
+                    onWillAccept: (data) {
+                      if (data == null) return false;
+                      final sourceParent = p.dirname(data.path);
+                      if (sourceParent == provider.currentPath) return false;
+                      if (provider.currentPath == data.path) return false;
+                      if (provider.currentPath.startsWith(data.path + p.separator)) return false;
+                      return true;
+                    },
+                    onAccept: (data) {
+                      provider.moveItem(context, data.path, provider.currentPath);
+                    },
+                    builder: (context, candidateData, rejectedData) {
+                      return GestureDetector(
                     onHorizontalDragEnd: (details) {
                       if (!provider.enableMultipleTabs || provider.enableSplitScreen || isSelectionMode) {
                         return;
@@ -1215,10 +1229,12 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                         ),
                     ],
                   ),
-                ),
-                ),
-              ],
+                );
+              },
             ),
+          ),
+        ],
+      ),
             floatingActionButtonLocation: isSelectionMode
                 ? null
                 : provider.showBottomActionBar

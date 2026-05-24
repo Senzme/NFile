@@ -8,6 +8,7 @@ import '../../providers/file_manager_provider.dart';
 import '../../providers/media_provider.dart';
 import '../../models/file_item_model.dart';
 import '../../models/folder_tab_model.dart';
+import '../../models/drag_payload.dart';
 import '../../models/file_filter_type.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import 'package:on_audio_query/on_audio_query.dart';
@@ -258,175 +259,191 @@ class _PaneBrowserState extends State<PaneBrowser> {
                   
                   // --- Pane Body ---
                   Expanded(
-                    child: (tab.isLoading && tab.currentFiles.isEmpty)
-                        ? const Center(child: CircularProgressIndicator())
-                        : tab.needsPermission
-                            ? RestrictedFolderBanner(
-                                onEnableRoot: () {
-                                  _activatePane(provider);
-                                  provider.enableRootMode();
-                                },
-                                onEnableShizuku: () {
-                                  _activatePane(provider);
-                                  provider.enableShizukuMode();
-                                },
-                                isRootAvailable: tab.isRootAvailable,
-                              )
-                            : CustomScrollView(
-                                  controller: _scrollController,
-                                  physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                                  slivers: [
-                                  CupertinoSliverRefreshControl(
-                                    onRefresh: () => provider.loadDirectoryForTab(widget.tabIndex, tab.currentPath, showLoading: false),
-                                  ),
-                                  if (tab.currentFiles.isEmpty)
-                                    SliverFillRemaining(
-                                      hasScrollBody: false,
-                                      child: Center(
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-                                          child: Column(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              Container(
-                                                padding: const EdgeInsets.all(16),
-                                                decoration: BoxDecoration(
-                                                  color: theme.colorScheme.primary.withOpacity(0.08),
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                child: Icon(
-                                                  Broken.folder_open,
-                                                  size: 48,
-                                                  color: theme.colorScheme.primary.withOpacity(0.6),
-                                                ),
-                                              ),
-                                              const SizedBox(height: 16),
-                                              Text(
-                                                'Empty Folder',
-                                                style: theme.textTheme.titleMedium?.copyWith(
-                                                  fontWeight: FontWeight.bold,
-                                                  color: theme.colorScheme.onSurface,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
+                    child: DragTarget<DragPayload>(
+                      onWillAccept: (data) {
+                        if (data == null) return false;
+                        final sourceParent = p.dirname(data.path);
+                        if (sourceParent == tab.currentPath) return false;
+                        if (tab.currentPath == data.path) return false;
+                        if (tab.currentPath.startsWith(data.path + p.separator)) return false;
+                        return true;
+                      },
+                      onAccept: (data) {
+                        _activatePane(provider);
+                        provider.moveItem(context, data.path, tab.currentPath);
+                      },
+                      builder: (context, candidateData, rejectedData) {
+                        return (tab.isLoading && tab.currentFiles.isEmpty)
+                            ? const Center(child: CircularProgressIndicator())
+                            : tab.needsPermission
+                                ? RestrictedFolderBanner(
+                                    onEnableRoot: () {
+                                      _activatePane(provider);
+                                      provider.enableRootMode();
+                                    },
+                                    onEnableShizuku: () {
+                                      _activatePane(provider);
+                                      provider.enableShizukuMode();
+                                    },
+                                    isRootAvailable: tab.isRootAvailable,
+                                  )
+                                : CustomScrollView(
+                                      controller: _scrollController,
+                                      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                                      slivers: [
+                                      CupertinoSliverRefreshControl(
+                                        onRefresh: () => provider.loadDirectoryForTab(widget.tabIndex, tab.currentPath, showLoading: false),
                                       ),
-                                    )
-                                  else
-                                    SliverPadding(
-                                      padding: EdgeInsets.only(
-                                        bottom: 80,
-                                        left: provider.isGridView ? 8 : 0,
-                                        right: provider.isGridView ? 8 : 0,
-                                        top: 8,
-                                      ),
-                                      sliver: provider.isGridView
-                                          ? SliverGrid(
-                                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                                crossAxisCount: (MediaQuery.of(context).size.width / (2 * 110 * provider.iconScale)).floor().clamp(1, 3),
-                                                mainAxisSpacing: (8 * provider.itemPaddingMultiplier).clamp(4.0, 16.0),
-                                                crossAxisSpacing: (8 * provider.itemPaddingMultiplier).clamp(4.0, 16.0),
-                                                childAspectRatio: 0.75,
-                                              ),
-                                              delegate: SliverChildBuilderDelegate(
-                                                (context, index) {
-                                                  final item = tab.currentFiles[index];
-                                                  final isSelected = tab.selectedPaths.contains(item.path);
-                                                  if (item.isDirectory) {
-                                                    final itemLongPress = () {
-                                                      _activatePane(provider);
-                                                      if (isSelectionMode && isSelected) {
-                                                        SelectionContextBottomSheet.show(context, provider, item.path);
-                                                      } else {
-                                                        provider.toggleSelection(item.path);
-                                                      }
-                                                    };
-                                                    return DragDropHandler(
-                                                      path: item.path,
-                                                      isDirectory: true,
-                                                      onLongPress: itemLongPress,
-                                                      child: FolderGridItem(
-                                                        folder: item,
-                                                        isSelected: isSelected,
-                                                        iconScale: provider.iconScale,
-                                                        itemPaddingMultiplier: provider.itemPaddingMultiplier,
-                                                        onTap: () {
-                                                          _activatePane(provider);
-                                                          if (isSelectionMode) {
-                                                            provider.toggleSelection(item.path);
-                                                          } else {
-                                                            _openFolder(provider, item.path);
-                                                          }
-                                                        },
-                                                        onLongPress: provider.enableDragDrop ? null : itemLongPress,
-                                                        onAction: (action) => _handleAction(context, action, item.path),
-                                                      ),
-                                                    );
-                                                  } else {
-                                                    final itemLongPress = () {
-                                                      _activatePane(provider);
-                                                      if (isSelectionMode && isSelected) {
-                                                        SelectionContextBottomSheet.show(context, provider, item.path);
-                                                      } else {
-                                                        provider.toggleSelection(item.path);
-                                                      }
-                                                    };
-                                                    return DragDropHandler(
-                                                      path: item.path,
-                                                      isDirectory: false,
-                                                      onLongPress: itemLongPress,
-                                                      child: FileGridItem(
-                                                        file: item,
-                                                        isSelected: isSelected,
-                                                        iconScale: provider.iconScale,
-                                                        itemPaddingMultiplier: provider.itemPaddingMultiplier,
-                                                        onTap: () {
-                                                          _activatePane(provider);
-                                                          if (isSelectionMode) {
-                                                            provider.toggleSelection(item.path);
-                                                          } else {
-                                                            provider.openFile(context, item.path, showOpenWithPopup: true);
-                                                          }
-                                                        },
-                                                        onLongPress: provider.enableDragDrop ? null : itemLongPress,
-                                                        onAction: (action) => _handleAction(context, action, item.path),
-                                                      ),
-                                                    );
-                                                  }
-                                                },
-                                                childCount: tab.currentFiles.length,
-                                              ),
-                                            )
-                                          : SliverList(
-                                              delegate: SliverChildBuilderDelegate(
-                                                (context, index) {
-                                                  final item = tab.currentFiles[index];
-                                                  final isSelected = tab.selectedPaths.contains(item.path);
-                                                  if (item.isDirectory) {
-                                                    return _buildCompactFolderItem(
-                                                      context,
-                                                      provider,
-                                                      item,
-                                                      isSelected,
-                                                      isSelectionMode,
-                                                    );
-                                                   } else {
-                                                    return _buildCompactFileItem(
-                                                      context,
-                                                      provider,
-                                                      item,
-                                                      isSelected,
-                                                      isSelectionMode,
-                                                    );
-                                                  }
-                                                },
-                                                childCount: tab.currentFiles.length,
+                                      if (tab.currentFiles.isEmpty)
+                                        SliverFillRemaining(
+                                          hasScrollBody: false,
+                                          child: Center(
+                                            child: Padding(
+                                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                                              child: Column(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Container(
+                                                    padding: const EdgeInsets.all(16),
+                                                    decoration: BoxDecoration(
+                                                      color: theme.colorScheme.primary.withOpacity(0.08),
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    child: Icon(
+                                                      Broken.folder_open,
+                                                      size: 48,
+                                                      color: theme.colorScheme.primary.withOpacity(0.6),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 16),
+                                                  Text(
+                                                    'Empty Folder',
+                                                    style: theme.textTheme.titleMedium?.copyWith(
+                                                      fontWeight: FontWeight.bold,
+                                                      color: theme.colorScheme.onSurface,
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             ),
-                                    ),
-                                  ],
-                                ),
+                                          ),
+                                        )
+                                      else
+                                        SliverPadding(
+                                          padding: EdgeInsets.only(
+                                            bottom: 80,
+                                            left: provider.isGridView ? 8 : 0,
+                                            right: provider.isGridView ? 8 : 0,
+                                            top: 8,
+                                          ),
+                                          sliver: provider.isGridView
+                                              ? SliverGrid(
+                                                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                                    crossAxisCount: (MediaQuery.of(context).size.width / (2 * 110 * provider.iconScale)).floor().clamp(1, 3),
+                                                    mainAxisSpacing: (8 * provider.itemPaddingMultiplier).clamp(4.0, 16.0),
+                                                    crossAxisSpacing: (8 * provider.itemPaddingMultiplier).clamp(4.0, 16.0),
+                                                    childAspectRatio: 0.75,
+                                                  ),
+                                                  delegate: SliverChildBuilderDelegate(
+                                                    (context, index) {
+                                                      final item = tab.currentFiles[index];
+                                                      final isSelected = tab.selectedPaths.contains(item.path);
+                                                      if (item.isDirectory) {
+                                                        final itemLongPress = () {
+                                                          _activatePane(provider);
+                                                          if (isSelectionMode && isSelected) {
+                                                            SelectionContextBottomSheet.show(context, provider, item.path);
+                                                          } else {
+                                                            provider.toggleSelection(item.path);
+                                                          }
+                                                        };
+                                                        return DragDropHandler(
+                                                          path: item.path,
+                                                          isDirectory: true,
+                                                          onLongPress: itemLongPress,
+                                                          child: FolderGridItem(
+                                                            folder: item,
+                                                            isSelected: isSelected,
+                                                            iconScale: provider.iconScale,
+                                                            itemPaddingMultiplier: provider.itemPaddingMultiplier,
+                                                            onTap: () {
+                                                              _activatePane(provider);
+                                                              if (isSelectionMode) {
+                                                                provider.toggleSelection(item.path);
+                                                              } else {
+                                                                _openFolder(provider, item.path);
+                                                              }
+                                                            },
+                                                            onLongPress: provider.enableDragDrop ? null : itemLongPress,
+                                                            onAction: (action) => _handleAction(context, action, item.path),
+                                                          ),
+                                                        );
+                                                      } else {
+                                                        final itemLongPress = () {
+                                                          _activatePane(provider);
+                                                          if (isSelectionMode && isSelected) {
+                                                            SelectionContextBottomSheet.show(context, provider, item.path);
+                                                          } else {
+                                                            provider.toggleSelection(item.path);
+                                                          }
+                                                        };
+                                                        return DragDropHandler(
+                                                          path: item.path,
+                                                          isDirectory: false,
+                                                          onLongPress: itemLongPress,
+                                                          child: FileGridItem(
+                                                            file: item,
+                                                            isSelected: isSelected,
+                                                            iconScale: provider.iconScale,
+                                                            itemPaddingMultiplier: provider.itemPaddingMultiplier,
+                                                            onTap: () {
+                                                              _activatePane(provider);
+                                                              if (isSelectionMode) {
+                                                                provider.toggleSelection(item.path);
+                                                              } else {
+                                                                provider.openFile(context, item.path, showOpenWithPopup: true);
+                                                              }
+                                                            },
+                                                            onLongPress: provider.enableDragDrop ? null : itemLongPress,
+                                                            onAction: (action) => _handleAction(context, action, item.path),
+                                                          ),
+                                                        );
+                                                      }
+                                                    },
+                                                    childCount: tab.currentFiles.length,
+                                                  ),
+                                                )
+                                              : SliverList(
+                                                  delegate: SliverChildBuilderDelegate(
+                                                    (context, index) {
+                                                      final item = tab.currentFiles[index];
+                                                      final isSelected = tab.selectedPaths.contains(item.path);
+                                                      if (item.isDirectory) {
+                                                        return _buildCompactFolderItem(
+                                                          context,
+                                                          provider,
+                                                          item,
+                                                          isSelected,
+                                                          isSelectionMode,
+                                                        );
+                                                      } else {
+                                                        return _buildCompactFileItem(
+                                                          context,
+                                                          provider,
+                                                          item,
+                                                          isSelected,
+                                                          isSelectionMode,
+                                                        );
+                                                      }
+                                                    },
+                                                    childCount: tab.currentFiles.length,
+                                                  ),
+                                                ),
+                                        ),
+                                      ],
+                                    );
+                      },
+                    ),
                   ),
                 ],
               ),
