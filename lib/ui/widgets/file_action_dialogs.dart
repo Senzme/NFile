@@ -86,4 +86,32 @@ class FileActionDialogs {
     );
     return result ?? false;
   }
+
+  static Future<void> showWarningDialog(
+    BuildContext context, {
+    required String title,
+    required String content,
+  }) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(content),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              style: FilledButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }

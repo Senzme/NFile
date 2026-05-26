@@ -184,10 +184,10 @@ class ArchiveService {
         archive = TarDecoder().decodeBytes(tarBytes);
       } else if (lowerPath.endsWith('.tar.lz4') || lowerPath.endsWith('.tlz4')) {
         final tarBytes = lz4FrameDecode(bytes);
-        archive = TarDecoder().decodeBytes(tarBytes);
+        archive = TarDecoder().decodeBytes(Uint8List.fromList(tarBytes));
       } else if (lowerPath.endsWith('.tar.zst') || lowerPath.endsWith('.tzst')) {
         final tarBytes = const ZstdDecoder().decodeBytes(bytes);
-        archive = TarDecoder().decodeBytes(tarBytes);
+        archive = TarDecoder().decodeBytes(Uint8List.fromList(tarBytes));
       } else if (lowerPath.endsWith('.tar')) {
         archive = TarDecoder().decodeBytes(bytes);
       } else if (lowerPath.endsWith('.gz')) {
@@ -209,14 +209,14 @@ class ArchiveService {
         final name = p.basenameWithoutExtension(archivePath);
         final destFile = File(p.join(destinationDir, name));
         destFile.createSync(recursive: true);
-        destFile.writeAsBytesSync(decodedBytes);
+        destFile.writeAsBytesSync(Uint8List.fromList(decodedBytes));
         return;
       } else if (lowerPath.endsWith('.zst') || lowerPath.endsWith('.zstd')) {
         final decodedBytes = const ZstdDecoder().decodeBytes(bytes);
         final name = p.basenameWithoutExtension(archivePath);
         final destFile = File(p.join(destinationDir, name));
         destFile.createSync(recursive: true);
-        destFile.writeAsBytesSync(decodedBytes);
+        destFile.writeAsBytesSync(Uint8List.fromList(decodedBytes));
         return;
       } else {
         // Default attempt zip decoder
@@ -279,10 +279,10 @@ class ArchiveService {
           return TarDecoder().decodeBytes(tarBytes);
         } else if (lowerPath.endsWith('.tar.lz4') || lowerPath.endsWith('.tlz4')) {
           final tarBytes = lz4FrameDecode(bytes);
-          return TarDecoder().decodeBytes(tarBytes);
+          return TarDecoder().decodeBytes(Uint8List.fromList(tarBytes));
         } else if (lowerPath.endsWith('.tar.zst') || lowerPath.endsWith('.tzst')) {
           final tarBytes = const ZstdDecoder().decodeBytes(bytes);
-          return TarDecoder().decodeBytes(tarBytes);
+          return TarDecoder().decodeBytes(Uint8List.fromList(tarBytes));
         } else if (lowerPath.endsWith('.tar')) {
           return TarDecoder().decodeBytes(bytes);
         } else {
@@ -342,11 +342,11 @@ class ArchiveService {
           } else if (lowerPath.endsWith('.tar.lz4') || lowerPath.endsWith('.tlz4')) {
             isLz4 = true;
             final tarBytes = lz4FrameDecode(bytes);
-            archive = TarDecoder().decodeBytes(tarBytes);
+            archive = TarDecoder().decodeBytes(Uint8List.fromList(tarBytes));
           } else if (lowerPath.endsWith('.tar.zst') || lowerPath.endsWith('.tzst')) {
             isZst = true;
             final tarBytes = const ZstdDecoder().decodeBytes(bytes);
-            archive = TarDecoder().decodeBytes(tarBytes);
+            archive = TarDecoder().decodeBytes(Uint8List.fromList(tarBytes));
           } else if (lowerPath.endsWith('.tar')) {
             archive = TarDecoder().decodeBytes(bytes);
           } else {
@@ -431,11 +431,11 @@ class ArchiveService {
         } else if (lowerPath.endsWith('.tar.lz4') || lowerPath.endsWith('.tlz4')) {
           isLz4 = true;
           final tarBytes = lz4FrameDecode(bytes);
-          archive = TarDecoder().decodeBytes(tarBytes);
+          archive = TarDecoder().decodeBytes(Uint8List.fromList(tarBytes));
         } else if (lowerPath.endsWith('.tar.zst') || lowerPath.endsWith('.tzst')) {
           isZst = true;
           final tarBytes = const ZstdDecoder().decodeBytes(bytes);
-          archive = TarDecoder().decodeBytes(tarBytes);
+          archive = TarDecoder().decodeBytes(Uint8List.fromList(tarBytes));
         } else if (lowerPath.endsWith('.tar')) {
           archive = TarDecoder().decodeBytes(bytes);
         } else {

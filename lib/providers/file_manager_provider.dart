@@ -27,6 +27,8 @@ import 'package:on_audio_query/on_audio_query.dart';
 import '../core/icon_fonts/broken_icons.dart';
 import '../ui/widgets/open_with_sheet.dart';
 import '../ui/widgets/conflict_dialog.dart';
+import '../ui/widgets/file_action_dialogs.dart';
+import '../services/background_archive_service.dart';
 
 enum FileSortType {
   nameAsc,
@@ -1624,48 +1626,95 @@ class FileManagerProvider extends ChangeNotifier {
     required bool deleteSource,
     required bool separateArchives,
     List<String>? targetPaths,
+    BuildContext? context,
   }) async {
     final paths = targetPaths ?? (selectedPaths.isNotEmpty ? selectedPaths.toList() : [currentPath]);
+
+    // Check size limit for TAR.LZ4 and TAR.ZSTD
+    if (format == 'tar.lz4' || format == 'tar.zst') {
+      final totalSize = await _calculateTotalSize(paths);
+      if (totalSize > 600 * 1024 * 1024) {
+        if (context != null && context.mounted) {
+          await FileActionDialogs.showWarningDialog(
+            context,
+            title: 'Compression Limit Exceeded',
+            content: 'TAR.ZSTD and TAR.LZ4 formats are highly memory-intensive and optimized for files under 600MB. Please use the ZIP or TAR format for larger files.',
+          );
+        }
+        selectedPaths.clear();
+        notifyListeners();
+        return;
+      }
+    }
+
     activeTab.isLoading = true;
     notifyListeners();
 
-    try {
-      await ArchiveService.createArchive(
+    if (context != null) {
+      selectedPaths.clear();
+      final destinationPath = p.join(currentPath, '$archiveName.$format');
+      await BackgroundArchiveService.instance.startCompression(
+        context: context,
         sourcePaths: paths,
-        destinationDir: currentPath,
-        archiveName: archiveName,
+        destinationPath: destinationPath,
         format: format,
-        compressionLevel: compressionLevel,
-        password: password,
-        splitSizeMB: splitSizeMB,
+        level: compressionLevel,
         deleteSource: deleteSource,
-        separateArchives: separateArchives,
       );
-    } catch (e) {
-      debugPrint('Error creating archive: $e');
-    }
+    } else {
+      try {
+        await ArchiveService.createArchive(
+          sourcePaths: paths,
+          destinationDir: currentPath,
+          archiveName: archiveName,
+          format: format,
+          compressionLevel: compressionLevel,
+          password: password,
+          splitSizeMB: splitSizeMB,
+          deleteSource: deleteSource,
+          separateArchives: separateArchives,
+        );
+      } catch (e) {
+        debugPrint('Error creating archive: $e');
+      }
 
-    selectedPaths.clear();
-    await loadDirectory(currentPath, showLoading: false);
+      selectedPaths.clear();
+      await loadDirectory(currentPath, showLoading: false);
+    }
+  }
+
+  Future<int> _calculateTotalSize(List<String> paths) async {
+    int total = 0;
+    for (final path in paths) {
+      try {
+        final type = FileSystemEntity.typeSync(path);
+        if (type == FileSystemEntityType.file) {
+          total += File(path).lengthSync();
+        } else if (type == FileSystemEntityType.directory) {
+          final dir = Directory(path);
+          await for (final entity in dir.list(recursive: true, followLinks: false)) {
+            if (entity is File) {
+              total += entity.lengthSync();
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Error calculating size for $path: $e');
+      }
+    }
+    return total;
   }
 
   Future<void> extractArchiveDirectly(BuildContext context, String path) async {
     final destDir = p.join(currentPath, p.basenameWithoutExtension(path));
     final res = await ExtractArchiveDialog.show(context, archiveName: p.basename(path), defaultDestDir: destDir);
     if (res != null && context.mounted) {
-      activeTab.isLoading = true;
-      notifyListeners();
-      try {
-        await ArchiveService.extractArchive(archivePath: path, destinationDir: res.destinationDir, password: res.password);
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Archive extracted successfully')));
-        }
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Extraction failed: $e')));
-        }
-      }
-      await loadDirectory(currentPath, showLoading: false);
+      await BackgroundArchiveService.instance.startExtraction(
+        context: context,
+        archivePath: path,
+        destinationDir: res.destinationDir,
+        password: res.password,
+      );
     }
   }
 

@@ -98,6 +98,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
             deleteSource: res.deleteSource,
             separateArchives: res.separateArchives,
             targetPaths: [path],
+            context: context,
           );
         }
         break;
@@ -195,6 +196,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
             deleteSource: res.deleteSource,
             separateArchives: res.separateArchives,
             targetPaths: [provider.currentPath],
+            context: context,
           );
         }
         break;

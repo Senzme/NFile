@@ -130,6 +130,7 @@ class SelectionActionBar extends StatelessWidget {
                       deleteSource: res.deleteSource,
                       separateArchives: res.separateArchives,
                       targetPaths: provider.selectedPaths.toList(),
+                      context: context,
                     );
                   }
                 } else if (action == 'paste') {

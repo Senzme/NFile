@@ -97,6 +97,7 @@ class _PaneBrowserState extends State<PaneBrowser> {
             deleteSource: res.deleteSource,
             separateArchives: res.separateArchives,
             targetPaths: [path],
+            context: context,
           );
         }
         break;

@@ -18,6 +18,10 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStreamReader
 import java.util.concurrent.Executors
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import androidx.core.app.NotificationCompat
+import android.content.Context
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.rubex.nfile/root_shizuku"
@@ -283,6 +287,57 @@ class MainActivity : FlutterActivity() {
                     } catch (e: Exception) {
                         result.error("STOP_FAILED", e.message, null)
                     }
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.rubex.nfile/notifications").setMethodCallHandler { call, result ->
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val channelId = "nfile_archive_channel"
+            val channelName = "NFile Archive Operations"
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_LOW).apply {
+                    description = "Shows progress of file compression and extraction"
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+
+            when (call.method) {
+                "showProgressNotification" -> {
+                    val id = call.argument<Int>("id") ?: 100
+                    val title = call.argument<String>("title") ?: "Processing..."
+                    val message = call.argument<String>("message") ?: ""
+                    val progress = call.argument<Int>("progress") ?: 0
+                    val max = call.argument<Int>("max") ?: 100
+                    val indeterminate = call.argument<Boolean>("indeterminate") ?: false
+
+                    var iconId = applicationContext.resources.getIdentifier("ic_launcher", "mipmap", packageName)
+                    if (iconId == 0) {
+                        iconId = android.R.drawable.ic_dialog_info
+                    }
+
+                    val builder = NotificationCompat.Builder(this, channelId)
+                        .setContentTitle(title)
+                        .setContentText(message)
+                        .setSmallIcon(iconId)
+                        .setOngoing(progress < max)
+                        .setAutoCancel(progress >= max)
+
+                    if (indeterminate) {
+                        builder.setProgress(0, 0, true)
+                    } else {
+                        builder.setProgress(max, progress, false)
+                    }
+
+                    notificationManager.notify(id, builder.build())
+                    result.success(true)
+                }
+                "cancelNotification" -> {
+                    val id = call.argument<Int>("id") ?: 100
+                    notificationManager.cancel(id)
+                    result.success(true)
                 }
                 else -> result.notImplemented()
             }
