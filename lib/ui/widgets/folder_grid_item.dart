@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../providers/file_manager_provider.dart';
 import '../../core/utils.dart';
 import '../../core/icon_fonts/broken_icons.dart';
+import '../../services/pin_service.dart';
 
 class FolderGridItem extends StatelessWidget {
   final FileItemModel folder;
@@ -77,15 +78,31 @@ class FolderGridItem extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        folder.name,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13 * (1 + (iconScale - 1) * 0.3),
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (PinService.isPinned(folder.path)) ...[
+                            Icon(
+                              Icons.push_pin_rounded,
+                              size: 12 * (1 + (iconScale - 1) * 0.3),
+                              color: Colors.orange,
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                          Flexible(
+                            child: Text(
+                              folder.name,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13 * (1 + (iconScale - 1) * 0.3),
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 4),
                       Consumer<FileManagerProvider>(
@@ -161,7 +178,7 @@ class FolderGridItem extends StatelessWidget {
                 ),
               ),
             ),
-            if (isSelected)
+             if (isSelected)
               Positioned(
                 top: 8,
                 left: 8,
@@ -174,7 +191,20 @@ class FolderGridItem extends StatelessWidget {
                   child: Icon(Broken.tick_circle, size: 16, color: theme.colorScheme.onPrimary),
                 ),
               )
-            else
+            else if (PinService.isPinned(folder.path))
+              Positioned(
+                top: 8,
+                left: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.9),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.push_pin_rounded, size: 12, color: Colors.white),
+                ),
+              ),
+            if (!isSelected)
               Positioned(
                 top: 4,
                 right: 4,
@@ -184,16 +214,18 @@ class FolderGridItem extends StatelessWidget {
                   position: PopupMenuPosition.under,
                   elevation: 8,
                   onSelected: onAction,
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(value: 'archive', child: Row(children: [Icon(Broken.box_add, size: 20), SizedBox(width: 12), Text('Archive', style: TextStyle(fontWeight: FontWeight.w500))])),
-                    const PopupMenuItem(value: 'copy', child: Row(children: [Icon(Broken.document_copy, size: 20), SizedBox(width: 12), Text('Copy', style: TextStyle(fontWeight: FontWeight.w500))])),
-                    const PopupMenuItem(value: 'cut', child: Row(children: [Icon(Broken.scissor, size: 20), SizedBox(width: 12), Text('Cut', style: TextStyle(fontWeight: FontWeight.w500))])),
-                    const PopupMenuItem(value: 'rename', child: Row(children: [Icon(Broken.edit, size: 20), SizedBox(width: 12), Text('Rename', style: TextStyle(fontWeight: FontWeight.w500))])),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Row(children: [Icon(Broken.trash, size: 20, color: Colors.redAccent), SizedBox(width: 12), Text('Delete', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w500))]),
-                    ),
-                  ],
+                  itemBuilder: (context) {
+                    return [
+                      const PopupMenuItem(value: 'archive', child: Row(children: [Icon(Broken.box_add, size: 20), SizedBox(width: 12), Text('Archive', style: TextStyle(fontWeight: FontWeight.w500))])),
+                      const PopupMenuItem(value: 'copy', child: Row(children: [Icon(Broken.document_copy, size: 20), SizedBox(width: 12), Text('Copy', style: TextStyle(fontWeight: FontWeight.w500))])),
+                      const PopupMenuItem(value: 'cut', child: Row(children: [Icon(Broken.scissor, size: 20), SizedBox(width: 12), Text('Cut', style: TextStyle(fontWeight: FontWeight.w500))])),
+                      const PopupMenuItem(value: 'rename', child: Row(children: [Icon(Broken.edit, size: 20), SizedBox(width: 12), Text('Rename', style: TextStyle(fontWeight: FontWeight.w500))])),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(children: [Icon(Broken.trash, size: 20, color: Colors.redAccent), SizedBox(width: 12), Text('Delete', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w500))]),
+                      ),
+                    ];
+                  },
                 ),
               ),
           ],

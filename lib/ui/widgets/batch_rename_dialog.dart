@@ -135,6 +135,12 @@ class _BatchRenameDialogState extends State<BatchRenameDialog> {
     // Replace original name placeholder %
     newBaseName = newBaseName.replaceAll('%', processedOriginalName);
 
+    // Replace advanced placeholders
+    newBaseName = newBaseName.replaceAll('{n}', processedOriginalName);
+    newBaseName = newBaseName.replaceAll('{de}', originalExt);
+    newBaseName = newBaseName.replaceAll('{e}', originalExt.startsWith('.') ? originalExt.substring(1) : originalExt);
+    newBaseName = newBaseName.replaceAll('{N}', processedOriginalName + originalExt);
+
     // Replace sequential numbering placeholder #
     if (newBaseName.contains('#')) {
       final reg = RegExp(r'#+');
@@ -142,7 +148,13 @@ class _BatchRenameDialogState extends State<BatchRenameDialog> {
     } else {
       // Automatic sequential numbering if no placeholder is specified
       // but a custom name (not just keeping original %) is typed
-      if (pattern.isNotEmpty && !pattern.contains('#') && !pattern.contains('%')) {
+      final hasPlaceholders = pattern.contains('#') || 
+                              pattern.contains('%') || 
+                              pattern.contains('{n}') || 
+                              pattern.contains('{de}') || 
+                              pattern.contains('{e}') || 
+                              pattern.contains('{N}');
+      if (pattern.isNotEmpty && !hasPlaceholders) {
         newBaseName = '$newBaseName ($currentNumber)';
       }
     }
@@ -152,10 +164,19 @@ class _BatchRenameDialogState extends State<BatchRenameDialog> {
       return newBaseName;
     } else {
       final customExt = _extensionController.text.trim();
-      final finalExt = customExt.isEmpty
-          ? originalExt
-          : (customExt.startsWith('.') ? customExt : '.$customExt');
-      return newBaseName + finalExt;
+      if (customExt.isEmpty) {
+        // If the pattern already contains extension placeholders, don't double-append
+        final hasPatternExt = pattern.contains('{de}') || 
+                              pattern.contains('{e}') || 
+                              pattern.contains('{N}');
+        if (hasPatternExt) {
+          return newBaseName;
+        }
+        return newBaseName + originalExt;
+      } else {
+        final finalExt = customExt.startsWith('.') ? customExt : '.$customExt';
+        return newBaseName + finalExt;
+      }
     }
   }
 
@@ -374,28 +395,58 @@ class _BatchRenameDialogState extends State<BatchRenameDialog> {
 
             // More Panel shortcut buttons
             if (_isMoreExpanded) ...[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
                 children: [
                   _buildShortcutButton(
                     icon: Icons.copy_rounded,
-                    label: 'Name',
-                    tooltip: 'Original file name placeholder (%)',
+                    label: '% (Name)',
+                    tooltip: 'Original name (%)',
                     onTap: () => _insertPlaceholder('%'),
                     theme: theme,
                   ),
                   _buildShortcutButton(
                     icon: Icons.format_list_numbered_rounded,
-                    label: 'Number',
-                    tooltip: 'Sequential number placeholder (#)',
+                    label: '# (Num)',
+                    tooltip: 'Sequential number (#)',
                     onTap: () => _insertPlaceholder('#'),
                     theme: theme,
                   ),
                   _buildShortcutButton(
                     icon: Icons.numbers_rounded,
-                    label: '001',
-                    tooltip: 'Triple sequential placeholder (###)',
+                    label: '### (001)',
+                    tooltip: 'Triple sequential number (###)',
                     onTap: () => _insertPlaceholder('###'),
+                    theme: theme,
+                  ),
+                  _buildShortcutButton(
+                    icon: Icons.abc_rounded,
+                    label: '{n} (Base)',
+                    tooltip: 'File name without extension ({n})',
+                    onTap: () => _insertPlaceholder('{n}'),
+                    theme: theme,
+                  ),
+                  _buildShortcutButton(
+                    icon: Icons.extension_rounded,
+                    label: '{de} (.ext)',
+                    tooltip: 'Extension with dot ({de})',
+                    onTap: () => _insertPlaceholder('{de}'),
+                    theme: theme,
+                  ),
+                  _buildShortcutButton(
+                    icon: Icons.extension_off_rounded,
+                    label: '{e} (ext)',
+                    tooltip: 'Extension without dot ({e})',
+                    onTap: () => _insertPlaceholder('{e}'),
+                    theme: theme,
+                  ),
+                  _buildShortcutButton(
+                    icon: Icons.note_rounded,
+                    label: '{N} (Full)',
+                    tooltip: 'Full name with extension ({N})',
+                    onTap: () => _insertPlaceholder('{N}'),
                     theme: theme,
                   ),
                 ],
@@ -531,35 +582,54 @@ class _BatchRenameDialogState extends State<BatchRenameDialog> {
             ),
             const SizedBox(height: 12),
 
-            // Dialog Actions: More, Cancel, OK
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // Dialog Actions: Expand Settings & Confirm Buttons
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TextButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _isMoreExpanded = !_isMoreExpanded;
-                    });
-                  },
-                  icon: Icon(
-                    _isMoreExpanded
-                        ? Icons.keyboard_arrow_up_rounded
-                        : Icons.keyboard_arrow_down_rounded,
-                    size: 20,
-                  ),
-                  label: Text(_isMoreExpanded ? 'Less' : 'More'),
-                ),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    TextButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _isMoreExpanded = !_isMoreExpanded;
+                        });
+                      },
+                      icon: Icon(
+                        _isMoreExpanded
+                            ? Icons.keyboard_arrow_up_rounded
+                            : Icons.keyboard_arrow_down_rounded,
+                        size: 20,
+                      ),
+                      label: Text(_isMoreExpanded ? 'Less Options' : 'More Options'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _showFullPreviewSheet,
+                      icon: const Icon(Broken.eye, size: 16),
+                      label: const Text('Preview'),
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                    ),
+                    const Spacer(),
                     TextButton(
                       onPressed: () => Navigator.pop(context),
                       child: const Text('Cancel'),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 4),
                     ElevatedButton(
                       onPressed: _executeRename,
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -573,6 +643,198 @@ class _BatchRenameDialogState extends State<BatchRenameDialog> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showFullPreviewSheet() {
+    final theme = Theme.of(context);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.8,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) {
+            return Column(
+              children: [
+                const SizedBox(height: 12),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Rename Preview',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Reviewing ${widget.selectedPaths.length} items',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurface.withOpacity(0.55),
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Divider(),
+                Expanded(
+                  child: ListView.separated(
+                    controller: scrollController,
+                    padding: const EdgeInsets.all(20),
+                    itemCount: widget.selectedPaths.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final path = widget.selectedPaths[index];
+                      final isDir = FileSystemEntity.isDirectorySync(path);
+                      final origName = p.basename(path);
+                      final previewName = _computeNewName(path, index);
+
+                      return Card(
+                        elevation: 0,
+                        margin: EdgeInsets.zero,
+                        color: theme.colorScheme.surface.withOpacity(0.5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(
+                            color: theme.colorScheme.outline.withOpacity(0.12),
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    isDir ? Broken.folder : Broken.document,
+                                    size: 16,
+                                    color: isDir
+                                        ? Colors.amber.shade700
+                                        : theme.colorScheme.primary.withOpacity(0.6),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      origName,
+                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                        color: theme.colorScheme.onSurface.withOpacity(0.5),
+                                        height: 1.3,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.arrow_forward_rounded,
+                                    size: 14,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      previewName.isEmpty ? '(empty)' : previewName,
+                                      style: theme.textTheme.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: previewName.isEmpty
+                                            ? Colors.redAccent
+                                            : theme.colorScheme.primary,
+                                        fontSize: 14.5,
+                                        height: 1.3,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const Divider(),
+                Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text(
+                            'Back to Edit',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: theme.colorScheme.primary,
+                            foregroundColor: theme.colorScheme.onPrimary,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            elevation: 0,
+                          ),
+                          onPressed: () {
+                            Navigator.pop(ctx); // Close sheet
+                            _executeRename(); // Execute
+                          },
+                          child: const Text(
+                            'Apply Changes',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 

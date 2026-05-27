@@ -328,7 +328,7 @@ class _AppManagerScreenState extends State<AppManagerScreen> with SingleTickerPr
               ),
         title: _isSelectionMode
             ? Text(
-                '${_selectedPackages.length} Selected',
+                '${_selectedPackages.length}/${processedApps.length}',
                 style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               )
             : Text(

@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import '../../providers/file_manager_provider.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import '../../core/utils.dart';
+import '../../services/pin_service.dart';
 import 'file_action_dialogs.dart';
 import 'create_archive_dialog.dart';
 import 'file_operation_progress_dialog.dart';
@@ -167,51 +168,89 @@ class SelectionActionBar extends StatelessWidget {
                       const SnackBar(content: Text('Only files can be shared.')),
                     );
                   }
+                } else if (action == 'pin_to_top') {
+                  final selected = provider.selectedPaths.toList();
+                  final allPinned = selected.every((p) => PinService.isPinned(p));
+                  for (final path in selected) {
+                    if (allPinned) {
+                      await PinService.unpin(path);
+                    } else {
+                      await PinService.pin(path);
+                    }
+                  }
+                  provider.refreshDirectoryView();
+                  provider.clearSelection();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(allPinned ? 'Unpinned selected item(s)' : 'Pinned selected item(s) to top'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
                 }
               },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'archive',
-                  child: Row(
-                    children: [
-                      Icon(Broken.box_add, size: 20),
-                      SizedBox(width: 12),
-                      Text('Archive', style: TextStyle(fontWeight: FontWeight.w500)),
-                    ],
-                  ),
-                ),
-                if (hasClipboard)
+              itemBuilder: (context) {
+                final selected = provider.selectedPaths.toList();
+                final allPinned = selected.isNotEmpty && selected.every((p) => PinService.isPinned(p));
+                return [
                   const PopupMenuItem(
-                    value: 'paste',
+                    value: 'archive',
                     child: Row(
                       children: [
-                        Icon(Broken.clipboard, size: 20),
+                        Icon(Broken.box_add, size: 20),
                         SizedBox(width: 12),
-                        Text('Paste Here', style: TextStyle(fontWeight: FontWeight.w500)),
+                        Text('Archive', style: TextStyle(fontWeight: FontWeight.w500)),
                       ],
                     ),
                   ),
-                const PopupMenuItem(
-                  value: 'share',
-                  child: Row(
-                    children: [
-                      Icon(Icons.share_outlined, size: 20),
-                      SizedBox(width: 12),
-                      Text('Share', style: TextStyle(fontWeight: FontWeight.w500)),
-                    ],
+                  if (hasClipboard)
+                    const PopupMenuItem(
+                      value: 'paste',
+                      child: Row(
+                        children: [
+                          Icon(Broken.clipboard, size: 20),
+                          SizedBox(width: 12),
+                          Text('Paste Here', style: TextStyle(fontWeight: FontWeight.w500)),
+                        ],
+                      ),
+                    ),
+                  const PopupMenuItem(
+                    value: 'share',
+                    child: Row(
+                      children: [
+                        Icon(Icons.share_outlined, size: 20),
+                        SizedBox(width: 12),
+                        Text('Share', style: TextStyle(fontWeight: FontWeight.w500)),
+                      ],
+                    ),
                   ),
-                ),
-                const PopupMenuItem(
-                  value: 'select_all',
-                  child: Row(
-                    children: [
-                      Icon(Broken.tick_square, size: 20),
-                      SizedBox(width: 12),
-                      Text('Select All', style: TextStyle(fontWeight: FontWeight.w500)),
-                    ],
+                  const PopupMenuItem(
+                    value: 'select_all',
+                    child: Row(
+                      children: [
+                        Icon(Broken.tick_square, size: 20),
+                        SizedBox(width: 12),
+                        Text('Select All', style: TextStyle(fontWeight: FontWeight.w500)),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                  PopupMenuItem(
+                    value: 'pin_to_top',
+                    child: Row(
+                      children: [
+                        Icon(
+                          allPinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
+                          size: 20,
+                          color: allPinned ? Colors.orange : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(allPinned ? 'Unpin from Top' : 'Pin to Top', style: const TextStyle(fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+                  ),
+                ];
+              },
             ),
           ],
         ),

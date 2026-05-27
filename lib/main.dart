@@ -15,6 +15,7 @@ import 'providers/media_provider.dart';
 import 'services/preferences_service.dart';
 import 'services/network_connections_service.dart';
 import 'services/intent_handler_service.dart';
+import 'services/pin_service.dart';
 import 'ui/screens/home_screen.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -23,6 +24,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
   await PreferencesService.init();
+  await PinService.init();
   await NetworkConnectionsService.init();
 
   runApp(

@@ -29,6 +29,7 @@ import '../ui/widgets/open_with_sheet.dart';
 import '../ui/widgets/conflict_dialog.dart';
 import '../ui/widgets/file_action_dialogs.dart';
 import '../services/background_archive_service.dart';
+import '../services/pin_service.dart';
 
 enum FileSortType {
   nameAsc,
@@ -378,6 +379,22 @@ class FileManagerProvider extends ChangeNotifier {
           return extA.compareTo(extB);
         });
         break;
+    }
+
+    // Stable-sort pinned files/folders to the top of the list!
+    if (items.isNotEmpty) {
+      final pinned = <FileItemModel>[];
+      final unpinned = <FileItemModel>[];
+      for (final item in items) {
+        if (PinService.isPinned(item.path)) {
+          pinned.add(item);
+        } else {
+          unpinned.add(item);
+        }
+      }
+      items.clear();
+      items.addAll(pinned);
+      items.addAll(unpinned);
     }
   }
 
@@ -1152,6 +1169,25 @@ class FileManagerProvider extends ChangeNotifier {
 
   void clearSelection() {
     selectedPaths.clear();
+    notifyListeners();
+  }
+
+  Future<void> togglePinPath(String path) async {
+    await PinService.togglePin(path);
+    final folders = currentFiles.where((e) => e.isDirectory).toList();
+    final files = currentFiles.where((e) => !e.isDirectory).toList();
+    _sortList(folders, currentPath);
+    _sortList(files, currentPath);
+    activeTab.currentFiles = [...folders, ...files];
+    notifyListeners();
+  }
+
+  void refreshDirectoryView() {
+    final folders = currentFiles.where((e) => e.isDirectory).toList();
+    final files = currentFiles.where((e) => !e.isDirectory).toList();
+    _sortList(folders, currentPath);
+    _sortList(files, currentPath);
+    activeTab.currentFiles = [...folders, ...files];
     notifyListeners();
   }
 

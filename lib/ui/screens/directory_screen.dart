@@ -23,6 +23,7 @@ import 'global_search_screen.dart';
 import 'internal_file_picker_screen.dart';
 import '../widgets/restricted_folder_banner.dart';
 import '../widgets/directory_tab_bar.dart';
+import '../../services/pin_service.dart';
 import '../widgets/pane_browser.dart';
 import '../widgets/nfile_address_bar.dart';
 import '../../services/network_connections_service.dart';
@@ -135,6 +136,9 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
         if (confirm) {
           await provider.deleteFile(path);
         }
+        break;
+      case 'pin':
+        await provider.togglePinPath(path);
         break;
     }
   }
@@ -850,11 +854,6 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                         ]
                       : [
                           IconButton(
-                            icon: const Icon(Broken.tick_square),
-                            tooltip: 'Select All',
-                            onPressed: () => provider.selectAll(),
-                          ),
-                          IconButton(
                             icon: const Icon(Broken.document_copy),
                             tooltip: 'Copy',
                             onPressed: () {
@@ -905,6 +904,71 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                               if (confirm) {
                                 await provider.deleteSelected();
                               }
+                            },
+                          ),
+                          PopupMenuButton<String>(
+                            icon: const Icon(Broken.more),
+                            tooltip: 'More Actions',
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            position: PopupMenuPosition.under,
+                            elevation: 8,
+                            onSelected: (action) async {
+                              if (action == 'select_all') {
+                                provider.selectAll();
+                              } else if (action == 'pin_to_top') {
+                                final selected = provider.selectedPaths.toList();
+                                final allPinned = selected.every((p) => PinService.isPinned(p));
+                                for (final path in selected) {
+                                  if (allPinned) {
+                                    await PinService.unpin(path);
+                                  } else {
+                                    await PinService.pin(path);
+                                  }
+                                }
+                                provider.refreshDirectoryView();
+                                provider.clearSelection();
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(allPinned ? 'Unpinned selected item(s)' : 'Pinned selected item(s) to top'),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            itemBuilder: (context) {
+                              final selected = provider.selectedPaths.toList();
+                              final allPinned = selected.isNotEmpty && selected.every((p) => PinService.isPinned(p));
+                              return [
+                                const PopupMenuItem<String>(
+                                  value: 'select_all',
+                                  child: Row(
+                                    children: [
+                                      Icon(Broken.tick_square, size: 20),
+                                      SizedBox(width: 12),
+                                      Text('Select All', style: TextStyle(fontWeight: FontWeight.w500)),
+                                    ],
+                                  ),
+                                ),
+                                PopupMenuItem<String>(
+                                  value: 'pin_to_top',
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        allPinned ? Icons.push_pin_rounded : Icons.push_pin_outlined, 
+                                        size: 20, 
+                                        color: allPinned ? Colors.orange : null
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        allPinned ? 'Unpin from Top' : 'Pin to Top', 
+                                        style: const TextStyle(fontWeight: FontWeight.w500)
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ];
                             },
                           ),
                         ]
