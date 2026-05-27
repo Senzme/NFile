@@ -70,6 +70,17 @@ jobs:
         if: steps.check_release.outputs.exists == 'false'
         run: flutter pub get
 
+      - name: Patch flutter_avif_android duplicate class
+        if: steps.check_release.outputs.exists == 'false'
+        run: |
+          FILE=$(find $HOME/.pub-cache -path "*/flutter_avif_android-*/android/src/main/java/com/teknorota/flutter_avif/FlutterAvifPlugin.java" 2>/dev/null | head -1)
+          if [ -n "$FILE" ]; then
+            echo "// Cleared to resolve redeclaration conflict with Kotlin file in same package" > "$FILE"
+            echo "Patched: $FILE"
+          else
+            echo "flutter_avif_android Java file not found, skipping patch."
+          fi
+
       - name: Configure Keystore and Signing
         if: steps.check_release.outputs.exists == 'false'
         env:
