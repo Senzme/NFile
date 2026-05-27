@@ -111,6 +111,10 @@ class MediaProvider extends ChangeNotifier {
     final savedOrder = PreferencesService.getCategoryOrder();
     if (savedOrder != null && savedOrder.isNotEmpty) {
       _categoryOrder = savedOrder;
+      if (!_categoryOrder.contains('Apps')) {
+        _categoryOrder.add('Apps');
+        PreferencesService.saveCategoryOrder(_categoryOrder);
+      }
     }
     final savedActive = PreferencesService.getActiveCategories();
     if (savedActive != null && savedActive.isNotEmpty) {
@@ -146,6 +150,7 @@ class MediaProvider extends ChangeNotifier {
     'Downloads',
     'APKs',
     'Screenshots',
+    'Apps',
   ];
 
   List<String> _activeCategories = [
@@ -246,6 +251,7 @@ class MediaProvider extends ChangeNotifier {
         case 'Downloads': return _downloads.length;
         case 'APKs': return _apks.length;
         case 'Screenshots': return _screenshots.length;
+        case 'Apps': return 0;
       }
     }
     return PreferencesService.getCategoryCount(category);
@@ -261,6 +267,9 @@ class MediaProvider extends ChangeNotifier {
 
         if (map.containsKey('categoryOrder')) {
           _categoryOrder = List<String>.from(map['categoryOrder'] ?? _categoryOrder);
+          if (!_categoryOrder.contains('Apps')) {
+            _categoryOrder.add('Apps');
+          }
         }
         if (map.containsKey('activeCategories')) {
           _activeCategories = List<String>.from(map['activeCategories'] ?? _activeCategories);

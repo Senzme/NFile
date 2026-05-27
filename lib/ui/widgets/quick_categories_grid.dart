@@ -5,6 +5,7 @@ import '../../providers/media_provider.dart';
 import '../../providers/file_manager_provider.dart';
 import '../screens/media_category_screen.dart';
 import '../screens/internal_file_picker_screen.dart';
+import '../screens/storage_analyzer/app_manager_screen.dart';
 
 class QuickCategoriesGrid extends StatelessWidget {
   final Function(int) onNavigateTab;
@@ -77,6 +78,14 @@ class QuickCategoriesGrid extends StatelessWidget {
         'count': '${mediaProvider.getCategoryItemCount("Screenshots")}',
         'isCustom': false,
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.screenshots))),
+      },
+      'Apps': {
+        'label': 'Apps',
+        'icon': Broken.mobile,
+        'color': isDark ? Colors.lightGreenAccent : const Color(0xFF4CAF50),
+        'count': 'Manager',
+        'isCustom': false,
+        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AppManagerScreen())),
       },
     };
 
