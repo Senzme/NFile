@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import '../../providers/file_manager_provider.dart';
 import '../../core/utils.dart';
+import '../screens/storage_analyzer/storage_analyzer_screen.dart';
 
 class SwipableStorageOverview extends StatefulWidget {
   final Function(String) onBrowseVolume;
@@ -199,6 +200,18 @@ class _SwipableStorageOverviewState extends State<SwipableStorageOverview> {
                     borderRadius: BorderRadius.circular(24),
                     child: InkWell(
                       onTap: () => widget.onBrowseVolume(vol.path),
+                      onLongPress: () {
+                        if (vol.isInternal) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => StorageAnalyzerScreen(
+                                initialVolumePath: vol.path,
+                              ),
+                            ),
+                          );
+                        }
+                      },
                       borderRadius: BorderRadius.circular(24),
                       splashColor: Colors.white.withOpacity(0.15),
                       highlightColor: Colors.white.withOpacity(0.08),

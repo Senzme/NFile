@@ -1,6 +1,7 @@
 package com.rubex.nfile
 
 import android.content.pm.PackageManager
+import android.content.pm.ApplicationInfo
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -17,11 +18,19 @@ import java.io.BufferedReader
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStreamReader
+import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import androidx.core.app.NotificationCompat
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.BitmapDrawable
+import android.app.usage.StorageStatsManager
+import android.app.AppOpsManager
+import android.os.storage.StorageManager
+import android.os.Process
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.rubex.nfile/root_shizuku"
@@ -223,6 +232,90 @@ class MainActivity : FlutterActivity() {
                         }
                     }
                 }
+                "getInstalledApps" -> {
+                    val includeSystem = call.argument<Boolean>("includeSystem") ?: false
+                    executor.execute {
+                        try {
+                            val apps = getInstalledApps(includeSystem)
+                            runOnUiThread { result.success(apps) }
+                        } catch (e: Exception) {
+                            runOnUiThread { result.error("APP_LIST_ERROR", e.message, null) }
+                        }
+                    }
+                }
+                "getAppIcon" -> {
+                    val packageName = call.argument<String>("packageName") ?: ""
+                    executor.execute {
+                        try {
+                            val bytes = getAppIcon(packageName)
+                            runOnUiThread { result.success(bytes) }
+                        } catch (e: Exception) {
+                            runOnUiThread { result.error("ICON_ERROR", e.message, null) }
+                        }
+                    }
+                }
+                "launchApp" -> {
+                    val packageName = call.argument<String>("packageName") ?: ""
+                    executor.execute {
+                        try {
+                            val pm = packageManager
+                            val intent = pm.getLaunchIntentForPackage(packageName)
+                            if (intent != null) {
+                                startActivity(intent)
+                                runOnUiThread { result.success(true) }
+                            } else {
+                                runOnUiThread { result.error("LAUNCH_ERROR", "Launch intent not found", null) }
+                            }
+                        } catch (e: Exception) {
+                            runOnUiThread { result.error("LAUNCH_ERROR", e.message, null) }
+                        }
+                    }
+                }
+                "openAppDetails" -> {
+                    val packageName = call.argument<String>("packageName") ?: ""
+                    executor.execute {
+                        try {
+                            val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.parse("package:$packageName")
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            startActivity(intent)
+                            runOnUiThread { result.success(true) }
+                        } catch (e: Exception) {
+                            runOnUiThread { result.error("DETAILS_ERROR", e.message, null) }
+                        }
+                    }
+                }
+                "uninstallApp" -> {
+                    val packageName = call.argument<String>("packageName") ?: ""
+                    executor.execute {
+                        try {
+                            val intent = Intent(Intent.ACTION_DELETE).apply {
+                                data = Uri.parse("package:$packageName")
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            startActivity(intent)
+                            runOnUiThread { result.success(true) }
+                        } catch (e: Exception) {
+                            runOnUiThread { result.error("UNINSTALL_ERROR", e.message, null) }
+                        }
+                    }
+                }
+                "checkUsageStatsPermission" -> {
+                    val granted = isUsageStatsPermissionGranted()
+                    result.success(granted)
+                }
+                "requestUsageStatsPermission" -> {
+                    try {
+                        val intent = Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("PERMISSION_ERROR", e.message, null)
+                    }
+                }
                 else -> result.notImplemented()
             }
         }
@@ -345,6 +438,103 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private fun getInstalledApps(includeSystem: Boolean): List<Map<String, Any>> {
+        val pm = packageManager
+        val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+        val resultList = mutableListOf<Map<String, Any>>()
+        
+        val hasUsageStats = isUsageStatsPermissionGranted()
+        var storageStatsManager: StorageStatsManager? = null
+        var storageUuid: java.util.UUID? = null
+        var user: android.os.UserHandle? = null
+
+        if (hasUsageStats && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                storageStatsManager = getSystemService(Context.STORAGE_STATS_SERVICE) as? StorageStatsManager
+                storageUuid = StorageManager.UUID_DEFAULT
+                user = Process.myUserHandle()
+            } catch (e: Exception) {}
+        }
+
+        for (appInfo in apps) {
+            val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+            if (!includeSystem && isSystem) {
+                continue
+            }
+            
+            val packageName = appInfo.packageName
+            val apkFile = File(appInfo.sourceDir)
+            val apkSize = if (apkFile.exists()) apkFile.length() else 0L
+            
+            var totalSize = apkSize
+            if (storageStatsManager != null && storageUuid != null && user != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                try {
+                    val stats = storageStatsManager.queryStatsForPackage(storageUuid, packageName, user)
+                    totalSize = stats.appBytes + stats.dataBytes + stats.cacheBytes
+                } catch (e: Exception) {}
+            }
+            
+            val appName = appInfo.loadLabel(pm).toString()
+            
+            var versionName = ""
+            var installTime = 0L
+            try {
+                val pkgInfo = pm.getPackageInfo(packageName, 0)
+                versionName = pkgInfo.versionName ?: ""
+                installTime = pkgInfo.firstInstallTime
+            } catch (e: Exception) {}
+
+            val appMap = mapOf(
+                "name" to appName,
+                "packageName" to packageName,
+                "version" to versionName,
+                "apkSize" to totalSize,
+                "isSystem" to isSystem,
+                "installTime" to installTime
+            )
+            resultList.add(appMap)
+        }
+        return resultList
+    }
+
+    private fun getAppIcon(packageName: String): ByteArray? {
+        return try {
+            val pm = packageManager
+            val iconDrawable = pm.getApplicationIcon(packageName)
+            val bitmap = when (iconDrawable) {
+                is BitmapDrawable -> iconDrawable.bitmap
+                else -> {
+                    val width = iconDrawable.intrinsicWidth.coerceAtLeast(1)
+                    val height = iconDrawable.intrinsicHeight.coerceAtLeast(1)
+                    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                    val canvas = Canvas(bitmap)
+                    iconDrawable.setBounds(0, 0, canvas.width, canvas.height)
+                    iconDrawable.draw(canvas)
+                    bitmap
+                }
+            }
+            val stream = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+            stream.toByteArray()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun isUsageStatsPermissionGranted(): Boolean {
+        return try {
+            val appOps = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+            val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                appOps.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), packageName)
+            } else {
+                appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), packageName)
+            }
+            mode == AppOpsManager.MODE_ALLOWED
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     private fun checkRootAvailable(): Boolean {
         return try {
             val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "id"))
@@ -356,12 +546,12 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun runShellCommand(command: String, useRoot: Boolean): String {
-        val process: Process = if (useRoot) {
+        val process: java.lang.Process = if (useRoot) {
             Runtime.getRuntime().exec(arrayOf("su", "-c", command))
         } else {
             val method = Shizuku::class.java.getDeclaredMethod("newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java)
             method.isAccessible = true
-            method.invoke(null, arrayOf("sh", "-c", command), null, null) as Process
+            method.invoke(null, arrayOf("sh", "-c", command), null, null) as java.lang.Process
         }
 
         val reader = BufferedReader(InputStreamReader(process.inputStream))
