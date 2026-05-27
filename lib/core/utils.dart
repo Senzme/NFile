@@ -69,7 +69,7 @@ class FileUtils {
     final mimeType = lookupMimeType(path);
     if (mimeType != null && mimeType.startsWith('image/')) return true;
     final lower = path.toLowerCase();
-    return lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png') || lower.endsWith('.webp') || lower.endsWith('.gif') || lower.endsWith('.bmp');
+    return lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png') || lower.endsWith('.webp') || lower.endsWith('.gif') || lower.endsWith('.bmp') || lower.endsWith('.avif');
   }
 
   static bool isVideo(String path) {

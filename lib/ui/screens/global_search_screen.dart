@@ -197,7 +197,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
 
   bool _isImage(String name) {
     final ext = p.extension(name).toLowerCase();
-    return ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.heic'].contains(ext);
+    return ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.heic', '.avif'].contains(ext);
   }
 
   bool _isVideo(String name) {

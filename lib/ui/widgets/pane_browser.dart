@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:flutter_avif/flutter_avif.dart';
 import '../../providers/file_manager_provider.dart';
 import '../../providers/media_provider.dart';
 import '../../models/file_item_model.dart';
@@ -931,6 +932,15 @@ class _CompactMediaThumbnailState extends State<_CompactMediaThumbnail> {
     }
 
     if (isImg && widget.file.size > 16) {
+      if (widget.file.path.toLowerCase().endsWith('.avif')) {
+        return AvifImage.file(
+          File(widget.file.path),
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+          errorBuilder: (context, error, stackTrace) => Icon(Broken.image, color: widget.iconColor, size: 18),
+        );
+      }
       return Image.file(
         File(widget.file.path),
         fit: BoxFit.cover,

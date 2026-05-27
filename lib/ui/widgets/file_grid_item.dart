@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_avif/flutter_avif.dart';
 import '../../models/file_item_model.dart';
 import '../../core/utils.dart';
 import '../../core/icon_fonts/broken_icons.dart';
@@ -290,6 +291,15 @@ class _MediaThumbnailState extends State<_MediaThumbnail> {
     }
 
     if (isImg && widget.file.size > 16) {
+      if (widget.file.path.toLowerCase().endsWith('.avif')) {
+        return AvifImage.file(
+          File(widget.file.path),
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+          errorBuilder: (context, error, stackTrace) => Icon(Broken.image, color: widget.iconColor, size: 28 * widget.iconScale),
+        );
+      }
       return Image.file(
         File(widget.file.path),
         fit: BoxFit.cover,
