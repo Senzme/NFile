@@ -16,6 +16,8 @@ import 'services/preferences_service.dart';
 import 'services/network_connections_service.dart';
 import 'services/intent_handler_service.dart';
 import 'services/pin_service.dart';
+import 'services/audio_background_handler.dart';
+import 'package:audio_service/audio_service.dart';
 import 'ui/screens/home_screen.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -26,6 +28,25 @@ void main() async {
   await PreferencesService.init();
   await PinService.init();
   await NetworkConnectionsService.init();
+
+  // Initialize audio_service for background media notification
+  // Wrapped in try-catch — app must still launch even if this fails
+  try {
+    await AudioService.init(
+      builder: () => getAudioHandler(),
+      config: const AudioServiceConfig(
+        androidNotificationChannelId: 'com.rubex.nfile.audio',
+        androidNotificationChannelName: 'NFile Audio Player',
+        androidNotificationIcon: 'mipmap/ic_launcher',
+        androidShowNotificationBadge: true,
+        androidStopForegroundOnPause: false,
+        notificationColor: Color(0xFF6200EE),
+      ),
+    );
+  } catch (e) {
+    // audio_service init failed – background playback unavailable but app continues
+    debugPrint('[NFile] AudioService.init failed: $e');
+  }
 
   runApp(
     MultiProvider(

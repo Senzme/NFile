@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:on_audio_query/on_audio_query.dart';
+import 'package:audio_service/audio_service.dart';
 import '../../../core/icon_fonts/broken_icons.dart';
+import '../../../services/audio_background_handler.dart';
 import 'audio_artwork_widget.dart';
 import 'audio_waveform_widget.dart';
 import 'audio_controls_widget.dart';
@@ -58,6 +60,14 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
   double _playbackSpeed = 1.0;
   double _pitch = 1.0;
 
+  // Shuffle
+  bool _isShuffled = false;
+  late List<int> _shuffleQueue; // shuffled indices of _allSongs
+  int _shufflePos = 0; // current position in _shuffleQueue
+
+  // Background playback
+  bool _isBackgroundMode = false;
+
   @override
   void initState() {
     super.initState();
@@ -77,6 +87,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
         pitch: true,
       ),
     );
+    _shuffleQueue = List.generate(_allSongs.length, (i) => i);
     _initListeners();
     _openTrack();
   }
@@ -132,12 +143,18 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
 
   void _playNext() {
     if (_allSongs.isEmpty) return;
-    _currentIndex = (_currentIndex + 1) % _allSongs.length;
+    if (_isShuffled) {
+      _shufflePos = (_shufflePos + 1) % _shuffleQueue.length;
+      _currentIndex = _shuffleQueue[_shufflePos];
+    } else {
+      _currentIndex = (_currentIndex + 1) % _allSongs.length;
+    }
     setState(() {
       position = Duration.zero;
       duration = Duration.zero;
     });
     _openTrack();
+    if (_isBackgroundMode) _updateBackgroundItem();
   }
 
   void _playPrevious() {
@@ -146,19 +163,49 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
       player.seek(Duration.zero);
       return;
     }
-    _currentIndex = (_currentIndex - 1 + _allSongs.length) % _allSongs.length;
+    if (_isShuffled) {
+      _shufflePos = (_shufflePos - 1 + _shuffleQueue.length) % _shuffleQueue.length;
+      _currentIndex = _shuffleQueue[_shufflePos];
+    } else {
+      _currentIndex = (_currentIndex - 1 + _allSongs.length) % _allSongs.length;
+    }
     setState(() {
       position = Duration.zero;
       duration = Duration.zero;
     });
     _openTrack();
+    if (_isBackgroundMode) _updateBackgroundItem();
   }
 
   @override
   void dispose() {
     _fadeController.dispose();
-    player.dispose();
+    if (_isBackgroundMode) {
+      // Let audio keep playing in background — don't dispose player
+    } else {
+      player.dispose();
+    }
     super.dispose();
+  }
+
+  // ─── Shuffle helpers ────────────────────────────────────────────────────
+
+  void _buildShuffleQueue() {
+    _shuffleQueue = List.generate(_allSongs.length, (i) => i);
+    _shuffleQueue.shuffle();
+    // Move current song to front so it plays now, rest is shuffled
+    _shuffleQueue.remove(_currentIndex);
+    _shuffleQueue.insert(0, _currentIndex);
+    _shufflePos = 0;
+  }
+
+  void _toggleShuffle() {
+    setState(() {
+      _isShuffled = !_isShuffled;
+      if (_isShuffled) {
+        _buildShuffleQueue();
+      }
+    });
   }
 
   void _showQueueSheet(Color accentColor) {
@@ -335,47 +382,172 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
     );
   }
 
+  // ─── Background mode ─────────────────────────────────────────────────────
+
+  /// Build MediaItem for the current song for the notification.
+  MediaItem _buildMediaItem(int index) {
+    final song = _allSongs.isNotEmpty ? _allSongs[index] : null;
+    return MediaItem(
+      id: song?.data ?? widget.audioPath,
+      title: song?.title ?? widget.title,
+      artist: song?.artist ?? widget.artist,
+      album: song?.album ?? '',
+    );
+  }
+
+  void _updateBackgroundItem() {
+    getAudioHandler().updateCurrentItem(_buildMediaItem(_currentIndex));
+  }
+
+  Future<void> _toggleBackgroundMode() async {
+    if (_isBackgroundMode) {
+      // Turn off — detach handler, user is in foreground
+      getAudioHandler().detach();
+      setState(() => _isBackgroundMode = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Background playback stopped'),
+            backgroundColor: Colors.blueGrey,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+      return;
+    }
+
+    // Attach the handler with the current player and queue
+    final queue = _allSongs.isNotEmpty
+        ? List.generate(_allSongs.length, (i) => _buildMediaItem(i))
+        : [_buildMediaItem(0)];
+
+    final handler = getAudioHandler();
+    handler.attach(
+      player: player,
+      queue: queue,
+      currentIndex: _currentIndex,
+    );
+    // Skip callback so notification controls update the screen's index
+    handler.setSkipCallback((int idx) {
+      if (!mounted) return;
+      setState(() {
+        _currentIndex = idx;
+        position = Duration.zero;
+        duration = Duration.zero;
+      });
+      _openTrack();
+      _updateBackgroundItem();
+    });
+
+    setState(() => _isBackgroundMode = true);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Playing in background — check notification'),
+          backgroundColor: Colors.deepPurpleAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
+  }
+
   void _showMoreMenu() {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E1E2E),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Broken.document, color: Colors.white),
-              title: const Text('View Synchronized Lyrics', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-              onTap: () {
-                Navigator.pop(context);
-                _showLyricsDialog();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.tune_rounded, color: Colors.white),
-              title: const Text('Sound FX & Equalizer', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-              onTap: () {
-                Navigator.pop(context);
-                _showEqualizerDialog();
-              },
-            ),
-            ListTile(
-              leading: Icon(Broken.timer, color: Colors.white),
-              title: const Text('Set Sleep Timer', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-              onTap: () {
-                Navigator.pop(context);
-                _showSleepTimerDialog();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.info_outline_rounded, color: Colors.white),
-              title: const Text('Audio File Info', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-              subtitle: Text(_currentPath, style: const TextStyle(color: Colors.white54, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
-              onTap: () => Navigator.pop(context),
-            ),
-          ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ── Shuffle toggle ────────────────────────────────────────────────
+              ListTile(
+                leading: Icon(
+                  Icons.shuffle_rounded,
+                  color: _isShuffled ? Colors.deepPurpleAccent : Colors.white,
+                ),
+                title: Text(
+                  _isShuffled ? 'Shuffle: On' : 'Shuffle: Off',
+                  style: TextStyle(
+                    color: _isShuffled ? Colors.deepPurpleAccent : Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                trailing: Switch(
+                  value: _isShuffled,
+                  activeColor: Colors.deepPurpleAccent,
+                  onChanged: (_) {
+                    _toggleShuffle();
+                    setSheet(() {});
+                  },
+                ),
+                onTap: () {
+                  _toggleShuffle();
+                  setSheet(() {});
+                },
+              ),
+              // ── Play in Background ────────────────────────────────────────────
+              ListTile(
+                leading: Icon(
+                  Icons.headphones_rounded,
+                  color: _isBackgroundMode ? Colors.greenAccent : Colors.white,
+                ),
+                title: Text(
+                  _isBackgroundMode ? 'Background: On' : 'Play in Background',
+                  style: TextStyle(
+                    color: _isBackgroundMode ? Colors.greenAccent : Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: Text(
+                  _isBackgroundMode
+                      ? 'Tap to stop background playback'
+                      : 'Shows notification with controls',
+                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _toggleBackgroundMode();
+                },
+              ),
+              const Divider(color: Colors.white12, height: 1),
+              ListTile(
+                leading: Icon(Broken.document, color: Colors.white),
+                title: const Text('View Synchronized Lyrics', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showLyricsDialog();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.tune_rounded, color: Colors.white),
+                title: const Text('Sound FX & Equalizer', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showEqualizerDialog();
+                },
+              ),
+              ListTile(
+                leading: Icon(Broken.timer, color: Colors.white),
+                title: const Text('Set Sleep Timer', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showSleepTimerDialog();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.info_outline_rounded, color: Colors.white),
+                title: const Text('Audio File Info', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                subtitle: Text(_currentPath, style: const TextStyle(color: Colors.white54, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                onTap: () => Navigator.pop(ctx),
+              ),
+            ],
+          ),
         ),
       ),
     );

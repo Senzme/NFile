@@ -10,7 +10,7 @@ import android.os.StatFs
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.webkit.MimeTypeMap
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import rikka.shizuku.Shizuku
@@ -32,7 +32,7 @@ import android.app.AppOpsManager
 import android.os.storage.StorageManager
 import android.os.Process
 
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
     private val CHANNEL = "com.rubex.nfile/root_shizuku"
     private val SHIZUKU_REQUEST_CODE = 10001
     private val executor = Executors.newCachedThreadPool()
@@ -165,7 +165,7 @@ class MainActivity : FlutterActivity() {
                     executor.execute {
                         try {
                             val uri = Uri.parse(uriString)
-                            val contentResolver = context.contentResolver
+                            val contentResolver = applicationContext.contentResolver
                             
                             var fileName = "temp_file"
                             var mimeType = contentResolver.getType(uri) ?: ""
@@ -184,7 +184,7 @@ class MainActivity : FlutterActivity() {
                                 }
                             }
 
-                            val cacheDir = context.cacheDir
+                            val cacheDir = applicationContext.cacheDir
                             val prefix = "incoming_" + System.currentTimeMillis() + "_"
                             val ext = if (fileName.contains(".")) {
                                 "." + fileName.substringAfterLast(".")
@@ -219,7 +219,7 @@ class MainActivity : FlutterActivity() {
                     executor.execute {
                         try {
                             val uri = Uri.parse(uriString)
-                            val contentResolver = context.contentResolver
+                            val contentResolver = applicationContext.contentResolver
                             
                             contentResolver.openOutputStream(uri, "w")?.use { outputStream ->
                                 outputStream.write(content.toByteArray(Charsets.UTF_8))

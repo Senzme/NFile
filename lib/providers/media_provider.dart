@@ -8,6 +8,7 @@ import 'package:on_audio_query/on_audio_query.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:device_info_plus/device_info_plus.dart';
 import '../services/preferences_service.dart';
 import '../models/custom_shortcut_model.dart';
 
@@ -368,6 +369,25 @@ class MediaProvider extends ChangeNotifier {
     try {
       isStorageGranted = await Permission.storage.isGranted || await Permission.manageExternalStorage.isGranted;
     } catch (_) {}
+
+    // Android 10 (API 29) / 11 / 12: explicitly request legacy storage + media location
+    // so that photo_manager can access images & videos on those API levels.
+    if (Platform.isAndroid) {
+      try {
+        final info = await DeviceInfoPlugin().androidInfo;
+        final sdk = info.version.sdkInt;
+        if (sdk < 33) {
+          // Request READ_EXTERNAL_STORAGE (legacy) – required up to API 32
+          final storageStatus = await Permission.storage.request();
+          if (storageStatus.isGranted) isStorageGranted = true;
+          // ACCESS_MEDIA_LOCATION – required on API 29+ for image/video metadata
+          await Permission.accessMediaLocation.request();
+          // Tell photo_manager to bypass its own permission gate so it uses
+          // the legacy storage grant we just obtained.
+          PhotoManager.setIgnorePermissionCheck(true);
+        }
+      } catch (_) {}
+    }
 
     final futures = <Future<void>>[];
     if (ps.isAuth || isStorageGranted) {
