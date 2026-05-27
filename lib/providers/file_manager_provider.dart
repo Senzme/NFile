@@ -44,8 +44,16 @@ class StorageVolume {
   final String name;
   final String path;
   final bool isInternal;
+  int totalBytes;
+  int usedBytes;
 
-  StorageVolume({required this.name, required this.path, required this.isInternal});
+  StorageVolume({
+    required this.name,
+    required this.path,
+    required this.isInternal,
+    this.totalBytes = 0,
+    this.usedBytes = 0,
+  });
 }
 
 class FileManagerProvider extends ChangeNotifier {
@@ -78,6 +86,25 @@ class FileManagerProvider extends ChangeNotifier {
     _use24HourFormat = PreferencesService.getUse24HourFormat();
     _hideTimeAndDate = PreferencesService.getHideTimeAndDate();
     _showFolderContentsCount = PreferencesService.getShowFolderContentsCount();
+
+    // Synchronously load cached storage sizes and pre-populate internal storage volume
+    // to prevent any visual delay, shimmer, or refreshing animation on app startup!
+    _totalStorageBytes = PreferencesService.getCachedTotalStorage();
+    _usedStorageBytes = PreferencesService.getCachedUsedStorage();
+
+    if (_totalStorageBytes > 0) {
+      _storageVolumes = [
+        StorageVolume(
+          name: 'Internal Storage',
+          path: '/storage/emulated/0',
+          isInternal: true,
+          totalBytes: _totalStorageBytes,
+          usedBytes: _usedStorageBytes,
+        )
+      ];
+    } else {
+      _storageVolumes = [];
+    }
   }
 
   final ValueNotifier<FileOperationProgress?> progressNotifier = ValueNotifier<FileOperationProgress?>(null);
@@ -750,16 +777,24 @@ class FileManagerProvider extends ChangeNotifier {
 
   int _totalStorageBytes = 0;
   int _usedStorageBytes = 0;
+  int _rawTotalStorageBytes = 0;
+  int _rawUsedStorageBytes = 0;
 
   int get totalStorageBytes => _totalStorageBytes;
   int get usedStorageBytes => _usedStorageBytes;
+  int get rawTotalStorageBytes => _rawTotalStorageBytes;
+  int get rawUsedStorageBytes => _rawUsedStorageBytes;
   double get storageUsedPercentage => _totalStorageBytes == 0 ? 0.0 : (_usedStorageBytes / _totalStorageBytes);
+  double get rawStorageUsedPercentage => _rawTotalStorageBytes == 0 ? 0.0 : (_rawUsedStorageBytes / _rawTotalStorageBytes);
 
   Future<void> updateStorageSpace() async {
     final space = await RootShizukuService.getStorageSpace();
     if (space != null) {
       final rawTotal = space['totalBytes'] ?? 0;
       final rawUsed = space['usedBytes'] ?? 0;
+
+      _rawTotalStorageBytes = rawTotal;
+      _rawUsedStorageBytes = rawUsed;
 
       if (rawTotal > 0) {
         final double rawTotalGb = rawTotal / (1024 * 1024 * 1024);
@@ -793,10 +828,27 @@ class FileManagerProvider extends ChangeNotifier {
 
         _totalStorageBytes = marketingTotalBytes;
         _usedStorageBytes = adjustedUsedBytes;
+        PreferencesService.saveCachedTotalStorage(marketingTotalBytes);
+        PreferencesService.saveCachedUsedStorage(adjustedUsedBytes);
       } else {
         _totalStorageBytes = 0;
         _usedStorageBytes = 0;
       }
+
+      // Query/calculate space for all volumes
+      for (var vol in _storageVolumes) {
+        if (vol.isInternal) {
+          vol.totalBytes = _rawTotalStorageBytes;
+          vol.usedBytes = _rawUsedStorageBytes;
+        } else {
+          final volSpace = await RootShizukuService.getStorageSpace(path: vol.path);
+          if (volSpace != null) {
+            vol.totalBytes = volSpace['totalBytes'] ?? 0;
+            vol.usedBytes = volSpace['usedBytes'] ?? 0;
+          }
+        }
+      }
+
       notifyListeners();
     }
   }
@@ -810,7 +862,6 @@ class FileManagerProvider extends ChangeNotifier {
   }
 
   Future<void> _detectStorageVolumes() async {
-    updateStorageSpace();
     final volumes = <StorageVolume>[];
     if (Platform.isAndroid) {
       volumes.add(StorageVolume(name: 'Internal Storage', path: '/storage/emulated/0', isInternal: true));
@@ -855,7 +906,7 @@ class FileManagerProvider extends ChangeNotifier {
       volumes.add(StorageVolume(name: 'Documents', path: dir.path, isInternal: true));
     }
     _storageVolumes = volumes;
-    notifyListeners();
+    await updateStorageSpace();
   }
 
   Future<void> init() async {

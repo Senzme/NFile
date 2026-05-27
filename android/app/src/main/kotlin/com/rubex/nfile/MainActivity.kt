@@ -91,9 +91,10 @@ class MainActivity : FlutterActivity() {
                     }
                 }
                 "getStorageSpace" -> {
+                    val pathArg = call.argument<String>("path")
                     executor.execute {
                         try {
-                            val path = Environment.getExternalStorageDirectory().path
+                            val path = pathArg ?: Environment.getExternalStorageDirectory().path
                             val stat = StatFs(path)
                             val blockSize = stat.blockSizeLong
                             val totalBlocks = stat.blockCountLong

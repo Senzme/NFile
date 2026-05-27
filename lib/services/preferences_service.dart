@@ -410,4 +410,23 @@ class PreferencesService {
   static Future<void> saveShowFolderContentsCount(bool val) async {
     await _prefs?.setBool(_keyShowFolderContentsCount, val);
   }
+
+  static const String _keyCachedTotalStorage = 'cached_total_storage';
+  static const String _keyCachedUsedStorage = 'cached_used_storage';
+
+  static int getCachedTotalStorage() {
+    return _prefs?.getInt(_keyCachedTotalStorage) ?? 0;
+  }
+
+  static Future<void> saveCachedTotalStorage(int val) async {
+    await _prefs?.setInt(_keyCachedTotalStorage, val);
+  }
+
+  static int getCachedUsedStorage() {
+    return _prefs?.getInt(_keyCachedUsedStorage) ?? 0;
+  }
+
+  static Future<void> saveCachedUsedStorage(int val) async {
+    await _prefs?.setInt(_keyCachedUsedStorage, val);
+  }
 }

@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/file_manager_provider.dart';
 import '../../providers/media_provider.dart';
 import '../../core/icon_fonts/broken_icons.dart';
-import '../widgets/premium_storage_overview.dart';
+import '../widgets/swipable_storage_overview.dart';
 import '../widgets/quick_categories_grid.dart';
 import '../widgets/recent_files_section.dart';
 import '../widgets/nfile_drawer.dart';
@@ -207,10 +207,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            PremiumStorageOverview(
-              onBrowseStorage: () {
+            SwipableStorageOverview(
+              onBrowseVolume: (path) {
                 final provider = context.read<FileManagerProvider>();
-                provider.loadDirectory(provider.rootPath);
+                provider.loadDirectory(path);
                 setState(() => _currentIndex = 1);
               },
             ),
