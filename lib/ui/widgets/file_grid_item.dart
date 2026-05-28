@@ -110,7 +110,7 @@ class FileGridItem extends StatelessWidget {
                                 fontSize: 13.5 * (1 + (iconScale - 1) * 0.3),
                               ),
                               textAlign: TextAlign.center,
-                              maxLines: 1,
+                              maxLines: context.select<FileManagerProvider, bool>((p) => p.adaptiveMultiLineNames) ? 3 : 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),

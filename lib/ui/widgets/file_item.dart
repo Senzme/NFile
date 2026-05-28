@@ -108,7 +108,7 @@ class FileItem extends StatelessWidget {
                               fontWeight: FontWeight.w600,
                               fontSize: 15 * (1 + (iconScale - 1) * 0.3),
                             ),
-                            maxLines: 1,
+                            maxLines: context.select<FileManagerProvider, bool>((p) => p.adaptiveMultiLineNames) ? 3 : 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),

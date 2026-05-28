@@ -296,6 +296,21 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
             ),
             _buildSettingTile(
               theme,
+              icon: Broken.text,
+              title: 'Adaptive Multi-line Filenames',
+              subtitle: 'Allow filenames to wrap 3 lines instead of truncating',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.adaptiveMultiLineNames,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleAdaptiveMultiLineNames(),
+                ),
+              ),
+              onTap: () => fileManager.toggleAdaptiveMultiLineNames(),
+            ),
+            _buildSettingTile(
+              theme,
               icon: Broken.folder_connection,
               title: 'Enable Drag & Drop',
               subtitle: 'Long press and drag folders or files to move them into other folders',

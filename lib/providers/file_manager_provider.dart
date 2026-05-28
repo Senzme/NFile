@@ -87,6 +87,7 @@ class FileManagerProvider extends ChangeNotifier {
     _use24HourFormat = PreferencesService.getUse24HourFormat();
     _hideTimeAndDate = PreferencesService.getHideTimeAndDate();
     _showFolderContentsCount = PreferencesService.getShowFolderContentsCount();
+    _adaptiveMultiLineNames = PreferencesService.getAdaptiveMultiLineNames();
 
     // Synchronously load cached storage sizes and pre-populate internal storage volume
     // to prevent any visual delay, shimmer, or refreshing animation on app startup!
@@ -585,6 +586,15 @@ class FileManagerProvider extends ChangeNotifier {
   void toggleEnableFolderHighlight() {
     _enableFolderHighlight = !_enableFolderHighlight;
     PreferencesService.saveEnableFolderHighlight(_enableFolderHighlight);
+    notifyListeners();
+  }
+
+  bool _adaptiveMultiLineNames = false;
+  bool get adaptiveMultiLineNames => _adaptiveMultiLineNames;
+
+  void toggleAdaptiveMultiLineNames() {
+    _adaptiveMultiLineNames = !_adaptiveMultiLineNames;
+    PreferencesService.saveAdaptiveMultiLineNames(_adaptiveMultiLineNames);
     notifyListeners();
   }
 

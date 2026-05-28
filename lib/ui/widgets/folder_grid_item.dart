@@ -99,7 +99,7 @@ class FolderGridItem extends StatelessWidget {
                                 fontWeight: FontWeight.w600,
                                 fontSize: 13 * (1 + (iconScale - 1) * 0.3),
                               ),
-                              maxLines: 2,
+                              maxLines: context.select<FileManagerProvider, bool>((p) => p.adaptiveMultiLineNames) ? 3 : 2,
                               overflow: TextOverflow.ellipsis,
                               textAlign: TextAlign.center,
                             ),

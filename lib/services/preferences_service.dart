@@ -429,4 +429,14 @@ class PreferencesService {
   static Future<void> saveCachedUsedStorage(int val) async {
     await _prefs?.setInt(_keyCachedUsedStorage, val);
   }
+
+  static const String _keyAdaptiveMultiLineNames = 'adaptive_multiline_names';
+
+  static bool getAdaptiveMultiLineNames() {
+    return _prefs?.getBool(_keyAdaptiveMultiLineNames) ?? false;
+  }
+
+  static Future<void> saveAdaptiveMultiLineNames(bool val) async {
+    await _prefs?.setBool(_keyAdaptiveMultiLineNames, val);
+  }
 }
