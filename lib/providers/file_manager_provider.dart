@@ -1255,23 +1255,49 @@ class FileManagerProvider extends ChangeNotifier {
 
       for (final srcPath in _clipboardPaths) {
         final type = FileSystemEntity.typeSync(srcPath);
+        final isSameFolder = p.dirname(srcPath) == currentPath;
+
+        if (isSameFolder && _isCut) {
+          if (context.mounted) {
+            await FileActionDialogs.showWarningDialog(
+              context,
+              title: 'Operation Cancelled',
+              content: 'Cannot cut and paste a file into the same folder.',
+            );
+          }
+          clearClipboard();
+          activeTab.isLoading = false;
+          notifyListeners();
+          return;
+        }
+
         if (type == FileSystemEntityType.file) {
           final file = File(srcPath);
           final size = file.lengthSync();
           totalBytes += size;
+          
+          String destPath = p.join(currentPath, p.basename(srcPath));
+          if (isSameFolder && !_isCut) {
+            destPath = _getCopyUniquePath(destPath, false);
+          }
+
           itemsToProcess.add({
             'source': file,
-            'destPath': p.join(currentPath, p.basename(srcPath)),
+            'destPath': destPath,
             'size': size,
             'isDir': false,
           });
         } else if (type == FileSystemEntityType.directory) {
           final dir = Directory(srcPath);
-          final parentPath = p.dirname(srcPath);
           
+          String topDestPath = p.join(currentPath, p.basename(srcPath));
+          if (isSameFolder && !_isCut) {
+            topDestPath = _getCopyUniquePath(topDestPath, true);
+          }
+
           itemsToProcess.add({
             'source': dir,
-            'destPath': p.join(currentPath, p.basename(srcPath)),
+            'destPath': topDestPath,
             'size': 0,
             'isDir': true,
           });
@@ -1279,8 +1305,8 @@ class FileManagerProvider extends ChangeNotifier {
           try {
             final entities = dir.listSync(recursive: true, followLinks: false);
             for (final entity in entities) {
-              final relPath = p.relative(entity.path, from: parentPath);
-              final destPath = p.join(currentPath, relPath);
+              final relPath = p.relative(entity.path, from: srcPath);
+              final destPath = p.join(topDestPath, relPath);
               
               if (entity is Directory) {
                 itemsToProcess.add({
@@ -1580,6 +1606,40 @@ class FileManagerProvider extends ChangeNotifier {
       String base = p.basenameWithoutExtension(destPath);
       while (true) {
         final candidate = p.join(parent, '$base ($counter)$ext');
+        if (!File(candidate).existsSync()) {
+          return candidate;
+        }
+        counter++;
+      }
+    }
+  }
+
+  String _getCopyUniquePath(String destPath, bool isDir) {
+    String parent = p.dirname(destPath);
+    if (isDir) {
+      String base = p.basename(destPath);
+      String copyBase = '$base (copy)';
+      if (!Directory(p.join(parent, copyBase)).existsSync()) {
+        return p.join(parent, copyBase);
+      }
+      int counter = 1;
+      while (true) {
+        final candidate = p.join(parent, '$copyBase ($counter)');
+        if (!Directory(candidate).existsSync()) {
+          return candidate;
+        }
+        counter++;
+      }
+    } else {
+      String ext = p.extension(destPath);
+      String base = p.basenameWithoutExtension(destPath);
+      String copyBase = '$base (copy)';
+      if (!File(p.join(parent, '$copyBase$ext')).existsSync()) {
+        return p.join(parent, '$copyBase$ext');
+      }
+      int counter = 1;
+      while (true) {
+        final candidate = p.join(parent, '$copyBase ($counter)$ext');
         if (!File(candidate).existsSync()) {
           return candidate;
         }
