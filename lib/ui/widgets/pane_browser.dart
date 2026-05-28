@@ -377,6 +377,7 @@ class _PaneBrowserState extends State<PaneBrowser> {
                                                               }
                                                             },
                                                             onLongPress: provider.enableDragDrop ? null : itemLongPress,
+                                                            onIconTap: itemLongPress,
                                                             onAction: (action) => _handleAction(context, action, item.path),
                                                           ),
                                                         );
@@ -407,6 +408,7 @@ class _PaneBrowserState extends State<PaneBrowser> {
                                                               }
                                                             },
                                                             onLongPress: provider.enableDragDrop ? null : itemLongPress,
+                                                            onIconTap: itemLongPress,
                                                             onAction: (action) => _handleAction(context, action, item.path),
                                                           ),
                                                         );
@@ -506,23 +508,26 @@ class _PaneBrowserState extends State<PaneBrowser> {
           ),
           child: Row(
             children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Icon(
-                  isSelected
-                      ? Broken.tick_circle
-                      : FileUtils.getFolderIcon(provider.folderIconOption),
-                  color: isSelected
-                      ? theme.colorScheme.onPrimary
-                      : theme.colorScheme.primary,
-                  size: 18,
+              GestureDetector(
+                onTap: itemLongPress,
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Icon(
+                    isSelected
+                        ? Broken.tick_circle
+                        : FileUtils.getFolderIcon(provider.folderIconOption),
+                    color: isSelected
+                        ? theme.colorScheme.onPrimary
+                        : theme.colorScheme.primary,
+                    size: 18,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -670,21 +675,24 @@ class _PaneBrowserState extends State<PaneBrowser> {
           ),
           child: Row(
             children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? theme.colorScheme.primary
-                      : iconColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: _CompactMediaThumbnail(
-                    file: file,
-                    isSelected: isSelected,
-                    iconColor: iconColor,
+              GestureDetector(
+                onTap: itemLongPress,
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? theme.colorScheme.primary
+                        : iconColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: _CompactMediaThumbnail(
+                      file: file,
+                      isSelected: isSelected,
+                      iconColor: iconColor,
+                    ),
                   ),
                 ),
               ),

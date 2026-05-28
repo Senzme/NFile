@@ -1190,6 +1190,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                                               }
                                             },
                                             onLongPress: provider.enableDragDrop ? null : itemLongPress,
+                                            onIconTap: itemLongPress,
                                             onAction: (action) => _handleAction(context, action, item.path),
                                           ),
                                         );
@@ -1218,6 +1219,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                                               }
                                             },
                                             onLongPress: provider.enableDragDrop ? null : itemLongPress,
+                                            onIconTap: itemLongPress,
                                             onAction: (action) => _handleAction(context, action, item.path),
                                           ),
                                         );
@@ -1256,6 +1258,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                                               }
                                             },
                                             onLongPress: provider.enableDragDrop ? null : itemLongPress,
+                                            onIconTap: itemLongPress,
                                             onAction: (action) => _handleAction(context, action, item.path),
                                           ),
                                         );
@@ -1284,6 +1287,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                                               }
                                             },
                                             onLongPress: provider.enableDragDrop ? null : itemLongPress,
+                                            onIconTap: itemLongPress,
                                             onAction: (action) => _handleAction(context, action, item.path),
                                           ),
                                         );

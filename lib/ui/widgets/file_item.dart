@@ -15,6 +15,7 @@ class FileItem extends StatelessWidget {
   final FileItemModel file;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
+  final VoidCallback? onIconTap;
   final Function(String) onAction;
   final bool isSelected;
   final double iconScale;
@@ -25,6 +26,7 @@ class FileItem extends StatelessWidget {
     required this.file,
     required this.onTap,
     this.onLongPress,
+    this.onIconTap,
     required this.onAction,
     this.isSelected = false,
     this.iconScale = 1.0,
@@ -65,7 +67,7 @@ class FileItem extends StatelessWidget {
           child: Row(
             children: [
               GestureDetector(
-                onTap: onLongPress,
+                onTap: onIconTap ?? onLongPress,
                 child: Container(
                   width: 48 * iconScale,
                   height: 48 * iconScale,
