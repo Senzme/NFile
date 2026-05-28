@@ -23,8 +23,9 @@ enum MediaType { images, videos, audios, documents, archives, downloads, apks, s
 class MediaCategoryScreen extends StatefulWidget {
   final MediaType mediaType;
   final AssetPathEntity? album;
+  final Function(int)? onNavigateTab;
 
-  const MediaCategoryScreen({super.key, required this.mediaType, this.album});
+  const MediaCategoryScreen({super.key, required this.mediaType, this.album, this.onNavigateTab});
 
   @override
   State<MediaCategoryScreen> createState() => _MediaCategoryScreenState();
@@ -580,6 +581,17 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
                   }
                 },
               ),
+              if (filePath != null)
+                ListTile(
+                  leading: Icon(Broken.folder_open, color: theme.colorScheme.primary),
+                  title: const Text('Show in location'),
+                  onTap: () {
+                    context.read<FileManagerProvider>().showFileInLocation(filePath);
+                    Navigator.pop(ctx);
+                    Navigator.popUntil(context, (route) => route.isFirst);
+                    widget.onNavigateTab?.call(1);
+                  },
+                ),
               ListTile(
                 leading: Icon(Broken.info_circle, color: theme.colorScheme.primary),
                 title: const Text('Properties'),
@@ -748,6 +760,7 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
                             _slideRoute(MediaCategoryScreen(
                               mediaType: widget.mediaType,
                               album: album,
+                              onNavigateTab: widget.onNavigateTab,
                             )),
                           );
                         },

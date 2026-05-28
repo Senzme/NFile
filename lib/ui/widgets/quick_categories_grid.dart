@@ -21,7 +21,7 @@ class QuickCategoriesGrid extends StatelessWidget {
         'color': isDark ? Colors.purpleAccent : Colors.purple,
         'count': '${mediaProvider.getCategoryItemCount("Images")}',
         'isCustom': false,
-        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.images))),
+        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => MediaCategoryScreen(mediaType: MediaType.images, onNavigateTab: onNavigateTab))),
       },
       'Videos': {
         'label': 'Videos',
@@ -29,7 +29,7 @@ class QuickCategoriesGrid extends StatelessWidget {
         'color': isDark ? Colors.redAccent : const Color(0xFFD32F2F),
         'count': '${mediaProvider.getCategoryItemCount("Videos")}',
         'isCustom': false,
-        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.videos))),
+        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => MediaCategoryScreen(mediaType: MediaType.videos, onNavigateTab: onNavigateTab))),
       },
       'Audio': {
         'label': 'Audio',
@@ -37,7 +37,7 @@ class QuickCategoriesGrid extends StatelessWidget {
         'color': isDark ? Colors.orangeAccent : const Color(0xFFE65100),
         'count': '${mediaProvider.getCategoryItemCount("Audio")}',
         'isCustom': false,
-        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.audios))),
+        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => MediaCategoryScreen(mediaType: MediaType.audios, onNavigateTab: onNavigateTab))),
       },
       'Documents': {
         'label': 'Documents',
@@ -45,7 +45,7 @@ class QuickCategoriesGrid extends StatelessWidget {
         'color': isDark ? Colors.blueAccent : const Color(0xFF1976D2),
         'count': '${mediaProvider.getCategoryItemCount("Documents")}',
         'isCustom': false,
-        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.documents))),
+        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => MediaCategoryScreen(mediaType: MediaType.documents, onNavigateTab: onNavigateTab))),
       },
       'Archives': {
         'label': 'Archives',
@@ -53,7 +53,7 @@ class QuickCategoriesGrid extends StatelessWidget {
         'color': isDark ? Colors.tealAccent : const Color(0xFF00796B),
         'count': '${mediaProvider.getCategoryItemCount("Archives")}',
         'isCustom': false,
-        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.archives))),
+        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => MediaCategoryScreen(mediaType: MediaType.archives, onNavigateTab: onNavigateTab))),
       },
       'Downloads': {
         'label': 'Downloads',
@@ -61,7 +61,7 @@ class QuickCategoriesGrid extends StatelessWidget {
         'color': isDark ? Colors.greenAccent : const Color(0xFF2E7D32),
         'count': '${mediaProvider.getCategoryItemCount("Downloads")}',
         'isCustom': false,
-        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.downloads))),
+        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => MediaCategoryScreen(mediaType: MediaType.downloads, onNavigateTab: onNavigateTab))),
       },
       'APKs': {
         'label': 'APKs',
@@ -69,7 +69,7 @@ class QuickCategoriesGrid extends StatelessWidget {
         'color': isDark ? Colors.amber : const Color(0xFFF57C00),
         'count': '${mediaProvider.getCategoryItemCount("APKs")}',
         'isCustom': false,
-        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.apks))),
+        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => MediaCategoryScreen(mediaType: MediaType.apks, onNavigateTab: onNavigateTab))),
       },
       'Screenshots': {
         'label': 'Screenshots',
@@ -77,7 +77,7 @@ class QuickCategoriesGrid extends StatelessWidget {
         'color': isDark ? Colors.pinkAccent : const Color(0xFFC2185B),
         'count': '${mediaProvider.getCategoryItemCount("Screenshots")}',
         'isCustom': false,
-        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MediaCategoryScreen(mediaType: MediaType.screenshots))),
+        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => MediaCategoryScreen(mediaType: MediaType.screenshots, onNavigateTab: onNavigateTab))),
       },
       'Apps': {
         'label': 'Apps',

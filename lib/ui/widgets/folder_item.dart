@@ -33,7 +33,7 @@ class FolderItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isHighlighted = context.select<FileManagerProvider, bool>(
-      (p) => p.enableFolderHighlight && p.highlightedPaths.contains(folder.path),
+      (p) => p.highlightedPaths.contains(folder.path),
     );
 
     final cardMargin = EdgeInsets.symmetric(

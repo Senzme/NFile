@@ -787,6 +787,20 @@ class FileManagerProvider extends ChangeNotifier {
     _shouldScrollToHighlight = false;
   }
 
+  Future<void> showFileInLocation(String filePath) async {
+    final parentPath = p.dirname(filePath);
+    await loadDirectory(parentPath);
+    _highlightedPaths.clear();
+    _highlightedPaths.add(filePath);
+    _shouldScrollToHighlight = true;
+    notifyListeners();
+    Timer(const Duration(milliseconds: 2000), () {
+      if (_highlightedPaths.remove(filePath)) {
+        notifyListeners();
+      }
+    });
+  }
+
   String _rootPath = '';
   String get rootPath => _rootPath;
 

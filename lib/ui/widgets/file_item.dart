@@ -40,7 +40,7 @@ class FileItem extends StatelessWidget {
     final iconColor = FileUtils.getColorForFile(file.path, context);
     final isArchive = FileUtils.isArchive(file.path);
     final isHighlighted = context.select<FileManagerProvider, bool>(
-      (p) => p.enableFolderHighlight && p.highlightedPaths.contains(file.path),
+      (p) => p.highlightedPaths.contains(file.path),
     );
 
     final cardMargin = EdgeInsets.symmetric(

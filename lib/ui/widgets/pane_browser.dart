@@ -468,7 +468,7 @@ class _PaneBrowserState extends State<PaneBrowser> {
     bool isSelectionMode,
   ) {
     final theme = Theme.of(context);
-    final isHighlighted = provider.enableFolderHighlight && provider.highlightedPaths.contains(folder.path);
+    final isHighlighted = provider.highlightedPaths.contains(folder.path);
 
     final itemLongPress = () {
       _activatePane(provider);
@@ -633,7 +633,7 @@ class _PaneBrowserState extends State<PaneBrowser> {
     bool isSelectionMode,
   ) {
     final theme = Theme.of(context);
-    final isHighlighted = provider.enableFolderHighlight && provider.highlightedPaths.contains(file.path);
+    final isHighlighted = provider.highlightedPaths.contains(file.path);
     final iconColor = FileUtils.getColorForFile(file.path, context);
     final isArchive = FileUtils.isArchive(file.path);
 
