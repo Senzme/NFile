@@ -14,6 +14,13 @@ class CodeTextEditingController extends TextEditingController {
   bool isDark;
   double fontSize;
 
+  // Caching variables for high performance scrolling
+  String? _lastParsedText;
+  String? _lastParsedLanguage;
+  bool? _lastParsedIsDark;
+  double? _lastParsedFontSize;
+  TextSpan? _lastParsedSpan;
+
   CodeTextEditingController({
     this.language = 'plain',
     this.isDark = true,
@@ -24,8 +31,22 @@ class CodeTextEditingController extends TextEditingController {
   @override
   TextSpan buildTextSpan({required BuildContext context, TextStyle? style, required bool withComposing}) {
     final defaultStyle = style ?? TextStyle(fontFamily: 'monospace', fontSize: fontSize, height: 1.45);
-    if (language == 'plain' || text.isEmpty) {
+    
+    // Bypasses highlighting for large files to guarantee buttery smooth 60fps/120fps scrolling and editing
+    final isTooLargeForHighlight = text.length > 50000;
+    final effectiveLanguage = isTooLargeForHighlight ? 'plain' : language;
+
+    if (effectiveLanguage == 'plain' || text.isEmpty) {
       return TextSpan(text: text, style: defaultStyle);
+    }
+
+    // Cache hit: immediately return cached span during scrolling/selection/caret blink
+    if (text == _lastParsedText &&
+        effectiveLanguage == _lastParsedLanguage &&
+        isDark == _lastParsedIsDark &&
+        fontSize == _lastParsedFontSize &&
+        _lastParsedSpan != null) {
+      return _lastParsedSpan!;
     }
 
     final commentColor = isDark ? const Color(0xFF7F848E) : const Color(0xFF808080);
@@ -36,12 +57,12 @@ class CodeTextEditingController extends TextEditingController {
     final attrColor = isDark ? const Color(0xFFE5C07B) : const Color(0xFFA52A2A);
 
     RegExp regExp;
-    if (language == 'html' || language == 'xml') {
+    if (effectiveLanguage == 'html' || effectiveLanguage == 'xml') {
       regExp = RegExp(
         r'(?<comment><!--[\s\S]*?-->)|(?<string>"[^"]*"|\x27[^\x27]*\x27)|(?<tag><\/?[\w\-_:]+)|(?<attr>\b[\w\-_:]+)(?=\s*=)',
         multiLine: true,
       );
-    } else if (language == 'json') {
+    } else if (effectiveLanguage == 'json') {
       regExp = RegExp(
         r'(?<string>"[^"]*")|(?<number>\b-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b)|(?<keyword>\b(?:true|false|null)\b)',
         multiLine: true,
@@ -94,7 +115,16 @@ class CodeTextEditingController extends TextEditingController {
       spans.add(TextSpan(text: text.substring(lastEnd), style: defaultStyle));
     }
 
-    return TextSpan(children: spans);
+    final resultSpan = TextSpan(children: spans);
+    
+    // Save to cache
+    _lastParsedText = text;
+    _lastParsedLanguage = effectiveLanguage;
+    _lastParsedIsDark = isDark;
+    _lastParsedFontSize = fontSize;
+    _lastParsedSpan = resultSpan;
+
+    return resultSpan;
   }
 }
 
@@ -146,7 +176,10 @@ class _TextEditorScreenState extends State<TextEditorScreen> {
     
     _textScrollController.addListener(() {
       if (_lineScrollController.hasClients && _textScrollController.hasClients) {
-        _lineScrollController.jumpTo(_textScrollController.offset);
+        final offset = _textScrollController.offset;
+        if (_lineScrollController.offset != offset) {
+          _lineScrollController.jumpTo(offset);
+        }
       }
     });
 

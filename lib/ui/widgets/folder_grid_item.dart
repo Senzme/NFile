@@ -206,7 +206,7 @@ class FolderGridItem extends StatelessWidget {
                   child: const Icon(Icons.push_pin_rounded, size: 12, color: Colors.white),
                 ),
               ),
-            if (!isSelected)
+            if (!isSelected && !context.select<FileManagerProvider, bool>((p) => p.hideActionMenuButtons))
               Positioned(
                 top: 4,
                 right: 4,

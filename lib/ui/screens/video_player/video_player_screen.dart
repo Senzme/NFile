@@ -5,6 +5,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:nfile/core/icon_fonts/broken_icons.dart';
+import 'package:nfile/services/preferences_service.dart';
 import 'video_loading_indicator.dart';
 import 'video_seek_indicator.dart';
 import 'video_controls_overlay.dart';
@@ -325,7 +326,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         DeviceOrientation.landscapeLeft,
       ]);
     } else {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      final hideNav = PreferencesService.getHideNavigationBar();
+      if (hideNav) {
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: [SystemUiOverlay.top]);
+      } else {
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
+      }
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.portraitUp,
       ]);
@@ -340,7 +346,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     _sliderTimer?.cancel();
     _controlsAnimController.dispose();
     player.dispose();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    final hideNav = PreferencesService.getHideNavigationBar();
+    if (hideNav) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: [SystemUiOverlay.top]);
+    } else {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
+    }
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     super.dispose();
   }

@@ -80,7 +80,7 @@ class _NFileAppState extends State<NFileApp> {
     if (hideNav) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: [SystemUiOverlay.top]);
     } else {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
     }
     SystemChrome.setSystemUIChangeCallback((bool visible) async {
       if (visible) {
@@ -266,7 +266,7 @@ class _NFileAppState extends State<NFileApp> {
                 if (fileManager.hideNavigationBar) {
                   SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: [SystemUiOverlay.top]);
                 } else {
-                  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+                  SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
                 }
 
                 return AnnotatedRegion<SystemUiOverlayStyle>(

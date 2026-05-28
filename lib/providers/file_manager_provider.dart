@@ -88,6 +88,7 @@ class FileManagerProvider extends ChangeNotifier {
     _hideTimeAndDate = PreferencesService.getHideTimeAndDate();
     _showFolderContentsCount = PreferencesService.getShowFolderContentsCount();
     _adaptiveMultiLineNames = PreferencesService.getAdaptiveMultiLineNames();
+    _hideActionMenuButtons = PreferencesService.getHideActionMenuButtons();
 
     // Synchronously load cached storage sizes and pre-populate internal storage volume
     // to prevent any visual delay, shimmer, or refreshing animation on app startup!
@@ -523,7 +524,7 @@ class FileManagerProvider extends ChangeNotifier {
     if (_hideNavigationBar) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: [SystemUiOverlay.top]);
     } else {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
     }
     notifyListeners();
   }
@@ -595,6 +596,15 @@ class FileManagerProvider extends ChangeNotifier {
   void toggleAdaptiveMultiLineNames() {
     _adaptiveMultiLineNames = !_adaptiveMultiLineNames;
     PreferencesService.saveAdaptiveMultiLineNames(_adaptiveMultiLineNames);
+    notifyListeners();
+  }
+
+  bool _hideActionMenuButtons = false;
+  bool get hideActionMenuButtons => _hideActionMenuButtons;
+
+  void toggleHideActionMenuButtons() {
+    _hideActionMenuButtons = !_hideActionMenuButtons;
+    PreferencesService.saveHideActionMenuButtons(_hideActionMenuButtons);
     notifyListeners();
   }
 

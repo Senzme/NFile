@@ -439,4 +439,14 @@ class PreferencesService {
   static Future<void> saveAdaptiveMultiLineNames(bool val) async {
     await _prefs?.setBool(_keyAdaptiveMultiLineNames, val);
   }
+
+  static const String _keyHideActionMenuButtons = 'hide_action_menu_buttons';
+
+  static bool getHideActionMenuButtons() {
+    return _prefs?.getBool(_keyHideActionMenuButtons) ?? false;
+  }
+
+  static Future<void> saveHideActionMenuButtons(bool val) async {
+    await _prefs?.setBool(_keyHideActionMenuButtons, val);
+  }
 }

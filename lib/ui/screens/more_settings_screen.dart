@@ -311,6 +311,21 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
             ),
             _buildSettingTile(
               theme,
+              icon: Icons.more_vert_rounded,
+              title: 'Hide 3-Dot Action Buttons',
+              subtitle: 'Hide the three-dot option menu button next to folders and files',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.hideActionMenuButtons,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleHideActionMenuButtons(),
+                ),
+              ),
+              onTap: () => fileManager.toggleHideActionMenuButtons(),
+            ),
+            _buildSettingTile(
+              theme,
               icon: Broken.folder_connection,
               title: 'Enable Drag & Drop',
               subtitle: 'Long press and drag folders or files to move them into other folders',
