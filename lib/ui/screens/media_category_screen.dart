@@ -10,6 +10,7 @@ import '../../providers/media_provider.dart';
 import '../../providers/file_manager_provider.dart';
 import '../../services/preferences_service.dart';
 import '../../core/utils.dart';
+import '../../services/app_manager_service.dart';
 import 'image_viewer_screen.dart';
 import 'video_player/video_player_screen.dart';
 import 'audio_player/audio_player_screen.dart';
@@ -1468,6 +1469,7 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
     final path = file.path;
     final name = path.split('/').last;
     final iconColor = FileUtils.getColorForFile(name, context);
+    final isApk = name.toLowerCase().endsWith('.apk') || name.toLowerCase().endsWith('.xapk') || name.toLowerCase().endsWith('.apks') || name.toLowerCase().endsWith('.apkm');
 
     return ListTile(
       key: ValueKey(path),
@@ -1485,7 +1487,9 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
             width: 44,
             height: 44,
             decoration: BoxDecoration(color: iconColor.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
-            child: Icon(FileUtils.getIconForFile(name), color: iconColor, size: 22),
+            child: isApk
+                ? _ApkThumbnail(path: path, iconColor: iconColor)
+                : Icon(FileUtils.getIconForFile(name), color: iconColor, size: 22),
           ),
           if (_isSelectionMode || isSelected)
             Positioned(
@@ -2020,5 +2024,68 @@ class _FolderGridItemState extends State<FolderGridItem> {
         ),
       ),
     );
+  }
+}
+
+class _ApkThumbnail extends StatefulWidget {
+  final String path;
+  final Color iconColor;
+
+  const _ApkThumbnail({
+    required this.path,
+    required this.iconColor,
+  });
+
+  @override
+  State<_ApkThumbnail> createState() => _ApkThumbnailState();
+}
+
+class _ApkThumbnailState extends State<_ApkThumbnail> {
+  static final Map<String, Uint8List?> _apkIconCache = {};
+  Uint8List? _apkIcon;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadApkIcon();
+  }
+
+  Future<void> _loadApkIcon() async {
+    final path = widget.path;
+    if (_apkIconCache.containsKey(path)) {
+      final cachedIcon = _apkIconCache[path];
+      if (mounted && cachedIcon != null) {
+        setState(() {
+          _apkIcon = cachedIcon;
+        });
+      }
+      return;
+    }
+    try {
+      final iconBytes = await AppManagerService.getApkIcon(path);
+      _apkIconCache[path] = iconBytes;
+      if (mounted && iconBytes != null) {
+        setState(() {
+          _apkIcon = iconBytes;
+        });
+      }
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_apkIcon != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Image.memory(
+          _apkIcon!,
+          fit: BoxFit.cover,
+          width: 44,
+          height: 44,
+          errorBuilder: (context, error, stackTrace) => Icon(Broken.mobile, color: widget.iconColor, size: 22),
+        ),
+      );
+    }
+    return Icon(Broken.mobile, color: widget.iconColor, size: 22);
   }
 }

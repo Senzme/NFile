@@ -30,6 +30,18 @@ class AppManagerService {
     }
   }
 
+  static Future<Uint8List?> getApkIcon(String apkPath) async {
+    try {
+      final Uint8List? iconBytes = await _channel.invokeMethod<Uint8List>(
+        'getApkIcon',
+        {'apkPath': apkPath},
+      );
+      return iconBytes;
+    } catch (e) {
+      return null;
+    }
+  }
+
   static Future<bool> launchApp(String packageName) async {
     try {
       final bool? success = await _channel.invokeMethod<bool>(

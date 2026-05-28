@@ -13,6 +13,7 @@ import '../../models/drag_payload.dart';
 import '../../models/file_filter_type.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import 'package:on_audio_query/on_audio_query.dart';
+import '../../services/app_manager_service.dart';
 import '../../core/utils.dart';
 import 'file_item.dart';
 import 'folder_item.dart';
@@ -845,17 +846,44 @@ class _CompactMediaThumbnail extends StatefulWidget {
 }
 
 class _CompactMediaThumbnailState extends State<_CompactMediaThumbnail> {
+  static final Map<String, Uint8List?> _apkIconCache = {};
   Uint8List? _videoThumb;
   Uint8List? _audioThumb;
+  Uint8List? _apkIcon;
 
   @override
   void initState() {
     super.initState();
+    final lowerPath = widget.file.path.toLowerCase();
     if (FileUtils.isVideo(widget.file.path)) {
       _loadVideoThumb();
     } else if (FileUtils.isAudio(widget.file.path)) {
       _loadAudioThumb();
+    } else if (lowerPath.endsWith('.apk') || lowerPath.endsWith('.xapk') || lowerPath.endsWith('.apks') || lowerPath.endsWith('.apkm')) {
+      _loadApkIcon();
     }
+  }
+
+  Future<void> _loadApkIcon() async {
+    final path = widget.file.path;
+    if (_apkIconCache.containsKey(path)) {
+      final cachedIcon = _apkIconCache[path];
+      if (mounted && cachedIcon != null) {
+        setState(() {
+          _apkIcon = cachedIcon;
+        });
+      }
+      return;
+    }
+    try {
+      final iconBytes = await AppManagerService.getApkIcon(path);
+      _apkIconCache[path] = iconBytes;
+      if (mounted && iconBytes != null) {
+        setState(() {
+          _apkIcon = iconBytes;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadAudioThumb() async {
@@ -926,6 +954,7 @@ class _CompactMediaThumbnailState extends State<_CompactMediaThumbnail> {
     final isImg = FileUtils.isImage(widget.file.path);
     final isVid = FileUtils.isVideo(widget.file.path);
     final isAud = FileUtils.isAudio(widget.file.path);
+    final isApk = widget.file.path.toLowerCase().endsWith('.apk') || widget.file.path.toLowerCase().endsWith('.xapk') || widget.file.path.toLowerCase().endsWith('.apks') || widget.file.path.toLowerCase().endsWith('.apkm');
 
     if (widget.isSelected) {
       return Icon(Broken.tick_circle, color: Theme.of(context).colorScheme.onPrimary, size: 18);
@@ -936,6 +965,16 @@ class _CompactMediaThumbnailState extends State<_CompactMediaThumbnail> {
         FileUtils.getIconForFile(widget.file.path),
         color: widget.iconColor,
         size: 18,
+      );
+    }
+
+    if (isApk && _apkIcon != null) {
+      return Image.memory(
+        _apkIcon!,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (context, error, stackTrace) => Icon(Broken.mobile, color: widget.iconColor, size: 18),
       );
     }
 

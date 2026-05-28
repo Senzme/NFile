@@ -254,6 +254,17 @@ class MainActivity : AudioServiceFragmentActivity() {
                         }
                     }
                 }
+                "getApkIcon" -> {
+                    val apkPath = call.argument<String>("apkPath") ?: ""
+                    executor.execute {
+                        try {
+                            val bytes = getApkIcon(apkPath)
+                            runOnUiThread { result.success(bytes) }
+                        } catch (e: Exception) {
+                            runOnUiThread { result.error("ICON_ERROR", e.message, null) }
+                        }
+                    }
+                }
                 "launchApp" -> {
                     val packageName = call.argument<String>("packageName") ?: ""
                     executor.execute {
@@ -516,6 +527,116 @@ class MainActivity : AudioServiceFragmentActivity() {
             val stream = ByteArrayOutputStream()
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
             stream.toByteArray()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun getApkIcon(apkPath: String): ByteArray? {
+        val lowerPath = apkPath.lowercase()
+        if (lowerPath.endsWith(".xapk") || lowerPath.endsWith(".apks") || lowerPath.endsWith(".apkm")) {
+            return try {
+                val zipFile = java.util.zip.ZipFile(apkPath)
+                var iconBytes: ByteArray? = null
+                
+                // For XAPK, look for icon.png/icon.webp first
+                if (lowerPath.endsWith(".xapk")) {
+                    val entries = zipFile.entries()
+                    while (entries.hasMoreElements()) {
+                        val entry = entries.nextElement()
+                        if (entry.name.equals("icon.png", ignoreCase = true) || 
+                            entry.name.equals("icon.webp", ignoreCase = true)) {
+                            val stream = zipFile.getInputStream(entry)
+                            val outStream = ByteArrayOutputStream()
+                            val buffer = ByteArray(1024)
+                            var length: Int
+                            while (stream.read(buffer).also { length = it } != -1) {
+                                outStream.write(buffer, 0, length)
+                            }
+                            iconBytes = outStream.toByteArray()
+                            stream.close()
+                            break
+                        }
+                    }
+                }
+                
+                // If icon is not found, extract base.apk or the first/largest apk
+                if (iconBytes == null) {
+                    var apkEntry: java.util.zip.ZipEntry? = null
+                    val entries = zipFile.entries()
+                    var maxApkSize = 0L
+                    
+                    while (entries.hasMoreElements()) {
+                        val entry = entries.nextElement()
+                        if (entry.name.endsWith(".apk", ignoreCase = true)) {
+                            // base.apk is preferred, otherwise take largest apk
+                            if (entry.name.equals("base.apk", ignoreCase = true) || 
+                                entry.name.split("/").last().equals("base.apk", ignoreCase = true)) {
+                                apkEntry = entry
+                                break
+                            } else if (entry.size > maxApkSize) {
+                                apkEntry = entry
+                                maxApkSize = entry.size
+                            }
+                        }
+                    }
+                    
+                    if (apkEntry != null) {
+                        val tempFile = java.io.File.createTempFile("temp_base", ".apk", cacheDir)
+                        val stream = zipFile.getInputStream(apkEntry)
+                        val outStream = java.io.FileOutputStream(tempFile)
+                        val buffer = ByteArray(4096)
+                        var length: Int
+                        while (stream.read(buffer).also { length = it } != -1) {
+                            outStream.write(buffer, 0, length)
+                        }
+                        outStream.close()
+                        stream.close()
+                        
+                        iconBytes = getApkIconFromPath(tempFile.absolutePath)
+                        tempFile.delete()
+                    }
+                }
+                zipFile.close()
+                iconBytes
+            } catch (e: Exception) {
+                null
+            }
+        }
+        return getApkIconFromPath(apkPath)
+    }
+
+    private fun getApkIconFromPath(apkPath: String): ByteArray? {
+        return try {
+            val pm = packageManager
+            val info = pm.getPackageArchiveInfo(apkPath, 0)
+            if (info != null) {
+                val appInfo = info.applicationInfo
+                if (appInfo != null) {
+                    appInfo.sourceDir = apkPath
+                    appInfo.publicSourceDir = apkPath
+                    val iconDrawable = appInfo.loadIcon(pm)
+                    val bitmap = when (iconDrawable) {
+                        is BitmapDrawable -> iconDrawable.bitmap
+                        else -> {
+                            val width = iconDrawable.intrinsicWidth.coerceAtLeast(1)
+                            val height = iconDrawable.intrinsicHeight.coerceAtLeast(1)
+                            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                            val canvas = Canvas(bitmap)
+                            iconDrawable.setBounds(0, 0, canvas.width, canvas.height)
+                            iconDrawable.draw(canvas)
+                            bitmap
+                        }
+                    }
+                    val stream = ByteArrayOutputStream()
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+                    stream.toByteArray()
+                } else {
+                    null
+                }
+            } else {
+                null
+            }
         } catch (e: Exception) {
             null
         }
