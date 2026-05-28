@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
+import 'package:provider/provider.dart';
 import '../../core/icon_fonts/broken_icons.dart';
+import '../../providers/file_manager_provider.dart';
 import 'html_viewer_screen.dart';
 import 'markdown_viewer_screen.dart';
 import '../../services/intent_handler_service.dart';
@@ -283,6 +285,12 @@ class _TextEditorScreenState extends State<TextEditorScreen> {
     try {
       final file = File(widget.filePath);
       await file.writeAsString(_controller.text);
+
+      try {
+        if (mounted) {
+          context.read<FileManagerProvider>().updateFileInList(widget.filePath);
+        }
+      } catch (_) {}
 
       if (IntentHandlerService.isIncomingCacheFile(widget.filePath)) {
         final success = await IntentHandlerService.saveContentUriFile(widget.filePath, _controller.text);

@@ -1764,6 +1764,36 @@ class FileManagerProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> updateFileInList(String filePath) async {
+    try {
+      final file = File(filePath);
+      if (await file.exists()) {
+        final stat = await file.stat();
+        bool updated = false;
+        for (var tab in _tabs) {
+          final index = tab.currentFiles.indexWhere((item) => item.path == filePath);
+          if (index != -1) {
+            final oldItem = tab.currentFiles[index];
+            tab.currentFiles[index] = FileItemModel(
+              entity: oldItem.entity,
+              name: oldItem.name,
+              path: oldItem.path,
+              isDirectory: oldItem.isDirectory,
+              size: stat.size,
+              modified: stat.modified,
+            );
+            updated = true;
+          }
+        }
+        if (updated) {
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint('Error updating file in list: $e');
+    }
+  }
+
   Future<void> createArchive({
     required String archiveName,
     required String format,
