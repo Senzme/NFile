@@ -10,7 +10,7 @@ import android.os.StatFs
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.webkit.MimeTypeMap
-import io.flutter.embedding.android.FlutterFragmentActivity
+import com.ryanheise.audioservice.AudioServiceFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import rikka.shizuku.Shizuku
@@ -32,7 +32,7 @@ import android.app.AppOpsManager
 import android.os.storage.StorageManager
 import android.os.Process
 
-class MainActivity : FlutterFragmentActivity() {
+class MainActivity : AudioServiceFragmentActivity() {
     private val CHANNEL = "com.rubex.nfile/root_shizuku"
     private val SHIZUKU_REQUEST_CODE = 10001
     private val executor = Executors.newCachedThreadPool()

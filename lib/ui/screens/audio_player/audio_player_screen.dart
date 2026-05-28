@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:audio_service/audio_service.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../core/icon_fonts/broken_icons.dart';
 import '../../../services/audio_background_handler.dart';
 import 'audio_artwork_widget.dart';
@@ -66,7 +67,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
   int _shufflePos = 0; // current position in _shuffleQueue
 
   // Background playback
-  bool _isBackgroundMode = false;
+  bool _isBackgroundMode = true;
 
   @override
   void initState() {
@@ -90,6 +91,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
     _shuffleQueue = List.generate(_allSongs.length, (i) => i);
     _initListeners();
     _openTrack();
+    _startBackgroundMode();
   }
 
   void _initListeners() {
@@ -104,6 +106,9 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
     player.stream.duration.listen((d) {
       if (!mounted) return;
       setState(() => duration = d);
+      if (_isBackgroundMode) {
+        _updateBackgroundItem();
+      }
     });
     player.stream.completed.listen((completed) {
       if (!completed || !mounted) return;
@@ -182,8 +187,10 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
     _fadeController.dispose();
     if (_isBackgroundMode) {
       // Let audio keep playing in background — don't dispose player
+      getAudioHandler().setSkipCallback(null);
     } else {
       player.dispose();
+      getAudioHandler().detach();
     }
     super.dispose();
   }
@@ -385,39 +392,52 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
   // ─── Background mode ─────────────────────────────────────────────────────
 
   /// Build MediaItem for the current song for the notification.
-  MediaItem _buildMediaItem(int index) {
+  MediaItem _buildMediaItem(int index, {Uri? artUri}) {
     final song = _allSongs.isNotEmpty ? _allSongs[index] : null;
+    Duration? songDuration;
+    final durationMs = song?.duration;
+    if (durationMs != null) {
+      songDuration = Duration(milliseconds: durationMs);
+    } else if (index == _currentIndex && duration != Duration.zero) {
+      songDuration = duration;
+    }
     return MediaItem(
       id: song?.data ?? widget.audioPath,
       title: song?.title ?? widget.title,
       artist: song?.artist ?? widget.artist,
       album: song?.album ?? '',
+      artUri: artUri,
+      duration: songDuration,
     );
   }
 
-  void _updateBackgroundItem() {
-    getAudioHandler().updateCurrentItem(_buildMediaItem(_currentIndex));
+  void _updateBackgroundItem() async {
+    final baseItem = _buildMediaItem(_currentIndex);
+    getAudioHandler().updateCurrentItem(baseItem);
+
+    // Asynchronously fetch high-fidelity artwork and update notification once ready
+    final song = _allSongs.isNotEmpty ? _allSongs[_currentIndex] : null;
+    if (song != null && song.id > 0) {
+      try {
+        final artUri = await getArtworkUri(song.id);
+        if (artUri != null && mounted) {
+          final updatedItem = _buildMediaItem(_currentIndex, artUri: artUri);
+          getAudioHandler().updateCurrentItem(updatedItem);
+        }
+      } catch (e) {
+        debugPrint('[NFile] Failed to load background artwork: $e');
+      }
+    }
   }
 
-  Future<void> _toggleBackgroundMode() async {
-    if (_isBackgroundMode) {
-      // Turn off — detach handler, user is in foreground
-      getAudioHandler().detach();
-      setState(() => _isBackgroundMode = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Background playback stopped'),
-            backgroundColor: Colors.blueGrey,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-      }
-      return;
+  void _startBackgroundMode() async {
+    // Request notification permission dynamically on Android 13+
+    try {
+      await Permission.notification.request();
+    } catch (e) {
+      debugPrint('[NFile] Error requesting notification permission: $e');
     }
 
-    // Attach the handler with the current player and queue
     final queue = _allSongs.isNotEmpty
         ? List.generate(_allSongs.length, (i) => _buildMediaItem(i))
         : [_buildMediaItem(0)];
@@ -440,12 +460,35 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
       _updateBackgroundItem();
     });
 
+    _updateBackgroundItem();
+  }
+
+  Future<void> _toggleBackgroundMode() async {
+    if (_isBackgroundMode) {
+      // Turn off — stop background handler to completely clear the notification,
+      // but do NOT dispose the player because we want it to keep playing in the foreground!
+      getAudioHandler().stopNotification();
+      setState(() => _isBackgroundMode = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Background playback stopped'),
+            backgroundColor: Colors.blueGrey,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+      return;
+    }
+
+    _startBackgroundMode();
     setState(() => _isBackgroundMode = true);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Playing in background — check notification'),
+          content: const Text('Background playback enabled'),
           backgroundColor: Colors.deepPurpleAccent,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

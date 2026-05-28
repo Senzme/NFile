@@ -39,7 +39,7 @@ void main() async {
         androidNotificationChannelName: 'NFile Audio Player',
         androidNotificationIcon: 'mipmap/ic_launcher',
         androidShowNotificationBadge: true,
-        androidStopForegroundOnPause: false,
+        androidStopForegroundOnPause: true,
         notificationColor: Color(0xFF6200EE),
       ),
     );
