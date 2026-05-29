@@ -17,6 +17,8 @@ import 'audio_player/audio_player_screen.dart';
 import 'document_viewer_screen.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import 'package:share_plus/share_plus.dart';
+import '../widgets/file_action_dialogs.dart';
+import '../widgets/batch_rename_dialog.dart';
 
 enum MediaType { images, videos, audios, documents, archives, downloads, apks, screenshots }
 
@@ -329,6 +331,87 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
     }
   }
 
+  Future<void> _handleBatchRename() async {
+    final count = _selectedFilePaths.length + _selectedAssetIds.length;
+    if (count == 0) return;
+
+    final mediaProvider = context.read<MediaProvider>();
+    final filePaths = _selectedFilePaths.toList();
+    final assetIds = _selectedAssetIds.toList();
+
+    if (assetIds.isNotEmpty) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      try {
+        final allAssets = [...mediaProvider.images, ...mediaProvider.videos, ...mediaProvider.screenshots];
+        for (final id in assetIds) {
+          final match = allAssets.where((a) => a.id == id).firstOrNull;
+          if (match != null) {
+            final f = await match.file;
+            if (f != null) filePaths.add(f.path);
+          }
+        }
+      } catch (e) {
+        debugPrint('Error resolving assets: $e');
+      } finally {
+        if (mounted) {
+          Navigator.pop(context);
+        }
+      }
+    }
+
+    if (filePaths.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No physical files found to rename')),
+        );
+      }
+      return;
+    }
+
+    if (filePaths.length == 1) {
+      if (mounted) {
+        final filePath = filePaths.first;
+        final currentName = path_helper.basename(filePath);
+        final newName = await FileActionDialogs.showTextInputDialog(
+          context,
+          title: 'Rename',
+          hint: 'Enter new name',
+          initialValue: currentName,
+          actionText: 'Rename',
+        );
+        if (newName != null && newName.isNotEmpty && mounted) {
+          await context.read<FileManagerProvider>().renameFile(filePath, newName);
+          _clearSelection();
+          await context.read<MediaProvider>().loadMedia(forceRefresh: true);
+        }
+      }
+      return;
+    }
+
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.55),
+      builder: (ctx) => BatchRenameDialog(
+        provider: context.read<FileManagerProvider>(),
+        selectedPaths: filePaths,
+      ),
+    );
+
+    if (mounted) {
+      _clearSelection();
+      await context.read<MediaProvider>().loadMedia(forceRefresh: true);
+    }
+  }
+
   Widget _buildCopyableRow(String label, String value, BuildContext ctx) {
     if (value.isEmpty) return const SizedBox.shrink();
     final theme = Theme.of(ctx);
@@ -487,9 +570,10 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
       backgroundColor: theme.scaffoldBackgroundColor,
       builder: (ctx) {
         return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Text(
@@ -592,6 +676,26 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
                     widget.onNavigateTab?.call(1);
                   },
                 ),
+              if (filePath != null)
+                ListTile(
+                  leading: Icon(Broken.edit, color: theme.colorScheme.primary),
+                  title: const Text('Rename'),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    final currentName = path_helper.basename(filePath);
+                    final newName = await FileActionDialogs.showTextInputDialog(
+                      context,
+                      title: 'Rename',
+                      hint: 'Enter new name',
+                      initialValue: currentName,
+                      actionText: 'Rename',
+                    );
+                    if (newName != null && newName.isNotEmpty && mounted) {
+                      await context.read<FileManagerProvider>().renameFile(filePath, newName);
+                      context.read<MediaProvider>().loadMedia(forceRefresh: true);
+                    }
+                  },
+                ),
               ListTile(
                 leading: Icon(Broken.info_circle, color: theme.colorScheme.primary),
                 title: const Text('Properties'),
@@ -636,10 +740,11 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
               ),
             ],
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -840,21 +945,27 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
 
   Widget _buildBottomActionBar(ThemeData theme) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, -2))],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, -2))],
       ),
       child: SafeArea(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildActionItem(theme, icon: Broken.document_copy, label: 'Copy', onTap: () => _handleCopyCut(false)),
-            _buildActionItem(theme, icon: Broken.scissor, label: 'Cut', onTap: () => _handleCopyCut(true)),
-            _buildActionItem(theme, icon: Broken.trash, label: 'Delete', color: Colors.red, onTap: _handleDelete),
-            _buildActionItem(theme, icon: Icons.share_outlined, label: 'Share', onTap: _handleShare),
-            _buildActionItem(theme, icon: Broken.info_circle, label: 'Info', onTap: () => _showPropertiesDialog()),
-          ],
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildActionItem(theme, icon: Broken.document_copy, label: 'Copy', onTap: () => _handleCopyCut(false)),
+              _buildActionItem(theme, icon: Broken.scissor, label: 'Cut', onTap: () => _handleCopyCut(true)),
+              _buildActionItem(theme, icon: Broken.edit, label: 'Rename', onTap: _handleBatchRename),
+              _buildActionItem(theme, icon: Broken.trash, label: 'Delete', color: Colors.red, onTap: _handleDelete),
+              _buildActionItem(theme, icon: Icons.share_outlined, label: 'Share', onTap: _handleShare),
+              _buildActionItem(theme, icon: Broken.info_circle, label: 'Info', onTap: () => _showPropertiesDialog()),
+            ],
+          ),
         ),
       ),
     );

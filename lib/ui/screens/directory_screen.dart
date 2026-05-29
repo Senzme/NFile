@@ -820,7 +820,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
               titleSpacing: 0,
               centerTitle: false,
               title: isSelectionMode
-                  ? Text('${provider.selectedPaths.length} selected')
+                  ? Text('${provider.selectedPaths.length}/${provider.currentFiles.length}')
                   : _AnimatedTitleButton(
                       onTap: () => _showStorageVolumeModal(context, provider),
                     ),
