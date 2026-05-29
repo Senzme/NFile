@@ -411,6 +411,16 @@ class PreferencesService {
     await _prefs?.setBool(_keyShowFolderContentsCount, val);
   }
 
+  static const String _keyShowFolderSizes = 'show_folder_sizes';
+
+  static bool getShowFolderSizes() {
+    return _prefs?.getBool(_keyShowFolderSizes) ?? false;
+  }
+
+  static Future<void> saveShowFolderSizes(bool val) async {
+    await _prefs?.setBool(_keyShowFolderSizes, val);
+  }
+
   static const String _keyCachedTotalStorage = 'cached_total_storage';
   static const String _keyCachedUsedStorage = 'cached_used_storage';
 

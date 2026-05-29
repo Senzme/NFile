@@ -87,6 +87,7 @@ class FileManagerProvider extends ChangeNotifier {
     _use24HourFormat = PreferencesService.getUse24HourFormat();
     _hideTimeAndDate = PreferencesService.getHideTimeAndDate();
     _showFolderContentsCount = PreferencesService.getShowFolderContentsCount();
+    _showFolderSizes = PreferencesService.getShowFolderSizes();
     _adaptiveMultiLineNames = PreferencesService.getAdaptiveMultiLineNames();
     _hideActionMenuButtons = PreferencesService.getHideActionMenuButtons();
 
@@ -466,6 +467,15 @@ class FileManagerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool _showFolderSizes = false;
+  bool get showFolderSizes => _showFolderSizes;
+
+  void toggleShowFolderSizes() {
+    _showFolderSizes = !_showFolderSizes;
+    PreferencesService.saveShowFolderSizes(_showFolderSizes);
+    notifyListeners();
+  }
+
   final Map<String, int> _folderItemCounts = {};
 
   Future<int> getFolderItemCount(String folderPath) async {
@@ -493,8 +503,43 @@ class FileManagerProvider extends ChangeNotifier {
     return count;
   }
 
+  final Map<String, int> _folderSizes = {};
+
+  Future<int> getFolderSize(String folderPath) async {
+    if (_folderSizes.containsKey(folderPath)) {
+      return _folderSizes[folderPath]!;
+    }
+
+    int totalSize = await _calculateDirectorySize(folderPath);
+    _folderSizes[folderPath] = totalSize;
+    return totalSize;
+  }
+
+  Future<int> _calculateDirectorySize(String path) async {
+    int totalSize = 0;
+    try {
+      final dir = Directory(path);
+      if (await dir.exists()) {
+        final List<FileSystemEntity> entities = await dir.list(followLinks: false).toList();
+        for (final entity in entities) {
+          if (entity is File) {
+            try {
+              totalSize += await entity.length();
+            } catch (_) {}
+          } else if (entity is Directory) {
+            try {
+              totalSize += await _calculateDirectorySize(entity.path);
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (_) {}
+    return totalSize;
+  }
+
   void clearFolderItemCountsCache() {
     _folderItemCounts.clear();
+    _folderSizes.clear();
   }
 
   bool _showBottomActionBar = false;

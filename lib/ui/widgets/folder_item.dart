@@ -126,44 +126,42 @@ class FolderItem extends StatelessWidget {
                             },
                           );
                         } else {
-                          if (provider.hideTimeAndDate && !provider.showFolderContentsCount) {
+                          if (provider.hideTimeAndDate && !provider.showFolderContentsCount && !provider.showFolderSizes) {
                             return const SizedBox.shrink();
                           }
-                          if (provider.showFolderContentsCount) {
-                            return FutureBuilder<int>(
-                              future: provider.getFolderItemCount(folder.path),
-                              builder: (context, snapshot) {
-                                final count = snapshot.data ?? 0;
-                                final countStr = count == 1 ? '1 item' : '$count items';
-                                if (provider.hideTimeAndDate) {
-                                  return Text(
-                                    countStr,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  );
-                                } else {
-                                  return Text(
-                                    '$countStr • ${FileUtils.formatDate(folder.modified, use24Hour: provider.use24HourFormat)}',
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  );
-                                }
-                              },
-                            );
-                          } else {
-                            return Text(
-                              FileUtils.formatDate(folder.modified, use24Hour: provider.use24HourFormat),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
-                              ),
-                            );
-                          }
+                          return FutureBuilder<List<int>>(
+                            future: Future.wait([
+                              provider.showFolderContentsCount ? provider.getFolderItemCount(folder.path) : Future.value(-1),
+                              provider.showFolderSizes ? provider.getFolderSize(folder.path) : Future.value(-1),
+                            ]),
+                            builder: (context, snapshot) {
+                              final data = snapshot.data;
+                              final count = (data != null && data[0] != -1) ? data[0] : null;
+                              final size = (data != null && data[1] != -1) ? data[1] : null;
+
+                              final parts = <String>[];
+                              if (count != null) {
+                                parts.add(count == 1 ? '1 item' : '$count items');
+                              }
+                              if (size != null) {
+                                parts.add(FileUtils.formatBytes(size, 1));
+                              }
+                              if (!provider.hideTimeAndDate) {
+                                parts.add(FileUtils.formatDate(folder.modified, use24Hour: provider.use24HourFormat));
+                              }
+
+                              if (parts.isEmpty) return const SizedBox.shrink();
+
+                              return Text(
+                                parts.join(' • '),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              );
+                            },
+                          );
                         }
                       },
                     ),

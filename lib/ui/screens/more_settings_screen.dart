@@ -236,6 +236,21 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
             ),
             _buildSettingTile(
               theme,
+              icon: Broken.document_text_1,
+              title: 'Show Folder Size',
+              subtitle: 'Calculate and display total size of all files inside directories (can affect listing performance)',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.showFolderSizes,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleShowFolderSizes(),
+                ),
+              ),
+              onTap: () => fileManager.toggleShowFolderSizes(),
+            ),
+            _buildSettingTile(
+              theme,
               icon: Broken.menu,
               title: 'Show Bottom Navigation Bar',
               subtitle: 'Enable bottom action bar on Browse screen',
