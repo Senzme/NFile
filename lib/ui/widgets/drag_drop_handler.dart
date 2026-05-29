@@ -106,6 +106,14 @@ class _DragDropHandlerState extends State<DragDropHandler> {
     final theme = Theme.of(context);
     final fileName = p.basename(widget.path);
 
+    final isSelected = provider.selectedPaths.contains(widget.path);
+    final dragPaths = (isSelected && provider.selectedPaths.length > 1)
+        ? provider.selectedPaths.toList()
+        : [widget.path];
+
+    final isMultiDrag = dragPaths.length > 1;
+    final displayName = isMultiDrag ? '${dragPaths.length} items' : fileName;
+
     // Elevated, semi-transparent feedback widget shown while dragging
     final feedback = Material(
       color: Colors.transparent,
@@ -127,13 +135,15 @@ class _DragDropHandlerState extends State<DragDropHandler> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              widget.isDirectory ? Broken.folder : FileUtils.getIconForFile(widget.path),
+              isMultiDrag
+                  ? Broken.document_copy
+                  : (widget.isDirectory ? Broken.folder : FileUtils.getIconForFile(widget.path)),
               color: theme.colorScheme.primary,
               size: 22,
             ),
             const SizedBox(width: 10),
             Text(
-              fileName,
+              displayName,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
@@ -146,7 +156,11 @@ class _DragDropHandlerState extends State<DragDropHandler> {
     );
 
     Widget itemWidget = LongPressDraggable<DragPayload>(
-      data: DragPayload(path: widget.path, isDirectory: widget.isDirectory),
+      data: DragPayload(
+        path: widget.path,
+        isDirectory: widget.isDirectory,
+        paths: dragPaths,
+      ),
       feedback: feedback,
       dragAnchorStrategy: childDragAnchorStrategy,
       feedbackOffset: const Offset(0, -30),
@@ -185,8 +199,9 @@ class _DragDropHandlerState extends State<DragDropHandler> {
     if (widget.isDirectory) {
       return DragTarget<DragPayload>(
         onWillAccept: (data) {
-          if (data == null || data.path == widget.path) return false;
-          if (widget.path.startsWith(data.path + p.separator)) return false;
+          if (data == null || data.paths.isEmpty) return false;
+          if (data.paths.contains(widget.path)) return false;
+          if (data.paths.any((x) => widget.path.startsWith(x + p.separator))) return false;
           
           setState(() {
             _isDragOver = true;
@@ -215,12 +230,11 @@ class _DragDropHandlerState extends State<DragDropHandler> {
           if (provider.showDragDropDialog) {
             DragDropActionDialog.show(
               context: context,
-              sourcePath: data.path,
-              isDirectory: data.isDirectory,
+              sourcePaths: data.paths,
               initialTargetPath: widget.path,
             );
           } else {
-            provider.moveItem(context, data.path, widget.path);
+            Future.wait(data.paths.map((p) => provider.moveItem(context, p, widget.path)));
           }
         },
         builder: (context, candidateData, rejectedData) {

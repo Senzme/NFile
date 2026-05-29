@@ -1032,23 +1032,23 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                 Expanded(
                   child: DragTarget<DragPayload>(
                     onWillAccept: (data) {
-                      if (data == null) return false;
-                      final sourceParent = p.dirname(data.path);
+                      if (data == null || data.paths.isEmpty) return false;
+                      final sourceParent = p.dirname(data.paths.first);
                       if (sourceParent == provider.currentPath) return false;
-                      if (provider.currentPath == data.path) return false;
-                      if (provider.currentPath.startsWith(data.path + p.separator)) return false;
+                      if (data.paths.any((x) => provider.currentPath == x || provider.currentPath.startsWith(x + p.separator))) return false;
                       return true;
                     },
                     onAccept: (data) {
                       if (provider.showDragDropDialog) {
                         DragDropActionDialog.show(
                           context: context,
-                          sourcePath: data.path,
-                          isDirectory: data.isDirectory,
+                          sourcePaths: data.paths,
                           initialTargetPath: provider.currentPath,
                         );
                       } else {
-                        provider.moveItem(context, data.path, provider.currentPath);
+                        for (final path in data.paths) {
+                          provider.moveItem(context, path, provider.currentPath);
+                        }
                       }
                     },
                     builder: (context, candidateData, rejectedData) {

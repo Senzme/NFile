@@ -10,29 +10,25 @@ import 'create_archive_dialog.dart';
 import '../screens/internal_file_picker_screen.dart';
 
 class DragDropActionDialog extends StatefulWidget {
-  final String sourcePath;
-  final bool isDirectory;
+  final List<String> sourcePaths;
   final String initialTargetPath;
 
   const DragDropActionDialog({
     super.key,
-    required this.sourcePath,
-    required this.isDirectory,
+    required this.sourcePaths,
     required this.initialTargetPath,
   });
 
   static Future<void> show({
     required BuildContext context,
-    required String sourcePath,
-    required bool isDirectory,
+    required List<String> sourcePaths,
     required String initialTargetPath,
   }) {
     return showDialog(
       context: context,
       barrierDismissible: true,
       builder: (_) => DragDropActionDialog(
-        sourcePath: sourcePath,
-        isDirectory: isDirectory,
+        sourcePaths: sourcePaths,
         initialTargetPath: initialTargetPath,
       ),
     );
@@ -69,24 +65,34 @@ class _DragDropActionDialogState extends State<DragDropActionDialog> {
   }
 
   IconData _getFileIcon() {
-    if (widget.isDirectory) {
+    if (widget.sourcePaths.length > 1) {
+      return Broken.document_copy;
+    }
+    final path = widget.sourcePaths.first;
+    if (Directory(path).existsSync()) {
       return Broken.folder;
     }
-    return FileUtils.getIconForFile(widget.sourcePath);
+    return FileUtils.getIconForFile(path);
   }
 
   Color _getFileIconColor(BuildContext context) {
-    if (widget.isDirectory) {
+    if (widget.sourcePaths.length > 1) {
       return Theme.of(context).colorScheme.primary;
     }
-    return FileUtils.getColorForFile(widget.sourcePath, context);
+    final path = widget.sourcePaths.first;
+    if (Directory(path).existsSync()) {
+      return Theme.of(context).colorScheme.primary;
+    }
+    return FileUtils.getColorForFile(path, context);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final provider = context.watch<FileManagerProvider>();
-    final itemName = p.basename(widget.sourcePath);
+    final selectedCount = widget.sourcePaths.length;
+    final isSingle = selectedCount == 1;
+    final itemName = isSingle ? p.basename(widget.sourcePaths.first) : '$selectedCount items';
     final currentDirName = p.basename(provider.currentPath);
     final targetDirName = p.basename(widget.initialTargetPath);
 
@@ -233,7 +239,7 @@ class _DragDropActionDialogState extends State<DragDropActionDialog> {
                   subtitle: 'Cut & paste item into destination folder',
                   icon: Broken.scissor,
                   color: Colors.orange,
-                  isDisabled: _selectedDestPath == p.dirname(widget.sourcePath),
+                  isDisabled: widget.sourcePaths.every((path) => p.dirname(path) == _selectedDestPath),
                 ),
                 _buildActionCard(
                   theme: theme,
@@ -460,12 +466,17 @@ class _DragDropActionDialogState extends State<DragDropActionDialog> {
     Navigator.pop(context);
 
     if (_selectedAction == 'move') {
-      await provider.moveItem(context, widget.sourcePath, _selectedDestPath);
+      for (final path in widget.sourcePaths) {
+        await provider.moveItem(context, path, _selectedDestPath);
+      }
     } else if (_selectedAction == 'copy') {
-      await provider.copyItem(context, widget.sourcePath, _selectedDestPath);
+      for (final path in widget.sourcePaths) {
+        await provider.copyItem(context, path, _selectedDestPath);
+      }
     } else if (_selectedAction == 'archive') {
-      final initialName = p.basename(widget.sourcePath);
-      final res = await CreateArchiveDialog.show(context, initialName: initialName, isMultiSelection: false);
+      final isSingle = widget.sourcePaths.length == 1;
+      final initialName = isSingle ? p.basename(widget.sourcePaths.first) : 'Archive';
+      final res = await CreateArchiveDialog.show(context, initialName: initialName, isMultiSelection: !isSingle);
 
       if (res != null) {
         provider.activeTab.isLoading = true;
@@ -473,7 +484,7 @@ class _DragDropActionDialogState extends State<DragDropActionDialog> {
 
         try {
           await ArchiveService.createArchive(
-            sourcePaths: [widget.sourcePath],
+            sourcePaths: widget.sourcePaths,
             destinationDir: _selectedDestPath,
             archiveName: res.archiveName,
             format: res.format,

@@ -265,11 +265,10 @@ class _PaneBrowserState extends State<PaneBrowser> {
                   Expanded(
                     child: DragTarget<DragPayload>(
                       onWillAccept: (data) {
-                        if (data == null) return false;
-                        final sourceParent = p.dirname(data.path);
+                        if (data == null || data.paths.isEmpty) return false;
+                        final sourceParent = p.dirname(data.paths.first);
                         if (sourceParent == tab.currentPath) return false;
-                        if (tab.currentPath == data.path) return false;
-                        if (tab.currentPath.startsWith(data.path + p.separator)) return false;
+                        if (data.paths.any((x) => tab.currentPath == x || tab.currentPath.startsWith(x + p.separator))) return false;
                         return true;
                       },
                       onAccept: (data) {
@@ -277,12 +276,13 @@ class _PaneBrowserState extends State<PaneBrowser> {
                         if (provider.showDragDropDialog) {
                           DragDropActionDialog.show(
                             context: context,
-                            sourcePath: data.path,
-                            isDirectory: data.isDirectory,
+                            sourcePaths: data.paths,
                             initialTargetPath: tab.currentPath,
                           );
                         } else {
-                          provider.moveItem(context, data.path, tab.currentPath);
+                          for (final path in data.paths) {
+                            provider.moveItem(context, path, tab.currentPath);
+                          }
                         }
                       },
                       builder: (context, candidateData, rejectedData) {

@@ -557,7 +557,7 @@ class _NFileAddressBarState extends State<NFileAddressBar> {
                                       );
 
                                       segmentWidget = LongPressDraggable<DragPayload>(
-                                        data: DragPayload(path: segment.path, isDirectory: true),
+                                        data: DragPayload(path: segment.path, isDirectory: true, paths: [segment.path]),
                                         feedback: feedback,
                                         dragAnchorStrategy: childDragAnchorStrategy,
                                         feedbackOffset: const Offset(0, -30),
@@ -568,8 +568,9 @@ class _NFileAddressBarState extends State<NFileAddressBar> {
 
                                     return DragTarget<DragPayload>(
                                       onWillAccept: (data) {
-                                        if (data == null || data.path == segment.path) return false;
-                                        if (segment.path.startsWith(data.path + p.separator)) return false;
+                                        if (data == null || data.paths.isEmpty) return false;
+                                        if (data.paths.contains(segment.path)) return false;
+                                        if (data.paths.any((x) => segment.path.startsWith(x + p.separator))) return false;
 
                                         setStateSegment(() {
                                           isDragOverSegment = true;
@@ -601,12 +602,11 @@ class _NFileAddressBarState extends State<NFileAddressBar> {
                                         if (provider.showDragDropDialog) {
                                           DragDropActionDialog.show(
                                             context: context,
-                                            sourcePath: data.path,
-                                            isDirectory: data.isDirectory,
+                                            sourcePaths: data.paths,
                                             initialTargetPath: segment.path,
                                           );
                                         } else {
-                                          provider.moveItem(context, data.path, segment.path).then((_) {
+                                          Future.wait(data.paths.map((p) => provider.moveItem(context, p, segment.path))).then((_) {
                                             if (mounted) {
                                               provider.loadDirectory(provider.currentPath);
                                             }
