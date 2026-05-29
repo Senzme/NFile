@@ -11,6 +11,7 @@ import 'create_archive_dialog.dart';
 import 'file_operation_progress_dialog.dart';
 import 'package:share_plus/share_plus.dart';
 import 'batch_rename_dialog.dart';
+import '../../services/folder_share_service.dart';
 
 class SelectionActionBar extends StatelessWidget {
   final FileManagerProvider provider;
@@ -147,27 +148,7 @@ class SelectionActionBar extends StatelessWidget {
                   provider.selectAll();
                 } else if (action == 'share') {
                   final selectedPaths = provider.selectedPaths.toList();
-                  final filesToShare = <XFile>[];
-                  for (final path in selectedPaths) {
-                    if (FileSystemEntity.isFileSync(path)) {
-                      filesToShare.add(XFile(path));
-                    }
-                  }
-                  if (filesToShare.isNotEmpty) {
-                    try {
-                      await Share.shareXFiles(filesToShare);
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error sharing: $e')),
-                        );
-                      }
-                    }
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Only files can be shared.')),
-                    );
-                  }
+                  await FolderShareService.sharePaths(context, selectedPaths);
                 } else if (action == 'pin_to_top') {
                   final selected = provider.selectedPaths.toList();
                   final allPinned = selected.every((p) => PinService.isPinned(p));

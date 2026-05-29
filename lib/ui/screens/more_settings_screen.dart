@@ -354,6 +354,25 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
               ),
               onTap: () => fileManager.toggleEnableDragDrop(),
             ),
+            if (fileManager.enableDragDrop)
+              Padding(
+                padding: const EdgeInsets.only(left: 16.0),
+                child: _buildSettingTile(
+                  theme,
+                  icon: Broken.task_square,
+                  title: 'Confirm Drag & Drop Actions',
+                  subtitle: 'Show options popup (Copy, Move, Archive) when dropping files',
+                  trailing: Transform.scale(
+                    scale: 0.85,
+                    child: Switch(
+                      value: fileManager.showDragDropDialog,
+                      activeColor: theme.colorScheme.primary,
+                      onChanged: (_) => fileManager.toggleShowDragDropDialog(),
+                    ),
+                  ),
+                  onTap: () => fileManager.toggleShowDragDropDialog(),
+                ),
+              ),
             _buildSettingTile(
               theme,
               icon: Broken.category,

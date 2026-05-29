@@ -7,6 +7,7 @@ import '../../models/drag_payload.dart';
 import '../../providers/file_manager_provider.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import '../../core/utils.dart';
+import 'drag_drop_action_dialog.dart';
 
 class DragDropHandler extends StatefulWidget {
   final Widget child;
@@ -211,7 +212,16 @@ class _DragDropHandlerState extends State<DragDropHandler> {
             _isDragOver = false;
           });
           _hoverTimer?.cancel();
-          provider.moveItem(context, data.path, widget.path);
+          if (provider.showDragDropDialog) {
+            DragDropActionDialog.show(
+              context: context,
+              sourcePath: data.path,
+              isDirectory: data.isDirectory,
+              initialTargetPath: widget.path,
+            );
+          } else {
+            provider.moveItem(context, data.path, widget.path);
+          }
         },
         builder: (context, candidateData, rejectedData) {
           return AnimatedContainer(

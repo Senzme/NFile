@@ -84,6 +84,7 @@ class FileManagerProvider extends ChangeNotifier {
     _enableFolderHighlight = PreferencesService.getEnableFolderHighlight();
     _folderSortTypes = PreferencesService.getFolderSortTypes();
     _enableDragDrop = PreferencesService.getEnableDragDrop();
+    _showDragDropDialog = PreferencesService.getShowDragDropDialog();
     _use24HourFormat = PreferencesService.getUse24HourFormat();
     _hideTimeAndDate = PreferencesService.getHideTimeAndDate();
     _showFolderContentsCount = PreferencesService.getShowFolderContentsCount();
@@ -659,6 +660,15 @@ class FileManagerProvider extends ChangeNotifier {
   void toggleEnableDragDrop() {
     _enableDragDrop = !_enableDragDrop;
     PreferencesService.saveEnableDragDrop(_enableDragDrop);
+    notifyListeners();
+  }
+
+  bool _showDragDropDialog = true;
+  bool get showDragDropDialog => _showDragDropDialog;
+
+  void toggleShowDragDropDialog() {
+    _showDragDropDialog = !_showDragDropDialog;
+    PreferencesService.saveShowDragDropDialog(_showDragDropDialog);
     notifyListeners();
   }
 
@@ -2219,7 +2229,57 @@ class FileManagerProvider extends ChangeNotifier {
       }
     }
   }
+
+  Future<void> copyItem(BuildContext context, String sourcePath, String destFolderPath) async {
+    final name = p.basename(sourcePath);
+    final destPath = p.join(destFolderPath, name);
+
+    if (sourcePath == destPath || destFolderPath.startsWith(sourcePath + p.separator)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot copy a folder inside itself or same location')),
+      );
+      return;
+    }
+
+    activeTab.isLoading = true;
+    notifyListeners();
+
+    try {
+      final isDir = FileSystemEntity.isDirectorySync(sourcePath);
+      if (isRestrictedPath(sourcePath) || isRestrictedPath(destFolderPath)) {
+        await RootShizukuService.copyItem(sourcePath, destPath, useRoot: activeTab.useRootMode);
+      } else {
+        if (isDir) {
+          final sourceDir = Directory(sourcePath);
+          final destDir = Directory(destPath);
+          if (!destDir.existsSync()) {
+            await destDir.create(recursive: true);
+          }
+          await _copyDirectory(sourceDir, destDir);
+        } else {
+          final sourceFile = File(sourcePath);
+          final destFile = File(destPath);
+          if (destFile.existsSync()) {
+            await destFile.delete();
+          }
+          await sourceFile.copy(destPath);
+        }
+      }
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Copied $name successfully')),
+      );
+    } catch (e) {
+      debugPrint('Error copying item: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to copy item: $e')),
+      );
+    }
+
+    await loadDirectory(currentPath, showLoading: false);
+  }
 }
+
 
 class FileOperationProgress {
   final int totalFiles;

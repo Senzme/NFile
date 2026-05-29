@@ -11,6 +11,7 @@ import '../widgets/file_item.dart';
 import '../widgets/folder_item.dart';
 import '../widgets/file_action_dialogs.dart';
 import '../../core/icon_fonts/broken_icons.dart';
+import '../../services/folder_share_service.dart';
 
 class GlobalSearchScreen extends StatefulWidget {
   final String? searchFolderPath;
@@ -260,23 +261,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
 
   Future<void> _handleShareSelected() async {
     if (_selectedPaths.isEmpty) return;
-    final shareFiles = <XFile>[];
-    for (final path in _selectedPaths) {
-      if (FileSystemEntity.isFileSync(path)) {
-        shareFiles.add(XFile(path));
-      }
-    }
-    if (shareFiles.isNotEmpty) {
-      try {
-        await Share.shareXFiles(shareFiles);
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error sharing: $e')));
-        }
-      }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No files available to share')));
-    }
+    await FolderShareService.sharePaths(context, _selectedPaths.toList());
     _clearSelection();
   }
 
@@ -305,6 +290,9 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
   void _handleAction(BuildContext context, String action, String path) async {
     final provider = context.read<FileManagerProvider>();
     switch (action) {
+      case 'share':
+        await FolderShareService.sharePaths(context, [path]);
+        break;
       case 'copy':
         provider.copyFile(path);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied to clipboard')));

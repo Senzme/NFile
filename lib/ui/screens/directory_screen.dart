@@ -12,6 +12,7 @@ import '../widgets/file_grid_item.dart';
 import '../widgets/folder_grid_item.dart';
 import '../widgets/drag_drop_handler.dart';
 import '../widgets/file_action_dialogs.dart';
+import '../widgets/drag_drop_action_dialog.dart';
 import '../widgets/create_archive_dialog.dart';
 import '../widgets/batch_rename_dialog.dart';
 import '../widgets/selection_action_bar.dart';
@@ -24,6 +25,7 @@ import 'internal_file_picker_screen.dart';
 import '../widgets/restricted_folder_banner.dart';
 import '../widgets/directory_tab_bar.dart';
 import '../../services/pin_service.dart';
+import '../../services/folder_share_service.dart';
 import '../widgets/pane_browser.dart';
 import '../widgets/nfile_address_bar.dart';
 import '../../services/network_connections_service.dart';
@@ -136,6 +138,9 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
         if (confirm) {
           await provider.deleteFile(path);
         }
+        break;
+      case 'share':
+        await FolderShareService.sharePaths(context, [path]);
         break;
       case 'pin':
         await provider.togglePinPath(path);
@@ -1035,7 +1040,16 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                       return true;
                     },
                     onAccept: (data) {
-                      provider.moveItem(context, data.path, provider.currentPath);
+                      if (provider.showDragDropDialog) {
+                        DragDropActionDialog.show(
+                          context: context,
+                          sourcePath: data.path,
+                          isDirectory: data.isDirectory,
+                          initialTargetPath: provider.currentPath,
+                        );
+                      } else {
+                        provider.moveItem(context, data.path, provider.currentPath);
+                      }
                     },
                     builder: (context, candidateData, rejectedData) {
                       return GestureDetector(

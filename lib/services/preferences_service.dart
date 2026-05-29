@@ -374,6 +374,7 @@ class PreferencesService {
   }
 
   static const String _keyEnableDragDrop = 'enable_drag_drop';
+  static const String _keyShowDragDropDialog = 'show_drag_drop_dialog';
 
   static bool getEnableDragDrop() {
     return _prefs?.getBool(_keyEnableDragDrop) ?? false;
@@ -381,6 +382,14 @@ class PreferencesService {
 
   static Future<void> saveEnableDragDrop(bool val) async {
     await _prefs?.setBool(_keyEnableDragDrop, val);
+  }
+
+  static bool getShowDragDropDialog() {
+    return _prefs?.getBool(_keyShowDragDropDialog) ?? true;
+  }
+
+  static Future<void> saveShowDragDropDialog(bool val) async {
+    await _prefs?.setBool(_keyShowDragDropDialog, val);
   }
 
   static const String _keyUse24HourFormat = 'use_24_hour_format';

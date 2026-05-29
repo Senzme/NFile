@@ -7,6 +7,7 @@ import '../../providers/file_manager_provider.dart';
 import '../../models/drag_payload.dart';
 import '../../services/root_shizuku_service.dart';
 import '../../core/icon_fonts/broken_icons.dart';
+import 'drag_drop_action_dialog.dart';
 import 'package:flutter/services.dart';
 
 class BreadcrumbSegment {
@@ -597,11 +598,20 @@ class _NFileAddressBarState extends State<NFileAddressBar> {
                                         _hoverTimers[segment.path]?.cancel();
                                         _hoverTimers.remove(segment.path);
 
-                                        provider.moveItem(context, data.path, segment.path).then((_) {
-                                          if (mounted) {
-                                            provider.loadDirectory(segment.path);
-                                          }
-                                        });
+                                        if (provider.showDragDropDialog) {
+                                          DragDropActionDialog.show(
+                                            context: context,
+                                            sourcePath: data.path,
+                                            isDirectory: data.isDirectory,
+                                            initialTargetPath: segment.path,
+                                          );
+                                        } else {
+                                          provider.moveItem(context, data.path, segment.path).then((_) {
+                                            if (mounted) {
+                                              provider.loadDirectory(provider.currentPath);
+                                            }
+                                          });
+                                        }
                                       },
                                       builder: (context, candidateData, rejectedData) {
                                         return AnimatedContainer(

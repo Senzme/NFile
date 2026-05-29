@@ -12,6 +12,7 @@ import '../../models/folder_tab_model.dart';
 import '../../models/drag_payload.dart';
 import '../../models/file_filter_type.dart';
 import '../../core/icon_fonts/broken_icons.dart';
+import 'drag_drop_action_dialog.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import '../../services/app_manager_service.dart';
 import '../../core/utils.dart';
@@ -273,7 +274,16 @@ class _PaneBrowserState extends State<PaneBrowser> {
                       },
                       onAccept: (data) {
                         _activatePane(provider);
-                        provider.moveItem(context, data.path, tab.currentPath);
+                        if (provider.showDragDropDialog) {
+                          DragDropActionDialog.show(
+                            context: context,
+                            sourcePath: data.path,
+                            isDirectory: data.isDirectory,
+                            initialTargetPath: tab.currentPath,
+                          );
+                        } else {
+                          provider.moveItem(context, data.path, tab.currentPath);
+                        }
                       },
                       builder: (context, candidateData, rejectedData) {
                         return (tab.isLoading && tab.currentFiles.isEmpty)
