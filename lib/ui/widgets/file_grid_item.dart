@@ -167,7 +167,6 @@ class FileGridItem extends StatelessWidget {
                   onSelected: onAction,
                   itemBuilder: (context) {
                     return [
-                      const PopupMenuItem(value: 'share', child: Row(children: [Icon(Icons.share_outlined, size: 20), SizedBox(width: 12), Text('Share', style: TextStyle(fontWeight: FontWeight.w500))])),
                       if (isArchive)
                         const PopupMenuItem(value: 'extract', child: Row(children: [Icon(Broken.archive, size: 20), SizedBox(width: 12), Text('Extract', style: TextStyle(fontWeight: FontWeight.w500))])),
                       const PopupMenuItem(value: 'archive', child: Row(children: [Icon(Broken.box_add, size: 20), SizedBox(width: 12), Text('Archive', style: TextStyle(fontWeight: FontWeight.w500))])),

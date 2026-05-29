@@ -158,10 +158,11 @@ class FileItem extends StatelessWidget {
                           value: 'show_in_location',
                           child: Row(children: [Icon(Broken.folder_open, size: 20), SizedBox(width: 12), Text('Show in location', style: TextStyle(fontWeight: FontWeight.w500))]),
                         ),
-                      const PopupMenuItem(
-                        value: 'share',
-                        child: Row(children: [Icon(Icons.share_outlined, size: 20), SizedBox(width: 12), Text('Share', style: TextStyle(fontWeight: FontWeight.w500))]),
-                      ),
+                      if (showShowInLocationOption)
+                        const PopupMenuItem(
+                          value: 'share',
+                          child: Row(children: [Icon(Icons.share_outlined, size: 20), SizedBox(width: 12), Text('Share', style: TextStyle(fontWeight: FontWeight.w500))]),
+                        ),
                       if (isArchive)
                         const PopupMenuItem(value: 'extract', child: Row(children: [Icon(Broken.archive, size: 20), SizedBox(width: 12), Text('Extract', style: TextStyle(fontWeight: FontWeight.w500))])),
                       const PopupMenuItem(value: 'archive', child: Row(children: [Icon(Broken.box_add, size: 20), SizedBox(width: 12), Text('Archive', style: TextStyle(fontWeight: FontWeight.w500))])),
