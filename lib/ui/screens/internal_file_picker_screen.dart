@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import '../../core/icon_fonts/broken_icons.dart';
 import '../../core/utils.dart';
@@ -26,6 +27,7 @@ class InternalFilePickerScreen extends StatefulWidget {
 }
 
 class _InternalFilePickerScreenState extends State<InternalFilePickerScreen> {
+  late String _activeRootPath;
   late String _currentPath;
   bool _isLoading = true;
   List<FileItemModel> _items = [];
@@ -36,6 +38,7 @@ class _InternalFilePickerScreenState extends State<InternalFilePickerScreen> {
   @override
   void initState() {
     super.initState();
+    _activeRootPath = widget.rootPath;
     _currentPath = widget.rootPath;
     _scrollController.addListener(() {
       _scrollOffsets[_currentPath] = _scrollController.offset;
@@ -142,7 +145,7 @@ class _InternalFilePickerScreenState extends State<InternalFilePickerScreen> {
   }
 
   Future<bool> _goBack() async {
-    if (_currentPath == widget.rootPath || _currentPath == '/' || p.dirname(_currentPath) == _currentPath) {
+    if (_currentPath == _activeRootPath || _currentPath == '/' || p.dirname(_currentPath) == _currentPath) {
       return false;
     }
     final parent = p.dirname(_currentPath);
@@ -160,12 +163,190 @@ class _InternalFilePickerScreenState extends State<InternalFilePickerScreen> {
     });
   }
 
+  void _showStorageVolumeModal(BuildContext context) {
+    try {
+      HapticFeedback.mediumImpact();
+    } catch (_) {}
+
+    final theme = Theme.of(context);
+    final provider = context.read<FileManagerProvider>();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 24,
+                offset: const Offset(0, -4),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 38,
+                        height: 4,
+                        margin: const EdgeInsets.only(top: 4, bottom: 16),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.onSurface.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8),
+                      child: Text(
+                        'Select Storage Drive',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ...provider.storageVolumes.map((vol) {
+                      final isSelected = _activeRootPath == vol.path;
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                        color: isSelected ? theme.colorScheme.primaryContainer.withOpacity(0.4) : theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(
+                            color: isSelected ? theme.colorScheme.primary : Colors.transparent,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                          leading: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: isSelected ? theme.colorScheme.primary : theme.colorScheme.primary.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              vol.isInternal ? Broken.folder_open : Icons.sd_storage_rounded,
+                              color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.primary,
+                              size: 24,
+                            ),
+                          ),
+                          title: Text(
+                            vol.name,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          subtitle: Text(
+                            vol.path,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: theme.colorScheme.onSurface.withOpacity(0.5),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: isSelected 
+                              ? Icon(Icons.check_circle, color: theme.colorScheme.primary, size: 24)
+                              : null,
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            setState(() {
+                              _activeRootPath = vol.path;
+                              _selectedPaths.clear();
+                            });
+                            _loadDirectory(vol.path);
+                          },
+                        ),
+                      );
+                    }),
+                    Card(
+                      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                      color: _activeRootPath == '/' ? theme.colorScheme.primaryContainer.withOpacity(0.4) : theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                          color: _activeRootPath == '/' ? theme.colorScheme.primary : Colors.transparent,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        leading: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: _activeRootPath == '/' ? theme.colorScheme.primary : theme.colorScheme.primary.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Broken.cpu,
+                            color: _activeRootPath == '/' ? theme.colorScheme.onPrimary : theme.colorScheme.primary,
+                            size: 24,
+                          ),
+                        ),
+                        title: Text(
+                          'System Root',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                        subtitle: Text(
+                          '/',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: theme.colorScheme.onSurface.withOpacity(0.5),
+                          ),
+                        ),
+                        trailing: _activeRootPath == '/' 
+                            ? Icon(Icons.check_circle, color: theme.colorScheme.primary, size: 24)
+                            : null,
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          setState(() {
+                            _activeRootPath = '/';
+                            _selectedPaths.clear();
+                          });
+                          _loadDirectory('/');
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return PopScope(
-      canPop: _currentPath == widget.rootPath || _currentPath == '/',
+      canPop: _currentPath == _activeRootPath || _currentPath == '/',
       onPopInvoked: (didPop) async {
         if (didPop) return;
         await _goBack();
@@ -189,6 +370,11 @@ class _InternalFilePickerScreenState extends State<InternalFilePickerScreen> {
             ],
           ),
           actions: [
+            IconButton(
+              icon: const Icon(Icons.sd_storage_rounded),
+              tooltip: 'Select Storage',
+              onPressed: () => _showStorageVolumeModal(context),
+            ),
             if (_selectedPaths.isNotEmpty)
               IconButton(
                 icon: const Icon(Broken.close_square),
