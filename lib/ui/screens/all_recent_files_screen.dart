@@ -265,6 +265,17 @@ class _AllRecentFilesScreenState extends State<AllRecentFilesScreen> {
         Navigator.pop(context);
         widget.onNavigateTab?.call(1);
         break;
+      case 'share':
+        if (FileSystemEntity.isFileSync(path)) {
+          try {
+            await Share.shareXFiles([XFile(path)]);
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error sharing: $e')));
+            }
+          }
+        }
+        break;
       case 'copy':
         provider.copyFile(path);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied to clipboard')));
