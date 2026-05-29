@@ -1343,6 +1343,48 @@ class FileManagerProvider extends ChangeNotifier {
     activeTab.isLoading = true;
     notifyListeners();
 
+    final useRootMode = activeTab.useRootMode;
+    if (isRestrictedPath(currentPath) || _clipboardPaths.any((p) => isRestrictedPath(p))) {
+      try {
+        for (final srcPath in _clipboardPaths) {
+          final name = p.basename(srcPath);
+          final destPath = p.join(currentPath, name);
+          if (_isCut) {
+            await RootShizukuService.moveItem(srcPath, destPath, useRoot: useRootMode);
+          } else {
+            await RootShizukuService.copyItem(srcPath, destPath, useRoot: useRootMode);
+          }
+        }
+        
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(_isCut ? 'Moved items successfully' : 'Copied items successfully'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } catch (e) {
+        debugPrint('Error pasting inside restricted directory: $e');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to transfer: $e'),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+      if (clearAfterPaste) {
+        clearClipboard();
+      }
+      activeTab.isLoading = false;
+      await loadDirectory(currentPath, showLoading: false);
+      notifyListeners();
+      return;
+    }
+
     try {
       // 1. Calculate total size and gather all files
       int totalBytes = 0;
@@ -2107,20 +2149,37 @@ class FileManagerProvider extends ChangeNotifier {
     });
 
     final ext = p.extension(path).toLowerCase();
+    
+    String targetPath = path;
+    if (isRestrictedPath(path) && !FileUtils.isTextOrCode(path)) {
+      try {
+        final tempDir = Directory('/storage/emulated/0/.nfile_temp');
+        if (!tempDir.existsSync()) {
+          tempDir.createSync(recursive: true);
+        }
+        final tempPath = p.join(tempDir.path, 'temp_restricted_${DateTime.now().millisecondsSinceEpoch}_${p.basename(path)}');
+        await RootShizukuService.copyItem(path, tempPath, useRoot: activeTab.useRootMode);
+        if (File(tempPath).existsSync()) {
+          targetPath = tempPath;
+        }
+      } catch (e) {
+        debugPrint('Error creating temporary copy for restricted file: $e');
+      }
+    }
 
     // Universal default action check
-    if (hasNativeViewer(path)) {
+    if (hasNativeViewer(targetPath)) {
       final defaultAction = PreferencesService.getDefaultOpenAction(ext);
       if (defaultAction == 'native') {
-        await openFileNatively(context, path);
+        await openFileNatively(context, targetPath);
         return;
       } else if (defaultAction == 'external') {
-        await OpenFilex.open(path);
+        await OpenFilex.open(targetPath);
         return;
       }
     }
 
-    if (showOpenWithPopup && !_skipOpenWithDialog && hasNativeViewer(path)) {
+    if (showOpenWithPopup && !_skipOpenWithDialog && hasNativeViewer(targetPath)) {
       if (!context.mounted) return;
       
       final result = await showModalBottomSheet<String>(
@@ -2141,22 +2200,22 @@ class FileManagerProvider extends ChangeNotifier {
         final selectedType = result.substring('always_'.length);
         await PreferencesService.saveDefaultOpenAction(ext, selectedType);
         if (selectedType == 'native') {
-          await openFileNatively(context, path);
+          await openFileNatively(context, targetPath);
         } else {
-          await OpenFilex.open(path);
+          await OpenFilex.open(targetPath);
         }
       } else if (result.startsWith('just_once_')) {
         final selectedType = result.substring('just_once_'.length);
         if (selectedType == 'native') {
-          await openFileNatively(context, path);
+          await openFileNatively(context, targetPath);
         } else {
-          await OpenFilex.open(path);
+          await OpenFilex.open(targetPath);
         }
       }
       return;
     }
 
-    await openFileNatively(context, path);
+    await openFileNatively(context, targetPath);
   }
 
   Future<void> moveItem(BuildContext context, String sourcePath, String destFolderPath) async {

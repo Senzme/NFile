@@ -8,6 +8,7 @@ import '../../providers/file_manager_provider.dart';
 import 'html_viewer_screen.dart';
 import 'markdown_viewer_screen.dart';
 import '../../services/intent_handler_service.dart';
+import '../../services/root_shizuku_service.dart';
 
 class CodeTextEditingController extends TextEditingController {
   String language;
@@ -294,8 +295,23 @@ class _TextEditorScreenState extends State<TextEditorScreen> {
 
   Future<void> _loadFile() async {
     try {
-      final file = File(widget.filePath);
-      final content = await file.readAsString();
+      final provider = context.read<FileManagerProvider>();
+      String content;
+      if (provider.isRestrictedPath(widget.filePath)) {
+        final tempDir = Directory('/storage/emulated/0/.nfile_temp');
+        if (!tempDir.existsSync()) {
+          tempDir.createSync(recursive: true);
+        }
+        final tempFile = File(p.join(tempDir.path, 'temp_read_${DateTime.now().millisecondsSinceEpoch}.txt'));
+        await RootShizukuService.copyItem(widget.filePath, tempFile.path, useRoot: provider.useRootMode);
+        content = await tempFile.readAsString();
+        try {
+          await tempFile.delete();
+        } catch (_) {}
+      } else {
+        final file = File(widget.filePath);
+        content = await file.readAsString();
+      }
       
       _controller.removeListener(_onTextChanged);
       _controller.text = content;
@@ -316,8 +332,22 @@ class _TextEditorScreenState extends State<TextEditorScreen> {
   Future<void> _saveFile() async {
     setState(() => _isSaving = true);
     try {
-      final file = File(widget.filePath);
-      await file.writeAsString(_controller.text);
+      final provider = context.read<FileManagerProvider>();
+      if (provider.isRestrictedPath(widget.filePath)) {
+        final tempDir = Directory('/storage/emulated/0/.nfile_temp');
+        if (!tempDir.existsSync()) {
+          tempDir.createSync(recursive: true);
+        }
+        final tempFile = File(p.join(tempDir.path, 'temp_save_${DateTime.now().millisecondsSinceEpoch}.txt'));
+        await tempFile.writeAsString(_controller.text);
+        await RootShizukuService.copyItem(tempFile.path, widget.filePath, useRoot: provider.useRootMode);
+        try {
+          await tempFile.delete();
+        } catch (_) {}
+      } else {
+        final file = File(widget.filePath);
+        await file.writeAsString(_controller.text);
+      }
 
       try {
         if (mounted) {

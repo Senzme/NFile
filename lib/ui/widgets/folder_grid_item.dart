@@ -6,6 +6,9 @@ import '../../providers/file_manager_provider.dart';
 import '../../core/utils.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import '../../services/pin_service.dart';
+import '../../services/app_manager_service.dart';
+import 'package:path/path.dart' as p;
+import 'dart:typed_data';
 
 class FolderGridItem extends StatelessWidget {
   final FileItemModel folder;
@@ -72,11 +75,47 @@ class FolderGridItem extends StatelessWidget {
                             color: isSelected ? theme.colorScheme.primary : theme.colorScheme.primary.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          child: Icon(
-                            isSelected ? Broken.tick_circle : FileUtils.getFolderIcon(context.select<FileManagerProvider, String>((p) => p.folderIconOption)),
-                            color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.primary,
-                            size: 28 * iconScale,
-                          ),
+                          child: (() {
+                            final parentPath = p.dirname(folder.path).toLowerCase();
+                            final isPackageFolder = parentPath.endsWith('/android/data') || parentPath.endsWith('/android/obb') || parentPath.endsWith(r'\android\data') || parentPath.endsWith(r'\android\obb');
+
+                            if (isPackageFolder && !isSelected) {
+                              return FutureBuilder<Uint8List?>(
+                                future: AppManagerService.getAppIcon(folder.name),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState == ConnectionState.done && snapshot.data != null) {
+                                    return Center(
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(10),
+                                        child: Image.memory(
+                                          snapshot.data!,
+                                          width: 38 * iconScale,
+                                          height: 38 * iconScale,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => Icon(
+                                            FileUtils.getFolderIcon(context.select<FileManagerProvider, String>((p) => p.folderIconOption)),
+                                            color: theme.colorScheme.primary,
+                                            size: 28 * iconScale,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  return Icon(
+                                    FileUtils.getFolderIcon(context.select<FileManagerProvider, String>((p) => p.folderIconOption)),
+                                    color: theme.colorScheme.primary,
+                                    size: 28 * iconScale,
+                                  );
+                                },
+                              );
+                            }
+
+                            return Icon(
+                              isSelected ? Broken.tick_circle : FileUtils.getFolderIcon(context.select<FileManagerProvider, String>((p) => p.folderIconOption)),
+                              color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.primary,
+                              size: 28 * iconScale,
+                            );
+                          })(),
                         ),
                       ),
                       const SizedBox(height: 8),

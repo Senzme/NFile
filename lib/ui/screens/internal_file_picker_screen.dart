@@ -6,6 +6,7 @@ import '../../core/utils.dart';
 import '../../models/file_item_model.dart';
 import 'package:provider/provider.dart';
 import '../../providers/file_manager_provider.dart';
+import '../../services/root_shizuku_service.dart';
 
 class InternalFilePickerScreen extends StatefulWidget {
   final String rootPath;
@@ -52,6 +53,47 @@ class _InternalFilePickerScreenState extends State<InternalFilePickerScreen> {
     setState(() => _isLoading = true);
 
     try {
+      final provider = context.read<FileManagerProvider>();
+      final isRestricted = provider.isRestrictedPath(path);
+
+      if (isRestricted) {
+        final items = await RootShizukuService.listFiles(
+          path,
+          useRoot: provider.useRootMode,
+          showHiddenFiles: provider.showHiddenFiles,
+        );
+
+        final folders = <FileItemModel>[];
+        final files = <FileItemModel>[];
+
+        for (var item in items) {
+          if (item.isDirectory) {
+            folders.add(item);
+          } else if (!widget.pickDirectory) {
+            files.add(item);
+          }
+        }
+
+        folders.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        files.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+
+        if (mounted) {
+          setState(() {
+            _currentPath = path;
+            _items = [...folders, ...files];
+            _isLoading = false;
+          });
+
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_scrollController.hasClients) {
+              final offset = _scrollOffsets[_currentPath] ?? 0.0;
+              _scrollController.jumpTo(offset);
+            }
+          });
+        }
+        return;
+      }
+
       final dir = Directory(path);
       if (await dir.exists()) {
         _currentPath = path;
