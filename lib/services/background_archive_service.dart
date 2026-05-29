@@ -40,7 +40,13 @@ class _FileEntry {
 
 class BackgroundArchiveService {
   static final BackgroundArchiveService instance = BackgroundArchiveService._();
-  BackgroundArchiveService._();
+  BackgroundArchiveService._() {
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'cancelOperationFromNotification') {
+        cancelOperation();
+      }
+    });
+  }
 
   static const _channel = MethodChannel('com.rubex.nfile/notifications');
 
@@ -232,7 +238,7 @@ class BackgroundArchiveService {
         final id = operation.id.hashCode;
         await _channel.invokeMethod('showProgressNotification', {
           'id': id,
-          'title': isError ? 'Operation Failed' : 'Operation Completed',
+          'title': isError ? 'Operation Failed' : 'Successful',
           'message': isError ? 'Compression/extraction failed.' : '${operation.archiveName} processed successfully.',
           'progress': 100,
           'max': 100,
@@ -363,6 +369,13 @@ class BackgroundArchiveService {
         }
       }
 
+      sendPort.send({
+        'status': 'progress',
+        'progress': 1.0,
+        'currentFile': 'Archive created successfully',
+      });
+      await Future.delayed(const Duration(milliseconds: 300));
+
       sendPort.send({'status': 'completed'});
     } catch (e) {
       sendPort.send({'status': 'error', 'error': e.toString()});
@@ -463,6 +476,13 @@ class BackgroundArchiveService {
           Directory(p.join(destinationDir, filename)).createSync(recursive: true);
         }
       }
+
+      sendPort.send({
+        'status': 'progress',
+        'progress': 1.0,
+        'currentFile': 'Archive extracted successfully',
+      });
+      await Future.delayed(const Duration(milliseconds: 300));
 
       sendPort.send({'status': 'completed'});
     } catch (e) {

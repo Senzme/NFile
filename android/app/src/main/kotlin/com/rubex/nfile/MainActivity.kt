@@ -22,6 +22,9 @@ import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 import androidx.core.app.NotificationCompat
 import android.content.Context
 import android.graphics.Bitmap
@@ -37,6 +40,17 @@ class MainActivity : AudioServiceFragmentActivity() {
     private val SHIZUKU_REQUEST_CODE = 10001
     private val executor = Executors.newCachedThreadPool()
     private var pendingPermissionResult: MethodChannel.Result? = null
+
+    private val ACTION_CANCEL_OPERATION = "com.rubex.nfile.ACTION_CANCEL_OPERATION"
+    private var notificationsChannel: MethodChannel? = null
+
+    private val cancelReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == ACTION_CANCEL_OPERATION) {
+                notificationsChannel?.invokeMethod("cancelOperationFromNotification", null)
+            }
+        }
+    }
 
     private val onRequestPermissionResultListener = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
         if (requestCode == SHIZUKU_REQUEST_CODE) {
@@ -56,11 +70,27 @@ class MainActivity : AudioServiceFragmentActivity() {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+
+        try {
+            val filter = IntentFilter(ACTION_CANCEL_OPERATION)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(cancelReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                registerReceiver(cancelReceiver, filter)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     override fun onDestroy() {
         try {
             Shizuku.removeRequestPermissionResultListener(onRequestPermissionResultListener)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        try {
+            unregisterReceiver(cancelReceiver)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -397,7 +427,8 @@ class MainActivity : AudioServiceFragmentActivity() {
             }
         }
 
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.rubex.nfile/notifications").setMethodCallHandler { call, result ->
+        notificationsChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.rubex.nfile/notifications")
+        notificationsChannel?.setMethodCallHandler { call, result ->
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             val channelId = "nfile_archive_channel"
             val channelName = "NFile Archive Operations"
@@ -423,12 +454,38 @@ class MainActivity : AudioServiceFragmentActivity() {
                         iconId = android.R.drawable.ic_dialog_info
                     }
 
-                    val builder = NotificationCompat.Builder(this, channelId)
+                    val cancelIntent = Intent(ACTION_CANCEL_OPERATION).apply {
+                        setPackage(packageName)
+                    }
+                    val cancelPendingIntent = PendingIntent.getBroadcast(
+                        this@MainActivity,
+                        id,
+                        cancelIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
+                    )
+
+                    val openIntent = Intent(this@MainActivity, MainActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    }
+                    val openPendingIntent = PendingIntent.getActivity(
+                        this@MainActivity,
+                        0,
+                        openIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
+                    )
+
+                    val builder = NotificationCompat.Builder(this@MainActivity, channelId)
                         .setContentTitle(title)
                         .setContentText(message)
                         .setSmallIcon(iconId)
                         .setOngoing(progress < max)
                         .setAutoCancel(progress >= max)
+                        .setContentIntent(openPendingIntent)
+
+                    if (progress < max) {
+                        builder.addAction(android.R.drawable.ic_menu_view, "Open", openPendingIntent)
+                        builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancel", cancelPendingIntent)
+                    }
 
                     if (indeterminate) {
                         builder.setProgress(0, 0, true)
