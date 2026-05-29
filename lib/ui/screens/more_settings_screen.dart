@@ -5,6 +5,7 @@ import '../../core/icon_fonts/broken_icons.dart';
 import '../../core/utils.dart';
 import '../widgets/quick_categories_grid.dart';
 import '../../services/preferences_service.dart';
+import '../../services/recycle_bin_service.dart';
 
 class MoreSettingsScreen extends StatefulWidget {
   const MoreSettingsScreen({super.key});
@@ -403,6 +404,41 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
               ),
               onTap: () => fileManager.toggleSplitScreen(),
             ),
+
+            const SizedBox(height: 24),
+            _buildSectionHeader(theme, 'Recycle Bin (Trash)'),
+            _buildSettingTile(
+              theme,
+              icon: Broken.trash,
+              title: 'Enable Recycle Bin',
+              subtitle: 'Move deleted files and folders to a hidden Recycle Bin instead of deleting permanently',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: RecycleBinService.isEnabled(),
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (val) {
+                    setState(() {
+                      RecycleBinService.setEnabled(val);
+                    });
+                  },
+                ),
+              ),
+              onTap: () {
+                final val = !RecycleBinService.isEnabled();
+                setState(() {
+                  RecycleBinService.setEnabled(val);
+                });
+              },
+            ),
+            if (RecycleBinService.isEnabled())
+              _buildSettingTile(
+                theme,
+                icon: Icons.access_time_rounded,
+                title: 'Auto-Delete Trash Duration',
+                subtitle: _getAutoDeleteDaysLabel(RecycleBinService.getAutoDeleteDays()),
+                onTap: () => _showAutoDeleteDaysPickerDialog(context, theme),
+              ),
 
             const SizedBox(height: 24),
             _buildSectionHeader(theme, 'Appearance & Themes'),
@@ -811,6 +847,110 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
         onTap: onTap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
+    );
+  }
+
+  String _getAutoDeleteDaysLabel(int days) {
+    if (days <= 0) return 'Never (Auto-delete disabled)';
+    if (days == 1) return 'After 1 Day';
+    return 'After $days Days';
+  }
+
+  void _showAutoDeleteDaysPickerDialog(BuildContext context, ThemeData theme) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) {
+        final current = RecycleBinService.getAutoDeleteDays();
+        final options = [
+          {'days': 7, 'label': '7 Days'},
+          {'days': 15, 'label': '15 Days'},
+          {'days': 30, 'label': '30 Days (Recommended)'},
+          {'days': 0, 'label': 'Never (Manually clean bin)'},
+        ];
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.onSurface.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: Text(
+                    'Auto-Delete Trash Duration',
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: Text(
+                    'Items in the Recycle Bin will be permanently deleted after this duration.',
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.5)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ...options.map((opt) {
+                  final days = opt['days'] as int;
+                  final label = opt['label'] as String;
+                  final isSelected = current == days;
+
+                  return Card(
+                    color: isSelected ? theme.colorScheme.primary.withOpacity(0.12) : theme.colorScheme.surface,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: isSelected ? theme.colorScheme.primary : theme.dividerColor.withOpacity(0.08)),
+                    ),
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        setState(() {
+                          RecycleBinService.setAutoDeleteDays(days);
+                        });
+                        Navigator.pop(ctx);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        child: Row(
+                          children: [
+                            Icon(Icons.access_time_rounded, color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface.withOpacity(0.6)),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                  color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                                ),
+                              ),
+                            ),
+                            if (isSelected) Icon(Icons.check_circle, color: theme.colorScheme.primary),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

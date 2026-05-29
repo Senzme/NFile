@@ -14,6 +14,7 @@ import '../screens/web_sharing_screen.dart';
 import '../../providers/media_provider.dart';
 import 'quick_categories_grid.dart';
 import '../screens/internal_file_picker_screen.dart';
+import '../screens/recycle_bin_screen.dart';
 
 class NFileDrawer extends StatelessWidget {
   final VoidCallback toggleTheme;
@@ -95,6 +96,15 @@ class NFileDrawer extends StatelessWidget {
                       onTap: () {
                         Navigator.pop(context);
                         Navigator.push(context, MaterialPageRoute(builder: (_) => const GlobalSearchScreen()));
+                      },
+                    ),
+                    _buildDrawerTile(
+                      context,
+                      icon: Broken.trash,
+                      title: 'Recycle Bin',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const RecycleBinScreen()));
                       },
                     ),
 

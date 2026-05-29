@@ -16,6 +16,7 @@ import 'services/preferences_service.dart';
 import 'services/network_connections_service.dart';
 import 'services/intent_handler_service.dart';
 import 'services/pin_service.dart';
+import 'services/recycle_bin_service.dart';
 import 'services/audio_background_handler.dart';
 import 'package:audio_service/audio_service.dart';
 import 'ui/screens/home_screen.dart';
@@ -28,6 +29,7 @@ void main() async {
   await PreferencesService.init();
   await PinService.init();
   await NetworkConnectionsService.init();
+  await RecycleBinService.init();
 
   // Initialize audio_service for background media notification
   // Wrapped in try-catch — app must still launch even if this fails

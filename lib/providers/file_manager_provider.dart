@@ -23,6 +23,7 @@ import '../core/utils.dart';
 import '../services/preferences_service.dart';
 import '../models/custom_shortcut_model.dart';
 import '../services/root_shizuku_service.dart';
+import '../services/recycle_bin_service.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import '../core/icon_fonts/broken_icons.dart';
 import '../ui/widgets/open_with_sheet.dart';
@@ -1315,15 +1316,21 @@ class FileManagerProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      for (final path in selectedPaths) {
-        if (isRestrictedPath(path)) {
-          await RootShizukuService.deleteItem(path, useRoot: useRootMode);
-        } else {
-          final type = FileSystemEntity.typeSync(path);
-          if (type == FileSystemEntityType.directory) {
-            await Directory(path).delete(recursive: true);
+      if (RecycleBinService.isEnabled()) {
+        for (final path in selectedPaths) {
+          await RecycleBinService.moveToTrash(path, useRoot: useRootMode);
+        }
+      } else {
+        for (final path in selectedPaths) {
+          if (isRestrictedPath(path)) {
+            await RootShizukuService.deleteItem(path, useRoot: useRootMode);
           } else {
-            await File(path).delete();
+            final type = FileSystemEntity.typeSync(path);
+            if (type == FileSystemEntityType.directory) {
+              await Directory(path).delete(recursive: true);
+            } else {
+              await File(path).delete();
+            }
           }
         }
       }
@@ -1822,14 +1829,18 @@ class FileManagerProvider extends ChangeNotifier {
 
   Future<void> deleteFile(String path) async {
     try {
-      if (isRestrictedPath(path)) {
-        await RootShizukuService.deleteItem(path, useRoot: useRootMode);
+      if (RecycleBinService.isEnabled()) {
+        await RecycleBinService.moveToTrash(path, useRoot: useRootMode);
       } else {
-        final type = FileSystemEntity.typeSync(path);
-        if (type == FileSystemEntityType.directory) {
-          await Directory(path).delete(recursive: true);
+        if (isRestrictedPath(path)) {
+          await RootShizukuService.deleteItem(path, useRoot: useRootMode);
         } else {
-          await File(path).delete();
+          final type = FileSystemEntity.typeSync(path);
+          if (type == FileSystemEntityType.directory) {
+            await Directory(path).delete(recursive: true);
+          } else {
+            await File(path).delete();
+          }
         }
       }
       await loadDirectory(currentPath, showLoading: false);
