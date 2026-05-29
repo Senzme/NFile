@@ -10,7 +10,8 @@ import '../../models/file_item_model.dart';
 import '../screens/all_recent_files_screen.dart';
 
 class RecentFilesSection extends StatefulWidget {
-  const RecentFilesSection({super.key});
+  final Function(int)? onNavigateTab;
+  const RecentFilesSection({super.key, this.onNavigateTab});
 
   @override
   State<RecentFilesSection> createState() => _RecentFilesSectionState();
@@ -221,7 +222,7 @@ class _RecentFilesSectionState extends State<RecentFilesSection> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const AllRecentFilesScreen()),
+                      MaterialPageRoute(builder: (_) => AllRecentFilesScreen(onNavigateTab: widget.onNavigateTab)),
                     );
                   },
                   borderRadius: BorderRadius.circular(12),
@@ -283,6 +284,12 @@ class _RecentFilesSectionState extends State<RecentFilesSection> {
                           provider.loadDirectory(file.path);
                         } else {
                           provider.openFile(context, file.path);
+                        }
+                      },
+                      onLongPress: () {
+                        if (!isFolder) {
+                          provider.showFileInLocation(file.path);
+                          widget.onNavigateTab?.call(1);
                         }
                       },
                       borderRadius: BorderRadius.circular(20),

@@ -21,6 +21,7 @@ class FileItem extends StatelessWidget {
   final bool isSelected;
   final double iconScale;
   final double itemPaddingMultiplier;
+  final bool showShowInLocationOption;
 
   const FileItem({
     super.key,
@@ -32,6 +33,7 @@ class FileItem extends StatelessWidget {
     this.isSelected = false,
     this.iconScale = 1.0,
     this.itemPaddingMultiplier = 1.0,
+    this.showShowInLocationOption = false,
   });
 
   @override
@@ -40,7 +42,7 @@ class FileItem extends StatelessWidget {
     final iconColor = FileUtils.getColorForFile(file.path, context);
     final isArchive = FileUtils.isArchive(file.path);
     final isHighlighted = context.select<FileManagerProvider, bool>(
-      (p) => p.highlightedPaths.contains(file.path),
+      (p) => p.forceHighlightedPaths.contains(file.path) || (p.enableFolderHighlight && p.highlightedPaths.contains(file.path)),
     );
 
     final cardMargin = EdgeInsets.symmetric(
@@ -151,6 +153,11 @@ class FileItem extends StatelessWidget {
                   onSelected: onAction,
                   itemBuilder: (context) {
                     return [
+                      if (showShowInLocationOption)
+                        const PopupMenuItem(
+                          value: 'show_in_location',
+                          child: Row(children: [Icon(Broken.folder_open, size: 20), SizedBox(width: 12), Text('Show in location', style: TextStyle(fontWeight: FontWeight.w500))]),
+                        ),
                       if (isArchive)
                         const PopupMenuItem(value: 'extract', child: Row(children: [Icon(Broken.archive, size: 20), SizedBox(width: 12), Text('Extract', style: TextStyle(fontWeight: FontWeight.w500))])),
                       const PopupMenuItem(value: 'archive', child: Row(children: [Icon(Broken.box_add, size: 20), SizedBox(width: 12), Text('Archive', style: TextStyle(fontWeight: FontWeight.w500))])),

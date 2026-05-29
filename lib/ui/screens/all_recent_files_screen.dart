@@ -13,7 +13,8 @@ import '../widgets/folder_item.dart';
 import '../widgets/file_action_dialogs.dart';
 
 class AllRecentFilesScreen extends StatefulWidget {
-  const AllRecentFilesScreen({super.key});
+  final Function(int)? onNavigateTab;
+  const AllRecentFilesScreen({super.key, this.onNavigateTab});
 
   @override
   State<AllRecentFilesScreen> createState() => _AllRecentFilesScreenState();
@@ -259,6 +260,11 @@ class _AllRecentFilesScreenState extends State<AllRecentFilesScreen> {
   void _handleAction(BuildContext context, String action, String path) async {
     final provider = context.read<FileManagerProvider>();
     switch (action) {
+      case 'show_in_location':
+        provider.showFileInLocation(path);
+        Navigator.pop(context);
+        widget.onNavigateTab?.call(1);
+        break;
       case 'copy':
         provider.copyFile(path);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied to clipboard')));
@@ -406,6 +412,7 @@ class _AllRecentFilesScreenState extends State<AllRecentFilesScreen> {
                       return FileItem(
                         file: item,
                         isSelected: isItemSelected,
+                        showShowInLocationOption: true,
                         onTap: () {
                           if (_isSelectionMode) {
                             _toggleSelection(item.path);

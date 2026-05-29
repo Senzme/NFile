@@ -793,10 +793,8 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                   final itemHeight = (72 * provider.itemPaddingMultiplier).clamp(40.0, 150.0);
                   targetOffset = firstHighlightedIndex * itemHeight;
                 }
-                _scrollController.animateTo(
+                _scrollController.jumpTo(
                   targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
-                  duration: const Duration(milliseconds: 600),
-                  curve: Curves.easeInOutCubic,
                 );
               }
             }

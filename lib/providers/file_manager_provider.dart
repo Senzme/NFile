@@ -780,6 +780,9 @@ class FileManagerProvider extends ChangeNotifier {
   final Set<String> _highlightedPaths = {};
   Set<String> get highlightedPaths => _highlightedPaths;
 
+  final Set<String> _forceHighlightedPaths = {};
+  Set<String> get forceHighlightedPaths => _forceHighlightedPaths;
+
   bool _shouldScrollToHighlight = false;
   bool get shouldScrollToHighlight => _shouldScrollToHighlight;
 
@@ -792,9 +795,12 @@ class FileManagerProvider extends ChangeNotifier {
     await loadDirectory(parentPath);
     _highlightedPaths.clear();
     _highlightedPaths.add(filePath);
+    _forceHighlightedPaths.clear();
+    _forceHighlightedPaths.add(filePath);
     _shouldScrollToHighlight = true;
     notifyListeners();
     Timer(const Duration(milliseconds: 2000), () {
+      _forceHighlightedPaths.remove(filePath);
       if (_highlightedPaths.remove(filePath)) {
         notifyListeners();
       }

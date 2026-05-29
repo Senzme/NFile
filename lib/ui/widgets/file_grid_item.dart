@@ -40,7 +40,7 @@ class FileGridItem extends StatelessWidget {
     final iconColor = FileUtils.getColorForFile(file.path, context);
     final isArchive = FileUtils.isArchive(file.path);
     final isHighlighted = context.select<FileManagerProvider, bool>(
-      (p) => p.highlightedPaths.contains(file.path),
+      (p) => p.forceHighlightedPaths.contains(file.path) || (p.enableFolderHighlight && p.highlightedPaths.contains(file.path)),
     );
 
     final child = Card(
