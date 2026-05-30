@@ -406,6 +406,17 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
                     tooltip: 'Delete',
                     onPressed: _deleteSelectedInternalItems,
                   ),
+                  IconButton(
+                    icon: const Icon(Broken.task_square),
+                    tooltip: 'Select All',
+                    onPressed: () {
+                      setState(() {
+                        for (final item in items) {
+                          _selectedInternalPaths.add(item.fullPath);
+                        }
+                      });
+                    },
+                  ),
                 ],
               )
             : AppBar(
@@ -423,6 +434,18 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
                     onPressed: _loadArchive,
                     tooltip: 'Refresh',
                   ),
+                  if (items.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Broken.task_square),
+                      tooltip: 'Select All',
+                      onPressed: () {
+                        setState(() {
+                          for (final item in items) {
+                            _selectedInternalPaths.add(item.fullPath);
+                          }
+                        });
+                      },
+                    ),
                 ],
               ),
         body: _isLoading
