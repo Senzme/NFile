@@ -117,30 +117,48 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
         // ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cut to clipboard')));
         break;
       case 'rename':
-        final currentName = p.basename(path);
-        final newName = await FileActionDialogs.showTextInputDialog(
-          context,
-          title: 'Rename',
-          hint: 'Enter new name',
-          initialValue: currentName,
-          actionText: 'Rename',
-        );
-        if (newName != null && newName.isNotEmpty) {
-          await provider.renameFile(path, newName);
+        final isMulti = provider.selectedPaths.isNotEmpty && provider.selectedPaths.contains(path);
+        if (isMulti && provider.selectedPaths.length > 1) {
+          await BatchRenameDialog.show(context, provider);
+        } else {
+          final currentName = p.basename(path);
+          final newName = await FileActionDialogs.showTextInputDialog(
+            context,
+            title: 'Rename',
+            hint: 'Enter new name',
+            initialValue: currentName,
+            actionText: 'Rename',
+          );
+          if (newName != null && newName.isNotEmpty) {
+            await provider.renameFile(path, newName);
+            if (isMulti) {
+              provider.clearSelection();
+            }
+          }
         }
         break;
       case 'delete':
+        final isMulti = provider.selectedPaths.isNotEmpty && provider.selectedPaths.contains(path);
         final confirm = await FileActionDialogs.showConfirmDialog(
           context,
-          title: 'Delete Item',
-          content: 'Are you sure you want to delete this item? This cannot be undone.',
+          title: isMulti ? 'Delete Selected' : 'Delete Item',
+          content: isMulti
+              ? 'Are you sure you want to delete ${provider.selectedPaths.length} items? This cannot be undone.'
+              : 'Are you sure you want to delete this item? This cannot be undone.',
         );
         if (confirm) {
-          await provider.deleteFile(path);
+          if (isMulti) {
+            await provider.deleteSelected();
+          } else {
+            await provider.deleteFile(path);
+          }
         }
         break;
       case 'share':
-        await FolderShareService.sharePaths(context, [path]);
+        final paths = (provider.selectedPaths.isNotEmpty && provider.selectedPaths.contains(path))
+            ? provider.selectedPaths.toList()
+            : [path];
+        await FolderShareService.sharePaths(context, paths);
         break;
       case 'pin':
         await provider.togglePinPath(path);

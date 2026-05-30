@@ -25,6 +25,7 @@ import 'restricted_folder_banner.dart';
 import 'selection_context_bottom_sheet.dart';
 import 'file_action_dialogs.dart';
 import 'create_archive_dialog.dart';
+import 'batch_rename_dialog.dart';
 
 class PaneBrowser extends StatefulWidget {
   final int tabIndex;
@@ -114,26 +115,41 @@ class _PaneBrowserState extends State<PaneBrowser> {
         provider.cutFile(path);
         break;
       case 'rename':
-        final currentName = p.basename(path);
-        final newName = await FileActionDialogs.showTextInputDialog(
-          context,
-          title: 'Rename',
-          hint: 'Enter new name',
-          initialValue: currentName,
-          actionText: 'Rename',
-        );
-        if (newName != null && newName.isNotEmpty) {
-          await provider.renameFile(path, newName);
+        final isMulti = provider.selectedPaths.isNotEmpty && provider.selectedPaths.contains(path);
+        if (isMulti && provider.selectedPaths.length > 1) {
+          await BatchRenameDialog.show(context, provider);
+        } else {
+          final currentName = p.basename(path);
+          final newName = await FileActionDialogs.showTextInputDialog(
+            context,
+            title: 'Rename',
+            hint: 'Enter new name',
+            initialValue: currentName,
+            actionText: 'Rename',
+          );
+          if (newName != null && newName.isNotEmpty) {
+            await provider.renameFile(path, newName);
+            if (isMulti) {
+              provider.clearSelection();
+            }
+          }
         }
         break;
       case 'delete':
+        final isMulti = provider.selectedPaths.isNotEmpty && provider.selectedPaths.contains(path);
         final confirm = await FileActionDialogs.showConfirmDialog(
           context,
-          title: 'Delete Item',
-          content: 'Are you sure you want to delete this item? This cannot be undone.',
+          title: isMulti ? 'Delete Selected' : 'Delete Item',
+          content: isMulti
+              ? 'Are you sure you want to delete ${provider.selectedPaths.length} items? This cannot be undone.'
+              : 'Are you sure you want to delete this item? This cannot be undone.',
         );
         if (confirm) {
-          await provider.deleteFile(path);
+          if (isMulti) {
+            await provider.deleteSelected();
+          } else {
+            await provider.deleteFile(path);
+          }
         }
         break;
     }

@@ -10,6 +10,7 @@ import '../../models/file_item_model.dart';
 import '../widgets/file_item.dart';
 import '../widgets/folder_item.dart';
 import '../widgets/file_action_dialogs.dart';
+import '../widgets/batch_rename_dialog.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import '../../services/folder_share_service.dart';
 
@@ -265,6 +266,21 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
     _clearSelection();
   }
 
+  Future<void> _handleRenameSelected() async {
+    if (_selectedPaths.isEmpty) return;
+    final provider = context.read<FileManagerProvider>();
+    await showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.55),
+      builder: (context) => BatchRenameDialog(
+        provider: provider,
+        selectedPaths: _selectedPaths.toList(),
+      ),
+    );
+    _clearSelection();
+    _executeSearch();
+  }
+
   Future<void> _handleDeleteSelected() async {
     if (_selectedPaths.isEmpty) return;
     final confirm = await FileActionDialogs.showConfirmDialog(
@@ -291,7 +307,12 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
     final provider = context.read<FileManagerProvider>();
     switch (action) {
       case 'share':
-        await FolderShareService.sharePaths(context, [path]);
+        final isMulti = _selectedPaths.isNotEmpty && _selectedPaths.contains(path);
+        final paths = isMulti ? _selectedPaths.toList() : [path];
+        await FolderShareService.sharePaths(context, paths);
+        if (isMulti) {
+          _clearSelection();
+        }
         break;
       case 'copy':
         provider.copyFile(path);
@@ -302,30 +323,61 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cut to clipboard')));
         break;
       case 'rename':
-        final currentName = p.basename(path);
-        final newName = await FileActionDialogs.showTextInputDialog(
-          context,
-          title: 'Rename',
-          hint: 'Enter new name',
-          initialValue: currentName,
-          actionText: 'Rename',
-        );
-        if (newName != null && newName.isNotEmpty) {
-          await provider.renameFile(path, newName);
-          _executeSearch(); // refresh
+        final isMulti = _selectedPaths.isNotEmpty && _selectedPaths.contains(path);
+        if (isMulti && _selectedPaths.length > 1) {
+          await showDialog<void>(
+            context: context,
+            barrierColor: Colors.black.withOpacity(0.55),
+            builder: (context) => BatchRenameDialog(
+              provider: provider,
+              selectedPaths: _selectedPaths.toList(),
+            ),
+          );
+          _clearSelection();
+          _executeSearch();
+        } else {
+          final currentName = p.basename(path);
+          final newName = await FileActionDialogs.showTextInputDialog(
+            context,
+            title: 'Rename',
+            hint: 'Enter new name',
+            initialValue: currentName,
+            actionText: 'Rename',
+          );
+          if (newName != null && newName.isNotEmpty) {
+            await provider.renameFile(path, newName);
+            if (isMulti) {
+              _clearSelection();
+            }
+            _executeSearch(); // refresh
+          }
         }
         break;
       case 'delete':
+        final isMulti = _selectedPaths.isNotEmpty && _selectedPaths.contains(path);
         final confirm = await FileActionDialogs.showConfirmDialog(
           context,
-          title: 'Delete File',
-          content: 'Are you sure you want to delete this item? This cannot be undone.',
+          title: isMulti ? 'Delete Selected' : 'Delete File',
+          content: isMulti
+              ? 'Are you sure you want to delete ${_selectedPaths.length} selected item(s)? This cannot be undone.'
+              : 'Are you sure you want to delete this item? This cannot be undone.',
         );
         if (confirm) {
-          await provider.deleteFile(path);
-          setState(() {
-            _results.removeWhere((e) => e.path == path);
-          });
+          if (isMulti) {
+            final toDelete = _selectedPaths.toList();
+            for (final p in toDelete) {
+              await provider.deleteFile(p);
+              setState(() {
+                _results.removeWhere((e) => e.path == p);
+              });
+            }
+            _clearSelection();
+          } else {
+            await provider.deleteFile(path);
+            setState(() {
+              _results.removeWhere((e) => e.path == path);
+            });
+          }
         }
         break;
     }
@@ -393,6 +445,11 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                   icon: const Icon(Icons.share_outlined),
                   tooltip: 'Share',
                   onPressed: _handleShareSelected,
+                ),
+                IconButton(
+                  icon: const Icon(Broken.edit),
+                  tooltip: 'Rename',
+                  onPressed: _handleRenameSelected,
                 ),
                 IconButton(
                   icon: const Icon(Broken.trash, color: Colors.red),
