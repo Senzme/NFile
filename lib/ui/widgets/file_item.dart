@@ -80,7 +80,7 @@ class FileItem extends StatelessWidget {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: _MediaThumbnail(
+                    child: MediaThumbnail(
                       file: file,
                       iconScale: iconScale,
                       isSelected: isSelected,
@@ -209,13 +209,13 @@ class FileItem extends StatelessWidget {
   }
 }
 
-class _MediaThumbnail extends StatefulWidget {
+class MediaThumbnail extends StatefulWidget {
   final FileItemModel file;
   final double iconScale;
   final bool isSelected;
   final Color iconColor;
 
-  const _MediaThumbnail({
+  const MediaThumbnail({
     required this.file,
     required this.iconScale,
     required this.isSelected,
@@ -223,10 +223,10 @@ class _MediaThumbnail extends StatefulWidget {
   });
 
   @override
-  State<_MediaThumbnail> createState() => _MediaThumbnailState();
+  State<MediaThumbnail> createState() => _MediaThumbnailState();
 }
 
-class _MediaThumbnailState extends State<_MediaThumbnail> {
+class _MediaThumbnailState extends State<MediaThumbnail> {
   static final Map<String, Uint8List?> _apkIconCache = {};
   Uint8List? _videoThumb;
   Uint8List? _audioThumb;
