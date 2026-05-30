@@ -468,4 +468,14 @@ class PreferencesService {
   static Future<void> saveHideActionMenuButtons(bool val) async {
     await _prefs?.setBool(_keyHideActionMenuButtons, val);
   }
+
+  static const String _keyAudioBackgroundPlay = 'audio_background_play';
+
+  static bool getAudioBackgroundPlay() {
+    return _prefs?.getBool(_keyAudioBackgroundPlay) ?? false;
+  }
+
+  static Future<void> saveAudioBackgroundPlay(bool val) async {
+    await _prefs?.setBool(_keyAudioBackgroundPlay, val);
+  }
 }

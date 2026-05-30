@@ -90,6 +90,14 @@ class NFileAudioHandler extends BaseAudioHandler
         skipToNext();
       }
     }));
+
+    // Force a state transition from false to true so audio_service immediately triggers the foreground notification
+    _emitPlaybackState(playing: false);
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (_player != null) {
+        _emitPlaybackState(playing: _player!.state.playing);
+      }
+    });
   }
 
   void detach() {

@@ -6,6 +6,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../core/icon_fonts/broken_icons.dart';
 import '../../../services/audio_background_handler.dart';
+import '../../../services/preferences_service.dart';
 import 'audio_artwork_widget.dart';
 import 'audio_waveform_widget.dart';
 import 'audio_controls_widget.dart';
@@ -67,12 +68,13 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
   int _shufflePos = 0; // current position in _shuffleQueue
 
   // Background playback
-  bool _isBackgroundMode = true;
+  bool _isBackgroundMode = false;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
+    _isBackgroundMode = PreferencesService.getAudioBackgroundPlay();
 
     _fadeController = AnimationController(
       vsync: this,
@@ -91,7 +93,9 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
     _shuffleQueue = List.generate(_allSongs.length, (i) => i);
     _initListeners();
     _openTrack();
-    _startBackgroundMode();
+    if (_isBackgroundMode) {
+      _startBackgroundMode();
+    }
   }
 
   void _initListeners() {
@@ -431,13 +435,6 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
   }
 
   void _startBackgroundMode() async {
-    // Request notification permission dynamically on Android 13+
-    try {
-      await Permission.notification.request();
-    } catch (e) {
-      debugPrint('[NFile] Error requesting notification permission: $e');
-    }
-
     final queue = _allSongs.isNotEmpty
         ? List.generate(_allSongs.length, (i) => _buildMediaItem(i))
         : [_buildMediaItem(0)];
@@ -469,6 +466,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
       // but do NOT dispose the player because we want it to keep playing in the foreground!
       getAudioHandler().stopNotification();
       setState(() => _isBackgroundMode = false);
+      await PreferencesService.saveAudioBackgroundPlay(false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -482,8 +480,16 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
       return;
     }
 
+    // Turn on — request notification permission dynamically on Android 13+
+    try {
+      await Permission.notification.request();
+    } catch (e) {
+      debugPrint('[NFile] Error requesting notification permission: $e');
+    }
+
     _startBackgroundMode();
     setState(() => _isBackgroundMode = true);
+    await PreferencesService.saveAudioBackgroundPlay(true);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
