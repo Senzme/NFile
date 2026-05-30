@@ -11,6 +11,7 @@ import 'package:path/path.dart' as p;
 import 'package:device_info_plus/device_info_plus.dart';
 import '../services/preferences_service.dart';
 import '../models/custom_shortcut_model.dart';
+import '../models/file_item_model.dart';
 
 enum MediaSortOrder {
   newest,
@@ -135,6 +136,7 @@ class MediaProvider extends ChangeNotifier {
   List<FileSystemEntity> _downloads = [];
   List<FileSystemEntity> _apks = [];
   List<AssetEntity> _screenshots = [];
+  List<FileItemModel> _recentFiles = [];
   List<CustomShortcutModel> _customShortcuts = [];
   List<AssetPathEntity> _imageAlbums = [];
   List<AssetPathEntity> _videoAlbums = [];
@@ -178,6 +180,7 @@ class MediaProvider extends ChangeNotifier {
   List<FileSystemEntity> get downloads => _downloads;
   List<FileSystemEntity> get apks => _apks;
   List<AssetEntity> get screenshots => _screenshots;
+  List<FileItemModel> get recentFiles => _recentFiles;
   List<CustomShortcutModel> get customShortcuts => _customShortcuts;
   List<String> get categoryOrder => _categoryOrder;
   List<String> get activeCategories => _activeCategories;
@@ -323,6 +326,34 @@ class MediaProvider extends ChangeNotifier {
             _apks = cachedApks;
           }
         }
+
+        if (map.containsKey('recentFiles')) {
+          final paths = List<Map<String, dynamic>>.from(
+            (map['recentFiles'] as List?)?.map((e) => Map<String, dynamic>.from(e as Map)) ?? [],
+          );
+          final cached = <FileItemModel>[];
+          for (final entry in paths) {
+            try {
+              final path = entry['path'] as String?;
+              if (path == null) continue;
+              final f = File(path);
+              if (!f.existsSync()) continue;
+              cached.add(FileItemModel(
+                entity: f,
+                name: p.basename(path),
+                path: path,
+                isDirectory: false,
+                size: (entry['size'] as num?)?.toInt() ?? 0,
+                modified: DateTime.fromMillisecondsSinceEpoch(
+                  (entry['modified'] as num?)?.toInt() ?? 0,
+                ),
+              ));
+            } catch (_) {}
+          }
+          if (cached.isNotEmpty && _recentFiles.isEmpty) {
+            _recentFiles = cached;
+          }
+        }
       }
     } catch (_) {}
   }
@@ -338,6 +369,11 @@ class MediaProvider extends ChangeNotifier {
         'archives': _archives.map((e) => e.path).toList(),
         'downloads': _downloads.map((e) => e.path).toList(),
         'apks': _apks.map((e) => e.path).toList(),
+        'recentFiles': _recentFiles.take(30).map((e) => {
+          'path': e.path,
+          'size': e.size,
+          'modified': e.modified.millisecondsSinceEpoch,
+        }).toList(),
       };
       await cacheFile.writeAsString(jsonEncode(map), flush: true);
     } catch (_) {}
@@ -408,6 +444,10 @@ class MediaProvider extends ChangeNotifier {
     futures.add(_loadArchivesDownloadsAndApks());
 
     await Future.wait(futures);
+
+    // Scan recent files after all media is loaded so it can merge from providers
+    await _scanRecentFiles();
+
     await _saveCache();
 
     _applySort();
@@ -618,6 +658,113 @@ class MediaProvider extends ChangeNotifier {
     _downloads = dl;
     _archives = arch;
     _apks = apkList;
+  }
+
+  Future<void> _scanRecentFiles() async {
+    final list = <FileSystemEntity>[];
+    final seen = <String>{};
+
+    final rootDir = Directory('/storage/emulated/0');
+    if (await rootDir.exists()) {
+      try {
+        final List<String> pathsToScan = [];
+        final rootEntities = await rootDir.list(recursive: false).toList();
+        for (final entity in rootEntities) {
+          if (entity is Directory) {
+            final name = p.basename(entity.path);
+            if (!name.startsWith('.') && name != 'Android') {
+              pathsToScan.add(entity.path);
+            }
+          }
+        }
+        pathsToScan.addAll([
+          '/storage/emulated/0/Android/media',
+          '/storage/emulated/0/Download',
+          '/storage/emulated/0/Documents',
+        ]);
+
+        await Future.wait(pathsToScan.map((path) async {
+          final dir = Directory(path);
+          if (!await dir.exists()) return;
+          try {
+            final entities = await dir.list(recursive: false).toList();
+            for (final entity in entities) {
+              if (!seen.contains(entity.path)) {
+                seen.add(entity.path);
+                list.add(entity);
+              }
+              if (entity is Directory && !p.basename(entity.path).startsWith('.')) {
+                try {
+                  final sub = await entity.list(recursive: false).toList();
+                  for (final s in sub) {
+                    if (!seen.contains(s.path)) {
+                      seen.add(s.path);
+                      list.add(s);
+                    }
+                  }
+                } catch (_) {}
+              }
+            }
+          } catch (_) {}
+        }));
+      } catch (_) {}
+    }
+
+    void addFromList(List<FileSystemEntity> src) {
+      for (final e in src) {
+        if (!seen.contains(e.path)) {
+          seen.add(e.path);
+          list.add(e);
+        }
+      }
+    }
+
+    addFromList(_downloads);
+    addFromList(_documents);
+    addFromList(_archives);
+    addFromList(_apks);
+
+    for (final song in _audios) {
+      final path = song.data;
+      if (!seen.contains(path)) {
+        seen.add(path);
+        try {
+          final f = File(path);
+          if (await f.exists()) list.add(f);
+        } catch (_) {}
+      }
+    }
+
+    // Filter: remove parent dirs if a child also exists in the list
+    final filteredList = <FileSystemEntity>[];
+    for (final entity in list) {
+      if (entity is Directory) {
+        bool hasChild = list.any((o) => o.path != entity.path && p.isWithin(entity.path, o.path));
+        if (hasChild) continue;
+      }
+      filteredList.add(entity);
+    }
+
+    final items = <FileItemModel>[];
+    await Future.wait(filteredList.map((f) async {
+      try {
+        if (f is Directory) return;
+        final name = p.basename(f.path);
+        if (name.startsWith('.')) return;
+        final stat = await f.stat();
+        items.add(FileItemModel(
+          entity: f,
+          name: name,
+          path: f.path,
+          isDirectory: false,
+          size: stat.size,
+          modified: stat.modified,
+        ));
+      } catch (_) {}
+    }));
+
+    items.sort((a, b) => b.modified.compareTo(a.modified));
+    _recentFiles = items;
   }
 
   void setSortOrder(MediaSortOrder order) {
