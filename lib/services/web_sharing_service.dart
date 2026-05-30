@@ -273,7 +273,7 @@ AAAEBbg6hQHydFb0ZGHuYq+gCui5fFtXW1X2e3Ok3UKTfXMhY3eZl04qtec/5UVUNLrK49
     var breadcrumbsHtml = '<a href="/">Root</a>';
     var pathAccumulator = '';
     for (int i = 0; i < parts.length; i++) {
-      pathAccumulator += '/' + parts[i];
+      pathAccumulator += '/${parts[i]}';
       breadcrumbsHtml += ' <span class="arrow">&gt;</span> <a href="$pathAccumulator">${parts[i]}</a>';
     }
 
@@ -361,7 +361,7 @@ AAAEBbg6hQHydFb0ZGHuYq+gCui5fFtXW1X2e3Ok3UKTfXMhY3eZl04qtec/5UVUNLrK49
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NFile Shared Portal</title>
+  <title>NFile Shared Portal - $title</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -821,7 +821,7 @@ AAAEBbg6hQHydFb0ZGHuYq+gCui5fFtXW1X2e3Ok3UKTfXMhY3eZl04qtec/5UVUNLrK49
     }
 
     final ip = request.connectionInfo?.remoteAddress.address ?? 'Unknown';
-    final clientKey = '${ip}_${userAgent}';
+    final clientKey = '${ip}_$userAgent';
 
     final device = _parseUserAgent(userAgent);
     final fileName = FileSystemEntity.isDirectorySync(targetPath) ? 'Browsing Directories' : p.basename(targetPath);
