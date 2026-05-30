@@ -28,6 +28,9 @@ class _AudioWaveformWidgetState extends State<AudioWaveformWidget>
   late AnimationController _animController;
   final int _barCount = 56;
   late List<double> _normalizedHeights;
+  double? _dragPercentage;
+  double? _pendingPositionPercentage;
+  DateTime? _pendingSetTime;
 
   @override
   void initState() {
@@ -62,11 +65,24 @@ class _AudioWaveformWidgetState extends State<AudioWaveformWidget>
     });
   }
 
-  void _handleSeekGesture(Offset localPosition, double width) {
-    if (width <= 0 || widget.duration.inMilliseconds == 0) return;
-    double percentage = (localPosition.dx / width).clamp(0.0, 1.0);
-    final targetMs = widget.duration.inMilliseconds * percentage;
-    widget.onSeek(Duration(milliseconds: targetMs.toInt()));
+  void _updateDragPercentage(Offset localPosition, double width) {
+    if (width <= 0) return;
+    setState(() {
+      _dragPercentage = (localPosition.dx / width).clamp(0.0, 1.0);
+      _pendingPositionPercentage = null;
+    });
+  }
+
+  void _finalizeSeek(double safeDur) {
+    if (_dragPercentage != null) {
+      final targetMs = safeDur * _dragPercentage!;
+      widget.onSeek(Duration(milliseconds: targetMs.toInt()));
+      setState(() {
+        _pendingPositionPercentage = _dragPercentage;
+        _pendingSetTime = DateTime.now();
+        _dragPercentage = null;
+      });
+    }
   }
 
   @override
@@ -81,7 +97,23 @@ class _AudioWaveformWidgetState extends State<AudioWaveformWidget>
     final safeDur = widget.duration.inMilliseconds > 0
         ? widget.duration.inMilliseconds.toDouble()
         : 1.0;
-    final percentage = (widget.position.inMilliseconds / safeDur).clamp(0.0, 1.0);
+
+    if (_pendingPositionPercentage != null) {
+      final targetMs = safeDur * _pendingPositionPercentage!;
+      final diff = (widget.position.inMilliseconds - targetMs).abs();
+      final elapsed = _pendingSetTime != null
+          ? DateTime.now().difference(_pendingSetTime!).inMilliseconds
+          : 1000;
+
+      if (diff < 1200 || elapsed > 800) {
+        _pendingPositionPercentage = null;
+        _pendingSetTime = null;
+      }
+    }
+
+    final percentage = _dragPercentage ??
+        _pendingPositionPercentage ??
+        (widget.position.inMilliseconds / safeDur).clamp(0.0, 1.0);
 
     final decorationBehind = BoxDecoration(
       color: theme.colorScheme.onSurface.withOpacity(0.15),
@@ -166,9 +198,28 @@ class _AudioWaveformWidgetState extends State<AudioWaveformWidget>
               cursor: SystemMouseCursors.click,
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onPanDown: (_) => widget.onSeekStart?.call(),
-                onTapDown: (details) => _handleSeekGesture(details.localPosition, constraints.maxWidth),
-                onHorizontalDragUpdate: (details) => _handleSeekGesture(details.localPosition, constraints.maxWidth),
+                onPanDown: (details) {
+                  widget.onSeekStart?.call();
+                  _updateDragPercentage(details.localPosition, constraints.maxWidth);
+                },
+                onPanUpdate: (details) {
+                  _updateDragPercentage(details.localPosition, constraints.maxWidth);
+                },
+                onPanEnd: (_) {
+                  _finalizeSeek(safeDur);
+                },
+                onTapDown: (details) {
+                  widget.onSeekStart?.call();
+                  _updateDragPercentage(details.localPosition, constraints.maxWidth);
+                },
+                onTapUp: (_) {
+                  _finalizeSeek(safeDur);
+                },
+                onTapCancel: () {
+                  setState(() {
+                    _dragPercentage = null;
+                  });
+                },
                 child: SizedBox(
                   height: maxBarHeight + 16,
                   child: Center(
