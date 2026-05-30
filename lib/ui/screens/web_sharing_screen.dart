@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import '../../providers/file_manager_provider.dart';
 import '../../services/web_sharing_service.dart';
@@ -65,6 +66,7 @@ class _WebSharingScreenState extends State<WebSharingScreen> with SingleTickerPr
       );
     } else {
       try {
+        await Permission.notification.request();
         await _webService.startLocalServer(rootPath);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -121,6 +123,7 @@ class _WebSharingScreenState extends State<WebSharingScreen> with SingleTickerPr
         if (!mounted) return;
         Navigator.pop(context); // Pop dialog
         try {
+          await Permission.notification.request();
           await _webService.startInternetTunnel(shareDir);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
