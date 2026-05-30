@@ -158,13 +158,29 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
     final assetIds = <String>{};
 
     if (widget.mediaType == MediaType.images) {
-      assetIds.addAll(provider.images.map((e) => e.id));
+      if (provider.usingNativeMediaStore) {
+        filePaths.addAll(provider.nativeImagePaths);
+      } else {
+        assetIds.addAll(provider.images.map((e) => e.id));
+      }
     } else if (widget.mediaType == MediaType.videos) {
-      assetIds.addAll(provider.videos.map((e) => e.id));
+      if (provider.usingNativeMediaStore) {
+        filePaths.addAll(provider.nativeVideoPaths);
+      } else {
+        assetIds.addAll(provider.videos.map((e) => e.id));
+      }
     } else if (widget.mediaType == MediaType.screenshots) {
-      assetIds.addAll(provider.screenshots.map((e) => e.id));
+      if (provider.usingNativeMediaStore) {
+        filePaths.addAll(provider.nativeImagePaths.where((p) => p.toLowerCase().contains('screenshot')));
+      } else {
+        assetIds.addAll(provider.screenshots.map((e) => e.id));
+      }
     } else if (widget.mediaType == MediaType.audios) {
-      filePaths.addAll(provider.audios.map((e) => e.data));
+      if (provider.usingNativeMediaStore) {
+        filePaths.addAll(provider.nativeAudioPaths);
+      } else {
+        filePaths.addAll(provider.audios.map((e) => e.data));
+      }
     } else if (widget.mediaType == MediaType.archives) {
       filePaths.addAll(provider.archives.map((e) => e.path));
     } else if (widget.mediaType == MediaType.downloads) {
@@ -918,12 +934,28 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
                     provider.sortOrder == MediaSortOrder.dateWise;
 
                 if (widget.mediaType == MediaType.images) {
+                  if (provider.usingNativeMediaStore) {
+                    return _buildNativePathGrid(provider.nativeImagePaths, theme);
+                  }
                   return _buildImageGrid(provider.images, theme, isDateWise, isGrouped);
                 } else if (widget.mediaType == MediaType.videos) {
+                  if (provider.usingNativeMediaStore) {
+                    return _buildNativePathGrid(provider.nativeVideoPaths, theme, isVideo: true);
+                  }
                   return _buildVideoGrid(provider.videos, theme, isDateWise, isGrouped);
                 } else if (widget.mediaType == MediaType.audios) {
+                  if (provider.usingNativeMediaStore) {
+                    return _buildNativeAudioList(provider.nativeAudioPaths, theme);
+                  }
                   return _buildAudioList(provider.audios, theme, isDateWise, isGrouped);
                 } else if (widget.mediaType == MediaType.screenshots) {
+                  if (provider.usingNativeMediaStore) {
+                    // Filter screenshots from native image paths
+                    final screenshots = provider.nativeImagePaths
+                        .where((p) => p.toLowerCase().contains('screenshot'))
+                        .toList();
+                    return _buildNativePathGrid(screenshots, theme);
+                  }
                   return _buildImageGrid(provider.screenshots, theme, isDateWise, isGrouped);
                 } else if (widget.mediaType == MediaType.archives) {
                   return _buildGenericFileList(provider.archives, theme, isDateWise, isGrouped);
@@ -1721,6 +1753,190 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
       pageBuilder: (context, animation, secondaryAnimation) => page,
       transitionsBuilder: (context, animation, secondaryAnimation, child) => FadeTransition(opacity: animation, child: child),
       transitionDuration: const Duration(milliseconds: 250),
+    );
+  }
+
+  /// Native grid for Android 10 (API <= 29) — uses raw file paths instead of AssetEntity.
+  Widget _buildNativePathGrid(List<String> paths, ThemeData theme, {bool isVideo = false}) {
+    if (paths.isEmpty) return _buildEmptyState(theme);
+    return GridView.builder(
+      padding: const EdgeInsets.all(6),
+      physics: const BouncingScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 6,
+        mainAxisSpacing: 6,
+      ),
+      itemCount: paths.length,
+      itemBuilder: (context, index) {
+        final filePath = paths[index];
+        final name = filePath.split('/').last;
+        final isSelected = _selectedFilePaths.contains(filePath);
+
+        return GestureDetector(
+          onTap: () {
+            if (_isSelectionMode) {
+              _toggleSelection(filePath, null);
+            } else {
+              if (isVideo) {
+                context.read<FileManagerProvider>().openFile(context, filePath);
+              } else {
+                Navigator.push(context, _slideRoute(ImageViewerScreen(
+                  imagePath: filePath,
+                  siblingAssets: const [],
+                  initialAssetId: '',
+                )));
+              }
+            }
+          },
+          onLongPress: () => _toggleSelection(filePath, null),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.file(
+                  File(filePath),
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    child: Icon(
+                      isVideo ? Broken.video : Broken.image,
+                      color: theme.colorScheme.onSurface.withOpacity(0.3),
+                    ),
+                  ),
+                ),
+              ),
+              if (isVideo)
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(color: Colors.black45, shape: BoxShape.circle),
+                    child: const Icon(Icons.play_arrow, color: Colors.white, size: 20),
+                  ),
+                ),
+              if (_isSelectionMode || isSelected)
+                Positioned(
+                  top: 6, right: 6,
+                  child: Icon(
+                    isSelected ? Broken.tick_square : Icons.check_box_outline_blank,
+                    color: isSelected ? theme.colorScheme.primary : Colors.white.withOpacity(0.8),
+                    size: 24,
+                  ),
+                )
+              else
+                Positioned(
+                  top: 4, right: 4,
+                  child: InkWell(
+                    onTap: () => _showSingleItemOptions(name: name, filePath: filePath),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
+                      child: const Icon(Broken.more, color: Colors.white, size: 18),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Native audio list for Android 10 — uses raw file paths.
+  Widget _buildNativeAudioList(List<String> paths, ThemeData theme) {
+    if (paths.isEmpty) return _buildEmptyState(theme);
+    // Build SongModel list once for playlist navigation
+    final songModels = paths.map((filePath) {
+      final name = filePath.split('/').last;
+      final title = name.replaceAll(RegExp(r'\.[^.]+$'), '');
+      return SongModel({
+        '_id': filePath.hashCode,
+        '_data': filePath,
+        '_display_name': name,
+        'title': title,
+        'artist': '<unknown>',
+        'album': '<unknown>',
+        'duration': 0,
+        'track': 0,
+        'date_added': 0,
+      });
+    }).toList();
+
+    return ListView.builder(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      itemCount: paths.length,
+      itemBuilder: (context, index) {
+        final filePath = paths[index];
+        final name = filePath.split('/').last;
+        final title = name.replaceAll(RegExp(r'\.[^.]+$'), '');
+        final isSelected = _selectedFilePaths.contains(filePath);
+
+        return ListTile(
+          key: ValueKey(filePath),
+          onTap: () {
+            if (_isSelectionMode) {
+              _toggleSelection(filePath, null);
+            } else {
+              Navigator.push(
+                context,
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) => AudioPlayerScreen(
+                    audioPath: filePath,
+                    title: title,
+                    artist: 'Unknown Artist',
+                    allSongs: songModels,
+                    initialIndex: index,
+                  ),
+                  transitionsBuilder: (context, animation, secondaryAnimation, child) => SlideTransition(
+                    position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+                        .animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+                    child: child,
+                  ),
+                  transitionDuration: const Duration(milliseconds: 400),
+                ),
+              );
+            }
+          },
+          onLongPress: () => _toggleSelection(filePath, null),
+          leading: Stack(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [theme.colorScheme.primaryContainer, theme.colorScheme.secondaryContainer],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Broken.music, color: theme.colorScheme.primary, size: 22),
+              ),
+              if (_isSelectionMode || isSelected)
+                Positioned(
+                  bottom: 0, right: 0,
+                  child: Container(
+                    decoration: BoxDecoration(color: theme.colorScheme.surface, shape: BoxShape.circle),
+                    child: Icon(isSelected ? Broken.tick_square : Icons.check_box_outline_blank,
+                        color: isSelected ? theme.colorScheme.primary : Colors.grey, size: 20),
+                  ),
+                ),
+            ],
+          ),
+          title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w500)),
+          subtitle: Text(name.contains('.') ? name.split('.').last.toUpperCase() : 'Audio',
+              style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.5), fontSize: 11)),
+          trailing: _isSelectionMode
+              ? null
+              : IconButton(
+                  icon: const Icon(Broken.more),
+                  onPressed: () => _showSingleItemOptions(name: name, filePath: filePath),
+                ),
+        );
+      },
     );
   }
 

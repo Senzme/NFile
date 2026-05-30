@@ -9,6 +9,7 @@ import android.os.Environment
 import android.os.StatFs
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.provider.MediaStore
 import android.webkit.MimeTypeMap
 import com.ryanheise.audioservice.AudioServiceFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -392,6 +393,35 @@ class MainActivity : AudioServiceFragmentActivity() {
             }
         }
 
+        // Native MediaStore channel - works on ALL Android versions including API 29
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.rubex.nfile/media_store").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "queryMedia" -> {
+                    val mediaType = call.argument<Int>("mediaType") ?: 0
+                    executor.execute {
+                        try {
+                            val paths = queryMediaByType(mediaType)
+                            runOnUiThread { result.success(paths) }
+                        } catch (e: Exception) {
+                            runOnUiThread { result.error("QUERY_ERROR", e.message, null) }
+                        }
+                    }
+                }
+                "queryByMimeTypes" -> {
+                    val mimeTypes = call.argument<List<String>>("mimeTypes") ?: emptyList()
+                    executor.execute {
+                        try {
+                            val paths = queryMediaByMimeTypes(mimeTypes)
+                            runOnUiThread { result.success(paths) }
+                        } catch (e: Exception) {
+                            runOnUiThread { result.error("QUERY_ERROR", e.message, null) }
+                        }
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.rubex.nfile/ftp_service").setMethodCallHandler { call, result ->
             when (call.method) {
                 "startFtpService" -> {
@@ -742,6 +772,47 @@ class MainActivity : AudioServiceFragmentActivity() {
         } catch (e: Exception) {
             false
         }
+    }
+
+    // Query MediaStore by MEDIA_TYPE (1=image, 3=audio, 2=video)
+    private fun queryMediaByType(mediaType: Int): List<String> {
+        val files = mutableListOf<String>()
+        val uri = MediaStore.Files.getContentUri("external")
+        val projection = arrayOf(MediaStore.Files.FileColumns.DATA)
+        val selection = "${MediaStore.Files.FileColumns.MEDIA_TYPE} = ?"
+        val selectionArgs = arrayOf(mediaType.toString())
+        val sortOrder = "${MediaStore.Files.FileColumns.DATE_MODIFIED} DESC"
+        try {
+            contentResolver.query(uri, projection, selection, selectionArgs, sortOrder)?.use { cursor ->
+                val col = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
+                while (cursor.moveToNext()) {
+                    val path = cursor.getString(col)
+                    if (!path.isNullOrEmpty()) files.add(path)
+                }
+            }
+        } catch (e: Exception) { e.printStackTrace() }
+        return files
+    }
+
+    // Query MediaStore by MIME types (for documents, archives, apks)
+    private fun queryMediaByMimeTypes(mimeTypes: List<String>): List<String> {
+        if (mimeTypes.isEmpty()) return emptyList()
+        val files = mutableListOf<String>()
+        val uri = MediaStore.Files.getContentUri("external")
+        val projection = arrayOf(MediaStore.Files.FileColumns.DATA)
+        val selection = mimeTypes.joinToString(" OR ") { "${MediaStore.Files.FileColumns.MIME_TYPE} = ?" }
+        val selectionArgs = mimeTypes.toTypedArray()
+        val sortOrder = "${MediaStore.Files.FileColumns.DATE_MODIFIED} DESC"
+        try {
+            contentResolver.query(uri, projection, selection, selectionArgs, sortOrder)?.use { cursor ->
+                val col = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
+                while (cursor.moveToNext()) {
+                    val path = cursor.getString(col)
+                    if (!path.isNullOrEmpty()) files.add(path)
+                }
+            }
+        } catch (e: Exception) { e.printStackTrace() }
+        return files
     }
 
     private fun checkRootAvailable(): Boolean {
