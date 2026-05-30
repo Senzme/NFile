@@ -95,4 +95,16 @@ class AppManagerService {
       return false;
     }
   }
+
+  static Future<bool> changeAppIcon(String aliasName) async {
+    try {
+      final bool? success = await _channel.invokeMethod<bool>(
+        'changeAppIcon',
+        {'alias': aliasName},
+      );
+      return success ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
 }

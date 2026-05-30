@@ -473,6 +473,13 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
              ),
              _buildSettingTile(
                theme,
+               icon: Broken.category,
+               title: 'App Icon',
+               subtitle: _getAppIconLabel(fileManager.activeAppIcon),
+               onTap: () => _showAppIconPickerDialog(context, fileManager, theme),
+             ),
+             _buildSettingTile(
+               theme,
                icon: Broken.text,
                title: 'App Typography / Font Family',
                subtitle: _getFontFamilyLabel(fileManager.fontFamilyOption),
@@ -540,6 +547,18 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
     }
   }
 
+  String _getAppIconLabel(String option) {
+    switch (option) {
+      case 'logo1': return 'Logo 1';
+      case 'logo2': return 'Logo 2';
+      case 'logo3': return 'Logo 3';
+      case 'logo4': return 'Logo 4';
+      case 'default':
+      default:
+        return 'Default Logo';
+    }
+  }
+
   String _getFontFamilyLabel(String option) {
     switch (option) {
       case 'nothing': return 'Dot-Matrix & Sans';
@@ -550,6 +569,178 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
       default:
         return 'Signature Default (Lexend Deca)';
     }
+  }
+
+  void _showAppIconPickerDialog(BuildContext context, FileManagerProvider fileManager, ThemeData theme) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'App Icon Picker',
+      barrierColor: Colors.black.withOpacity(0.55),
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (context, anim1, anim2) => const SizedBox.shrink(),
+      transitionBuilder: (context, anim1, anim2, child) {
+        return ScaleTransition(
+          scale: CurvedAnimation(parent: anim1, curve: Curves.easeOutBack),
+          child: FadeTransition(
+            opacity: anim1,
+            child: AlertDialog(
+              backgroundColor: theme.colorScheme.surface,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              title: Row(
+                children: [
+                  Icon(Broken.category, color: theme.colorScheme.primary, size: 26),
+                  const SizedBox(width: 12),
+                  const Text('App Launcher Icon', style: TextStyle(fontWeight: FontWeight.bold)),
+                ],
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Choose a custom logo for the application launcher icon. Note that some launchers may take a few seconds to update.',
+                      style: TextStyle(fontSize: 13, height: 1.3, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 20),
+                    Flexible(
+                      child: SingleChildScrollView(
+                        child: GridView.count(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 0.85,
+                          children: [
+                            _buildIconOptionCard(
+                              context,
+                              fileManager,
+                              theme,
+                              id: 'default',
+                              title: 'Logo',
+                              imagePath: 'assets/ic_launcher.webp',
+                            ),
+                            _buildIconOptionCard(
+                              context,
+                              fileManager,
+                              theme,
+                              id: 'logo1',
+                              title: 'Logo 1',
+                              imagePath: 'assets/logo/n1.png',
+                            ),
+                            _buildIconOptionCard(
+                              context,
+                              fileManager,
+                              theme,
+                              id: 'logo2',
+                              title: 'Logo 2',
+                              imagePath: 'assets/logo/n2.png',
+                            ),
+                            _buildIconOptionCard(
+                              context,
+                              fileManager,
+                              theme,
+                              id: 'logo3',
+                              title: 'Logo 3',
+                              imagePath: 'assets/logo/n3.png',
+                            ),
+                            _buildIconOptionCard(
+                              context,
+                              fileManager,
+                              theme,
+                              id: 'logo4',
+                              title: 'Logo 4',
+                              imagePath: 'assets/logo/n4.png',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildIconOptionCard(
+    BuildContext context,
+    FileManagerProvider fileManager,
+    ThemeData theme, {
+    required String id,
+    required String title,
+    required String imagePath,
+  }) {
+    final isSelected = fileManager.activeAppIcon == id;
+
+    return Card(
+      color: isSelected ? theme.colorScheme.primaryContainer.withOpacity(0.4) : theme.colorScheme.surfaceVariant.withOpacity(0.15),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isSelected ? theme.colorScheme.primary : theme.dividerColor.withOpacity(0.08),
+          width: isSelected ? 2.0 : 1.0,
+        ),
+      ),
+      child: InkWell(
+        onTap: () {
+          fileManager.setActiveAppIcon(id);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('App icon switched to $title successfully!'),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  imagePath,
+                  width: 56,
+                  height: 56,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 56,
+                    height: 56,
+                    color: Colors.grey.withOpacity(0.2),
+                    child: const Icon(Icons.broken_image, size: 24),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _showThemePickerDialog(BuildContext context, FileManagerProvider fileManager, ThemeData theme) {

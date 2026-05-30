@@ -470,6 +470,7 @@ class PreferencesService {
   }
 
   static const String _keyAudioBackgroundPlay = 'audio_background_play';
+  static const String _keyActiveAppIcon = 'active_app_icon';
 
   static bool getAudioBackgroundPlay() {
     return _prefs?.getBool(_keyAudioBackgroundPlay) ?? false;
@@ -477,5 +478,13 @@ class PreferencesService {
 
   static Future<void> saveAudioBackgroundPlay(bool val) async {
     await _prefs?.setBool(_keyAudioBackgroundPlay, val);
+  }
+
+  static String getActiveAppIcon() {
+    return _prefs?.getString(_keyActiveAppIcon) ?? 'default';
+  }
+
+  static Future<void> saveActiveAppIcon(String val) async {
+    await _prefs?.setString(_keyActiveAppIcon, val);
   }
 }

@@ -357,6 +357,37 @@ class MainActivity : AudioServiceFragmentActivity() {
                         result.error("PERMISSION_ERROR", e.message, null)
                     }
                 }
+                "changeAppIcon" -> {
+                    val iconAlias = call.argument<String>("alias") ?: "com.rubex.nfile.MainActivityDefault"
+                    executor.execute {
+                        try {
+                            val aliases = listOf(
+                                "com.rubex.nfile.MainActivityDefault",
+                                "com.rubex.nfile.MainActivityLogo1",
+                                "com.rubex.nfile.MainActivityLogo2",
+                                "com.rubex.nfile.MainActivityLogo3",
+                                "com.rubex.nfile.MainActivityLogo4"
+                            )
+
+                            for (alias in aliases) {
+                                val componentName = android.content.ComponentName(packageName, alias)
+                                val state = if (alias == iconAlias) {
+                                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+                                } else {
+                                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+                                }
+                                packageManager.setComponentEnabledSetting(
+                                    componentName,
+                                    state,
+                                    PackageManager.DONT_KILL_APP
+                                )
+                            }
+                            runOnUiThread { result.success(true) }
+                        } catch (e: Exception) {
+                            runOnUiThread { result.error("ICON_ERROR", e.message, null) }
+                        }
+                    }
+                }
                 else -> result.notImplemented()
             }
         }

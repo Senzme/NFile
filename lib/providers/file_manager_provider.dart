@@ -21,6 +21,7 @@ import '../services/apk_installer_service.dart';
 import '../ui/widgets/extract_archive_dialog.dart';
 import '../core/utils.dart';
 import '../services/preferences_service.dart';
+import '../services/app_manager_service.dart';
 import '../models/custom_shortcut_model.dart';
 import '../services/root_shizuku_service.dart';
 import '../services/recycle_bin_service.dart';
@@ -92,6 +93,7 @@ class FileManagerProvider extends ChangeNotifier {
     _showFolderSizes = PreferencesService.getShowFolderSizes();
     _adaptiveMultiLineNames = PreferencesService.getAdaptiveMultiLineNames();
     _hideActionMenuButtons = PreferencesService.getHideActionMenuButtons();
+    _activeAppIcon = PreferencesService.getActiveAppIcon();
 
     // Synchronously load cached storage sizes and pre-populate internal storage volume
     // to prevent any visual delay, shimmer, or refreshing animation on app startup!
@@ -149,6 +151,29 @@ class FileManagerProvider extends ChangeNotifier {
     if (_accentColorOption == val) return;
     _accentColorOption = val;
     PreferencesService.saveAccentColor(val);
+    notifyListeners();
+  }
+
+  String _activeAppIcon = 'default';
+  String get activeAppIcon => _activeAppIcon;
+
+  Future<void> setActiveAppIcon(String val) async {
+    if (_activeAppIcon == val) return;
+    _activeAppIcon = val;
+    await PreferencesService.saveActiveAppIcon(val);
+
+    String alias = 'com.rubex.nfile.MainActivityDefault';
+    if (val == 'logo1') {
+      alias = 'com.rubex.nfile.MainActivityLogo1';
+    } else if (val == 'logo2') {
+      alias = 'com.rubex.nfile.MainActivityLogo2';
+    } else if (val == 'logo3') {
+      alias = 'com.rubex.nfile.MainActivityLogo3';
+    } else if (val == 'logo4') {
+      alias = 'com.rubex.nfile.MainActivityLogo4';
+    }
+
+    await AppManagerService.changeAppIcon(alias);
     notifyListeners();
   }
 
