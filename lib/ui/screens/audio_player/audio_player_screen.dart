@@ -461,6 +461,10 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
   }
 
   Future<void> _toggleBackgroundMode() async {
+    try {
+      player.pause();
+    } catch (_) {}
+
     if (_isBackgroundMode) {
       // Turn off — stop background handler to completely clear the notification,
       // but do NOT dispose the player because we want it to keep playing in the foreground!
@@ -486,6 +490,14 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
     } catch (e) {
       debugPrint('[NFile] Error requesting notification permission: $e');
     }
+
+    // Stop notification first to clear any blocked native service state!
+    getAudioHandler().stopNotification();
+
+    // A small delay to ensure the OS registers the permission before we display the notification
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (!mounted) return;
 
     _startBackgroundMode();
     setState(() => _isBackgroundMode = true);
