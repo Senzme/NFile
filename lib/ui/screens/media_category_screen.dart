@@ -113,6 +113,38 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
     }
   }
 
+  int _getTotalFileCount(MediaProvider provider) {
+    if (widget.album != null) {
+      return _albumAssets.length;
+    }
+    switch (widget.mediaType) {
+      case MediaType.images:
+        return provider.usingNativeMediaStore
+            ? provider.nativeImagePaths.length
+            : provider.images.length;
+      case MediaType.videos:
+        return provider.usingNativeMediaStore
+            ? provider.nativeVideoPaths.length
+            : provider.videos.length;
+      case MediaType.screenshots:
+        return provider.usingNativeMediaStore
+            ? provider.nativeImagePaths.where((p) => p.toLowerCase().contains('screenshot')).length
+            : provider.screenshots.length;
+      case MediaType.audios:
+        return provider.usingNativeMediaStore
+            ? provider.nativeAudioPaths.length
+            : provider.audios.length;
+      case MediaType.archives:
+        return provider.archives.length;
+      case MediaType.downloads:
+        return provider.downloads.length;
+      case MediaType.apks:
+        return provider.apks.length;
+      case MediaType.documents:
+        return provider.documents.length;
+    }
+  }
+
   IconData get _emptyIcon {
     switch (widget.mediaType) {
       case MediaType.images:
@@ -771,7 +803,16 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(_isSelectionMode ? '${_selectedFilePaths.length + _selectedAssetIds.length} Selected' : _title),
+        title: Consumer<MediaProvider>(
+          builder: (context, mediaProvider, child) {
+            if (_isSelectionMode) {
+              final selectedCount = _selectedFilePaths.length + _selectedAssetIds.length;
+              final totalCount = _getTotalFileCount(mediaProvider);
+              return Text('$selectedCount/$totalCount');
+            }
+            return Text(_title);
+          },
+        ),
         leading: _isSelectionMode
             ? IconButton(icon: const Icon(Broken.close_square), onPressed: _clearSelection)
             : null,
