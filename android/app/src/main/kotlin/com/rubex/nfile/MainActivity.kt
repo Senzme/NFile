@@ -9,7 +9,6 @@ import android.os.Environment
 import android.os.StatFs
 import android.net.Uri
 import android.provider.OpenableColumns
-import android.provider.MediaStore
 import android.webkit.MimeTypeMap
 import com.ryanheise.audioservice.AudioServiceFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -393,35 +392,6 @@ class MainActivity : AudioServiceFragmentActivity() {
             }
         }
 
-        // Native MediaStore channel - works on ALL Android versions including API 29
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.rubex.nfile/media_store").setMethodCallHandler { call, result ->
-            when (call.method) {
-                "queryMedia" -> {
-                    val mediaType = call.argument<Int>("mediaType") ?: 0
-                    executor.execute {
-                        try {
-                            val paths = queryMediaByType(mediaType)
-                            runOnUiThread { result.success(paths) }
-                        } catch (e: Exception) {
-                            runOnUiThread { result.error("QUERY_ERROR", e.message, null) }
-                        }
-                    }
-                }
-                "queryByMimeTypes" -> {
-                    val mimeTypes = call.argument<List<String>>("mimeTypes") ?: emptyList()
-                    executor.execute {
-                        try {
-                            val paths = queryMediaByMimeTypes(mimeTypes)
-                            runOnUiThread { result.success(paths) }
-                        } catch (e: Exception) {
-                            runOnUiThread { result.error("QUERY_ERROR", e.message, null) }
-                        }
-                    }
-                }
-                else -> result.notImplemented()
-            }
-        }
-
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.rubex.nfile/ftp_service").setMethodCallHandler { call, result ->
             when (call.method) {
                 "startFtpService" -> {
@@ -772,106 +742,6 @@ class MainActivity : AudioServiceFragmentActivity() {
         } catch (e: Exception) {
             false
         }
-    }
-
-    // Query MediaStore by media type using dedicated URIs (most reliable on API 29)
-    // MEDIA_TYPE_IMAGE=1, MEDIA_TYPE_AUDIO=2, MEDIA_TYPE_VIDEO=3
-    private fun queryMediaByType(mediaType: Int): List<String> {
-        val files = mutableListOf<String>()
-        val seen = mutableSetOf<String>()
-
-        fun addIfNew(path: String?) {
-            if (!path.isNullOrEmpty() && seen.add(path)) files.add(path)
-        }
-
-        val sortOrder = "${MediaStore.MediaColumns.DATE_MODIFIED} DESC"
-
-        // --- Strategy 1: Dedicated MediaStore URI (most reliable) ---
-        val dedicatedUri: android.net.Uri? = when (mediaType) {
-            1 -> MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-            2 -> MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-            3 -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-            else -> null
-        }
-        if (dedicatedUri != null) {
-            try {
-                val projection = arrayOf(MediaStore.MediaColumns.DATA)
-                contentResolver.query(dedicatedUri, projection, null, null, sortOrder)?.use { cursor ->
-                    val col = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
-                    while (cursor.moveToNext()) addIfNew(cursor.getString(col))
-                }
-            } catch (e: Exception) { e.printStackTrace() }
-        }
-
-        // --- Strategy 2: Files URI + MEDIA_TYPE filter (fallback) ---
-        try {
-            val uri = MediaStore.Files.getContentUri("external")
-            val projection = arrayOf(MediaStore.Files.FileColumns.DATA)
-            val selection = "${MediaStore.Files.FileColumns.MEDIA_TYPE} = ?"
-            contentResolver.query(uri, projection, selection, arrayOf(mediaType.toString()), sortOrder)?.use { cursor ->
-                val col = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
-                while (cursor.moveToNext()) addIfNew(cursor.getString(col))
-            }
-        } catch (e: Exception) { e.printStackTrace() }
-
-        // --- Strategy 3: MIME type LIKE query (catches unclassified MEDIA_TYPE=0 files) ---
-        val mimePrefix = when (mediaType) { 1 -> "image/%" ; 2 -> "audio/%" ; 3 -> "video/%" ; else -> null }
-        if (mimePrefix != null) {
-            try {
-                val uri = MediaStore.Files.getContentUri("external")
-                val projection = arrayOf(MediaStore.Files.FileColumns.DATA)
-                val selection = "${MediaStore.Files.FileColumns.MIME_TYPE} LIKE ?"
-                contentResolver.query(uri, projection, selection, arrayOf(mimePrefix), sortOrder)?.use { cursor ->
-                    val col = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
-                    while (cursor.moveToNext()) addIfNew(cursor.getString(col))
-                }
-            } catch (e: Exception) { e.printStackTrace() }
-        }
-
-        // --- Strategy 4: Direct filesystem scan for audio (catches files not indexed by MediaStore) ---
-        if (mediaType == 2) {
-            val audioExtensions = setOf("mp3","m4a","aac","ogg","opus","flac","wav","wma","amr","3gp","mid","midi","xmf","mxmf","rtttl","rtx","ota","imy")
-            val scanDirs = listOf(
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC),
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PODCASTS),
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_RINGTONES),
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_ALARMS),
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_NOTIFICATIONS)
-            )
-            for (dir in scanDirs) {
-                try {
-                    if (dir.exists() && dir.isDirectory) {
-                        dir.walkTopDown().filter { it.isFile }.forEach { f ->
-                            if (f.extension.lowercase() in audioExtensions) addIfNew(f.absolutePath)
-                        }
-                    }
-                } catch (e: Exception) { e.printStackTrace() }
-            }
-        }
-
-        return files
-    }
-
-    // Query MediaStore by MIME types (for documents, archives, apks)
-    private fun queryMediaByMimeTypes(mimeTypes: List<String>): List<String> {
-        if (mimeTypes.isEmpty()) return emptyList()
-        val files = mutableListOf<String>()
-        val uri = MediaStore.Files.getContentUri("external")
-        val projection = arrayOf(MediaStore.Files.FileColumns.DATA)
-        val selection = mimeTypes.joinToString(" OR ") { "${MediaStore.Files.FileColumns.MIME_TYPE} = ?" }
-        val selectionArgs = mimeTypes.toTypedArray()
-        val sortOrder = "${MediaStore.Files.FileColumns.DATE_MODIFIED} DESC"
-        try {
-            contentResolver.query(uri, projection, selection, selectionArgs, sortOrder)?.use { cursor ->
-                val col = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
-                while (cursor.moveToNext()) {
-                    val path = cursor.getString(col)
-                    if (!path.isNullOrEmpty()) files.add(path)
-                }
-            }
-        } catch (e: Exception) { e.printStackTrace() }
-        return files
     }
 
     private fun checkRootAvailable(): Boolean {

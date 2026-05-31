@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -142,32 +141,8 @@ class MediaProvider extends ChangeNotifier {
   List<AssetPathEntity> _imageAlbums = [];
   List<AssetPathEntity> _videoAlbums = [];
 
-  // Android 10 (API <= 29) native MediaStore paths
-  // These are populated instead of _images/_videos/_audios on API <= 29
-  List<String> _nativeImagePaths = [];
-  List<String> _nativeVideoPaths = [];
-  List<String> _nativeAudioPaths = [];
-  bool _usingNativeMediaStore = false;
-
-  // Native folders: folder path -> list of file paths
-  Map<String, List<String>> _nativeImageFolders = {};
-  Map<String, List<String>> _nativeVideoFolders = {};
-
   List<AssetPathEntity> get imageAlbums => _imageAlbums;
   List<AssetPathEntity> get videoAlbums => _videoAlbums;
-
-  // Getters that return native paths on Android 10, AssetEntity list on API 30+
-  bool get usingNativeMediaStore => _usingNativeMediaStore;
-  List<String> get nativeImagePaths => _nativeImagePaths;
-  List<String> get nativeVideoPaths => _nativeVideoPaths;
-  List<String> get nativeAudioPaths => _nativeAudioPaths;
-  Map<String, List<String>> get nativeImageFolders => _nativeImageFolders;
-  Map<String, List<String>> get nativeVideoFolders => _nativeVideoFolders;
-
-  // For count display - works for both native and photo_manager
-  int get imageCount => _usingNativeMediaStore ? _nativeImagePaths.length : _images.length;
-  int get videoCount => _usingNativeMediaStore ? _nativeVideoPaths.length : _videos.length;
-  int get audioCount => _usingNativeMediaStore ? _nativeAudioPaths.length : _audios.length;
 
   List<String> _categoryOrder = [
     'Images',
@@ -272,17 +247,14 @@ class MediaProvider extends ChangeNotifier {
   int getCategoryItemCount(String category) {
     if (_isLoaded) {
       switch (category) {
-        case 'Images': return imageCount;   // uses _nativeImagePaths.length on API <= 29
-        case 'Videos': return videoCount;   // uses _nativeVideoPaths.length on API <= 29
-        case 'Audio': return audioCount;    // uses _nativeAudioPaths.length on API <= 29
+        case 'Images': return _images.length;
+        case 'Videos': return _videos.length;
+        case 'Audio': return _audios.length;
         case 'Documents': return _documents.length;
         case 'Archives': return _archives.length;
         case 'Downloads': return _downloads.length;
         case 'APKs': return _apks.length;
-        case 'Screenshots':
-          return _usingNativeMediaStore
-              ? _nativeImagePaths.where((p) => p.toLowerCase().contains('screenshot')).length
-              : _screenshots.length;
+        case 'Screenshots': return _screenshots.length;
         case 'Apps': return 0;
       }
     }
@@ -407,9 +379,6 @@ class MediaProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  // Native MediaStore channel - bypasses photo_manager / on_audio_query on Android 10
-  static const _mediaStoreChannel = MethodChannel('com.rubex.nfile/media_store');
-
   Future<void> loadMedia({bool forceRefresh = false}) async {
     if (_isLoaded && !forceRefresh) return;
 
@@ -419,38 +388,60 @@ class MediaProvider extends ChangeNotifier {
     // Fast initial load from disk cache
     await _loadFromDiskCache();
 
-    // Detect Android SDK once and share it throughout this call
-    int? sdk;
+    PermissionState ps = PermissionState.denied;
+    try {
+      ps = await PhotoManager.requestPermissionExtend();
+    } catch (_) {}
+
+    bool hasAudioPermission = false;
+    try {
+      hasAudioPermission = await _audioQuery.permissionsStatus();
+      if (!hasAudioPermission) {
+        hasAudioPermission = await _audioQuery.permissionsRequest();
+      }
+    } catch (_) {}
+
+    bool isStorageGranted = false;
+    try {
+      isStorageGranted = await Permission.storage.isGranted || await Permission.manageExternalStorage.isGranted;
+    } catch (_) {}
+
+    // Android 10 (API 29) / 11 / 12: explicitly request legacy storage + media location
+    // so that photo_manager can access images & videos on those API levels.
     if (Platform.isAndroid) {
       try {
         final info = await DeviceInfoPlugin().androidInfo;
-        sdk = info.version.sdkInt;
+        final sdk = info.version.sdkInt;
+        if (sdk < 33) {
+          // Request READ_EXTERNAL_STORAGE (legacy) – required up to API 32
+          final storageStatus = await Permission.storage.request();
+          if (storageStatus.isGranted) isStorageGranted = true;
+          // ACCESS_MEDIA_LOCATION – required on API 29+ for image/video metadata
+          await Permission.accessMediaLocation.request();
+          // Tell photo_manager to bypass its own permission gate so it uses
+          // the legacy storage grant we just obtained.
+          PhotoManager.setIgnorePermissionCheck(true);
+        }
       } catch (_) {}
     }
 
-    // On Android 10 (API 29) and below, photo_manager and on_audio_query require
-    // separate media permissions (READ_MEDIA_IMAGES etc.) that do NOT EXIST on
-    // Android 10 - those were only added in API 33.  The only permission that
-    // exists on API 29 is READ_EXTERNAL_STORAGE (already granted at startup).
-    // So on API <= 29 we talk to our native MediaStore channel directly, just
-    // like the Prism File Explorer does.
-    final useNative = Platform.isAndroid && sdk != null && sdk < 30;
-
-    if (!useNative) {
-      // API 30+ or non-Android: let photo_manager handle images/videos.
-      try { PhotoManager.setIgnorePermissionCheck(true); } catch (_) {}
+    final futures = <Future<void>>[];
+    if (ps.isAuth || isStorageGranted) {
+      if (isStorageGranted && !ps.isAuth) {
+        try {
+          PhotoManager.setIgnorePermissionCheck(true);
+        } catch (_) {}
+      }
+      try {
+        PhotoManager.clearFileCache();
+      } catch (_) {}
+      futures.add(_loadImagesAndVideos());
     }
-
-    final futures = <Future<void>>[
-      _loadImagesAndVideos(useNative: useNative),
-      _loadAudios(useNative: useNative),
-      _loadDocuments(),
-      _loadArchivesDownloadsAndApks(),
-    ];
-
-    if (!useNative) {
-      try { PhotoManager.clearFileCache(); } catch (_) {}
+    if (hasAudioPermission || isStorageGranted) {
+      futures.add(_loadAudios());
     }
+    futures.add(_loadDocuments());
+    futures.add(_loadArchivesDownloadsAndApks());
 
     await Future.wait(futures);
 
@@ -461,122 +452,21 @@ class MediaProvider extends ChangeNotifier {
 
     _applySort();
 
-    PreferencesService.saveCategoryCount('Images', imageCount);
-    PreferencesService.saveCategoryCount('Videos', videoCount);
-    PreferencesService.saveCategoryCount('Audio', audioCount);
+    PreferencesService.saveCategoryCount('Images', _images.length);
+    PreferencesService.saveCategoryCount('Videos', _videos.length);
+    PreferencesService.saveCategoryCount('Audio', _audios.length);
     PreferencesService.saveCategoryCount('Documents', _documents.length);
     PreferencesService.saveCategoryCount('Archives', _archives.length);
     PreferencesService.saveCategoryCount('Downloads', _downloads.length);
     PreferencesService.saveCategoryCount('APKs', _apks.length);
-    PreferencesService.saveCategoryCount('Screenshots',
-        _usingNativeMediaStore
-            ? _nativeImagePaths.where((p) => p.toLowerCase().contains('screenshot')).length
-            : _screenshots.length);
+    PreferencesService.saveCategoryCount('Screenshots', _screenshots.length);
 
     _isLoading = false;
     _isLoaded = true;
     notifyListeners();
   }
 
-  Future<void> _loadImagesAndVideos({bool useNative = false}) async {
-    if (useNative) {
-      // Android 10 path — same 2-strategy approach as audio:
-      // Strategy 1: Native MediaStore channel
-      // Strategy 2: Dart-side filesystem scan (guaranteed, READ_EXTERNAL_STORAGE is enough)
-
-      const _imageExtensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.heic', '.heif', '.avif', '.tiff', '.tif'};
-      const _videoExtensions = {'.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm', '.3gp', '.ts', '.m4v', '.mpeg', '.mpg'};
-
-      final imgFound = <String>{};
-      final vidFound = <String>{};
-
-      // Strategy 1: MediaStore channel
-      try {
-        final imgPaths = await _mediaStoreChannel.invokeListMethod<String>(
-          'queryMedia', {'mediaType': 1},  // MEDIA_TYPE_IMAGE
-        ) ?? [];
-        imgFound.addAll(imgPaths.where((p) => p.isNotEmpty));
-      } catch (e) { debugPrint('[NFile] Native image channel error: $e'); }
-
-      try {
-        final vidPaths = await _mediaStoreChannel.invokeListMethod<String>(
-          'queryMedia', {'mediaType': 3},  // MEDIA_TYPE_VIDEO
-        ) ?? [];
-        vidFound.addAll(vidPaths.where((p) => p.isNotEmpty));
-      } catch (e) { debugPrint('[NFile] Native video channel error: $e'); }
-
-      // Strategy 2: Dart filesystem scan
-      const imgScanDirs = [
-        '/storage/emulated/0/DCIM',
-        '/storage/emulated/0/Pictures',
-        '/storage/emulated/0/Download',
-        '/storage/emulated/0/Downloads',
-        '/storage/emulated/0/WhatsApp/Media/WhatsApp Images',
-        '/storage/emulated/0/Telegram/Telegram Images',
-        '/storage/emulated/0/Instagram',
-      ];
-      const vidScanDirs = [
-        '/storage/emulated/0/DCIM',
-        '/storage/emulated/0/Movies',
-        '/storage/emulated/0/Videos',
-        '/storage/emulated/0/Download',
-        '/storage/emulated/0/Downloads',
-        '/storage/emulated/0/WhatsApp/Media/WhatsApp Video',
-        '/storage/emulated/0/Telegram/Telegram Video',
-      ];
-
-      for (final dirPath in imgScanDirs) {
-        try {
-          final dir = Directory(dirPath);
-          if (dir.existsSync()) {
-            await for (final entity in dir.list(recursive: true, followLinks: false)) {
-              if (entity is File) {
-                final ext = entity.path.contains('.')
-                    ? '.${entity.path.split('.').last.toLowerCase()}'
-                    : '';
-                if (_imageExtensions.contains(ext)) imgFound.add(entity.path);
-              }
-            }
-          }
-        } catch (e) { debugPrint('[NFile] Image scan error $dirPath: $e'); }
-      }
-
-      for (final dirPath in vidScanDirs) {
-        try {
-          final dir = Directory(dirPath);
-          if (dir.existsSync()) {
-            await for (final entity in dir.list(recursive: true, followLinks: false)) {
-              if (entity is File) {
-                final ext = entity.path.contains('.')
-                    ? '.${entity.path.split('.').last.toLowerCase()}'
-                    : '';
-                if (_videoExtensions.contains(ext)) vidFound.add(entity.path);
-              }
-            }
-          }
-        } catch (e) { debugPrint('[NFile] Video scan error $dirPath: $e'); }
-      }
-
-      // Sort newest-first, build results
-      _nativeImagePaths = imgFound.toList()
-        ..sort((a, b) => File(b).statSync().modified.compareTo(File(a).statSync().modified));
-      _nativeVideoPaths = vidFound.toList()
-        ..sort((a, b) => File(b).statSync().modified.compareTo(File(a).statSync().modified));
-      _nativeAudioPaths = []; // will be filled by _loadAudios
-      _usingNativeMediaStore = true;
-
-      // Build folder groups for the Folders tab
-      _nativeImageFolders = _groupPathsByFolder(_nativeImagePaths);
-      _nativeVideoFolders = _groupPathsByFolder(_nativeVideoPaths);
-
-      // Screenshots = images whose path contains 'screenshot'
-      _screenshots = [];
-      _images = [];
-      _videos = [];
-      return;
-    }
-
-    // API 30+ path: use photo_manager as before
+  Future<void> _loadImagesAndVideos() async {
     try {
       List<AssetPathEntity> albums = await PhotoManager.getAssetPathList(onlyAll: false);
       List<AssetEntity> allScreenshots = [];
@@ -622,64 +512,7 @@ class MediaProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<void> _loadAudios({bool useNative = false}) async {
-    if (useNative) {
-      final found = <String>{};
-
-      // Strategy 1: Try native MediaStore channel
-      try {
-        final paths = await _mediaStoreChannel.invokeListMethod<String>(
-          'queryMedia', {'mediaType': 2},
-        ) ?? [];
-        found.addAll(paths.where((p) => p.isNotEmpty));
-      } catch (e) {
-        debugPrint('[NFile] Native audio channel error: $e');
-      }
-
-      // Strategy 2: Dart-side filesystem scan of common audio dirs
-      // Works 100% on Android 10 with READ_EXTERNAL_STORAGE permission
-      const _audioExtensions = {
-        '.mp3', '.m4a', '.aac', '.ogg', '.opus', '.flac',
-        '.wav', '.wma', '.amr', '.3gp', '.mid', '.midi'
-      };
-      const scanDirs = [
-        '/storage/emulated/0/Music',
-        '/storage/emulated/0/Download',
-        '/storage/emulated/0/Downloads',
-        '/storage/emulated/0/Podcasts',
-        '/storage/emulated/0/Ringtones',
-        '/storage/emulated/0/Alarms',
-        '/storage/emulated/0/Notifications',
-        '/storage/emulated/0/WhatsApp/Media/WhatsApp Audio',
-        '/storage/emulated/0/Telegram/Telegram Audio',
-      ];
-      for (final dirPath in scanDirs) {
-        try {
-          final dir = Directory(dirPath);
-          if (dir.existsSync()) {
-            await for (final entity in dir.list(recursive: true, followLinks: false)) {
-              if (entity is File) {
-                final ext = entity.path.contains('.')
-                    ? '.${entity.path.split('.').last.toLowerCase()}'
-                    : '';
-                if (_audioExtensions.contains(ext)) {
-                  found.add(entity.path);
-                }
-              }
-            }
-          }
-        } catch (e) {
-          debugPrint('[NFile] Audio scan error for $dirPath: $e');
-        }
-      }
-
-      _nativeAudioPaths = found.toList()
-        ..sort((a, b) => File(b).statSync().modified.compareTo(File(a).statSync().modified));
-      _audios = [];
-      return;
-    }
-
-    // API 30+ path: use on_audio_query as before
+  Future<void> _loadAudios() async {
     try {
       _audios = await _audioQuery.querySongs(
         sortType: null,
@@ -690,20 +523,6 @@ class MediaProvider extends ChangeNotifier {
     } catch (_) {
       _audios = [];
     }
-  }
-
-  /// Groups a flat list of file paths by their parent folder name.
-  /// Returns Map<folderName, [paths]> — used for Folders tab on Android 10.
-  Map<String, List<String>> _groupPathsByFolder(List<String> paths) {
-    final map = <String, List<String>>{};
-    for (final path in paths) {
-      final parts = path.split('/');
-      if (parts.length >= 2) {
-        final folderName = parts[parts.length - 2]; // parent dir name
-        map.putIfAbsent(folderName, () => []).add(path);
-      }
-    }
-    return map;
   }
 
   static const List<String> _docExtensions = [

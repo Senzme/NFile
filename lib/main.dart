@@ -7,7 +7,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:dynamic_color/dynamic_color.dart';
-import 'package:device_info_plus/device_info_plus.dart';
 
 import 'core/theme.dart';
 import 'core/icon_fonts/broken_icons.dart';
@@ -113,41 +112,13 @@ class _NFileAppState extends State<NFileApp> {
 
   Future<void> _checkStoragePermission() async {
     if (Platform.isAndroid) {
-      try {
-        final info = await DeviceInfoPlugin().androidInfo;
-        final sdk = info.version.sdkInt;
-        bool isGranted = false;
-        if (sdk >= 30) {
-          isGranted = await Permission.manageExternalStorage.isGranted;
-        } else {
-          final storageStatus = await Permission.storage.status;
-          final photosStatus = await Permission.photos.status;
-          final videosStatus = await Permission.videos.status;
-          final audioStatus = await Permission.audio.status;
+      final manageStorageGranted = await Permission.manageExternalStorage.isGranted;
+      final standardStorageGranted = await Permission.storage.isGranted;
 
-          isGranted = storageStatus.isGranted ||
-                      storageStatus.isLimited ||
-                      storageStatus.isRestricted ||
-                      photosStatus.isGranted ||
-                      photosStatus.isLimited ||
-                      photosStatus.isRestricted ||
-                      videosStatus.isGranted ||
-                      audioStatus.isGranted;
-        }
-
-        if (mounted) {
-          setState(() {
-            _hasPermission = isGranted;
-          });
-        }
-      } catch (_) {
-        final status = await Permission.storage.status;
-        final isGranted = status.isGranted || status.isLimited || status.isRestricted;
-        if (mounted) {
-          setState(() {
-            _hasPermission = isGranted;
-          });
-        }
+      if (mounted) {
+        setState(() {
+          _hasPermission = manageStorageGranted || standardStorageGranted;
+        });
       }
     } else {
       if (mounted) {
@@ -158,44 +129,13 @@ class _NFileAppState extends State<NFileApp> {
 
   Future<void> _requestStoragePermission() async {
     if (Platform.isAndroid) {
-      try {
-        final info = await DeviceInfoPlugin().androidInfo;
-        final sdk = info.version.sdkInt;
-        bool isGranted = false;
-        if (sdk >= 30) {
-          isGranted = await Permission.manageExternalStorage.request().isGranted;
-        } else {
-          // Request storage + media permissions to handle standard Android 10 & custom ROMs
-          final statuses = await [
-            Permission.storage,
-            Permission.photos,
-            Permission.videos,
-            Permission.audio,
-          ].request();
+      final manageStorageGranted = await Permission.manageExternalStorage.request().isGranted;
+      final standardStorageGranted = await Permission.storage.request().isGranted;
 
-          isGranted = statuses[Permission.storage]!.isGranted ||
-                      statuses[Permission.storage]!.isLimited ||
-                      statuses[Permission.storage]!.isRestricted ||
-                      statuses[Permission.photos]!.isGranted ||
-                      statuses[Permission.photos]!.isLimited ||
-                      statuses[Permission.photos]!.isRestricted ||
-                      statuses[Permission.videos]!.isGranted ||
-                      statuses[Permission.audio]!.isGranted;
-        }
-
-        if (mounted) {
-          setState(() {
-            _hasPermission = isGranted;
-          });
-        }
-      } catch (_) {
-        final status = await Permission.storage.request();
-        final isGranted = status.isGranted || status.isLimited || status.isRestricted;
-        if (mounted) {
-          setState(() {
-            _hasPermission = isGranted;
-          });
-        }
+      if (mounted) {
+        setState(() {
+          _hasPermission = manageStorageGranted || standardStorageGranted;
+        });
       }
     } else {
       if (mounted) {
