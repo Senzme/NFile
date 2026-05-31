@@ -956,6 +956,17 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                                     ),
                                   );
                                 }
+                              } else if (action == 'properties') {
+                                final selectedPaths = provider.selectedPaths.toList();
+                                if (selectedPaths.isNotEmpty) {
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) => PropertiesModalDialog(
+                                      selectedPaths: selectedPaths,
+                                      provider: provider,
+                                    ),
+                                  );
+                                }
                               }
                             },
                             itemBuilder: (context) {
@@ -986,6 +997,16 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                                         allPinned ? 'Unpin from Top' : 'Pin to Top', 
                                         style: const TextStyle(fontWeight: FontWeight.w500)
                                       ),
+                                    ],
+                                  ),
+                                ),
+                                const PopupMenuItem<String>(
+                                  value: 'properties',
+                                  child: Row(
+                                    children: [
+                                      Icon(Broken.info_circle, size: 20),
+                                      const SizedBox(width: 12),
+                                      Text('Properties', style: TextStyle(fontWeight: FontWeight.w500)),
                                     ],
                                   ),
                                 ),
