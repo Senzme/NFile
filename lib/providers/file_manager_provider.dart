@@ -2264,7 +2264,7 @@ class FileManagerProvider extends ChangeNotifier {
     await openFileNatively(context, targetPath);
   }
 
-  Future<void> moveItem(BuildContext context, String sourcePath, String destFolderPath) async {
+  Future<void> moveItem(BuildContext context, String sourcePath, String destFolderPath, {bool showToast = true}) async {
     final name = p.basename(sourcePath);
     final destPath = p.join(destFolderPath, name);
 
@@ -2316,14 +2316,18 @@ class FileManagerProvider extends ChangeNotifier {
         }
       }
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Moved $name successfully')),
-      );
+      if (showToast) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Moved $name successfully')),
+        );
+      }
     } catch (e) {
       debugPrint('Error moving item: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to move item: $e')),
-      );
+      if (showToast) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to move item: $e')),
+        );
+      }
     }
 
     await loadDirectory(currentPath, showLoading: false);
@@ -2341,7 +2345,7 @@ class FileManagerProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> copyItem(BuildContext context, String sourcePath, String destFolderPath) async {
+  Future<void> copyItem(BuildContext context, String sourcePath, String destFolderPath, {bool showToast = true}) async {
     final name = p.basename(sourcePath);
     final destPath = p.join(destFolderPath, name);
 
@@ -2383,14 +2387,18 @@ class FileManagerProvider extends ChangeNotifier {
         }
       }
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Copied $name successfully')),
-      );
+      if (showToast) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Copied $name successfully')),
+        );
+      }
     } catch (e) {
       debugPrint('Error copying item: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to copy item: $e')),
-      );
+      if (showToast) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to copy item: $e')),
+        );
+      }
     }
 
     await loadDirectory(currentPath, showLoading: false);

@@ -234,7 +234,7 @@ class _DragDropHandlerState extends State<DragDropHandler> {
               initialTargetPath: widget.path,
             );
           } else {
-            await Future.wait(data.paths.map((p) => provider.moveItem(context, p, widget.path)));
+            await Future.wait(data.paths.map((p) => provider.moveItem(context, p, widget.path, showToast: false)));
             provider.clearSelection();
           }
         },

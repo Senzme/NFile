@@ -473,14 +473,14 @@ class _DragDropActionDialogState extends State<DragDropActionDialog> {
     if (_selectedAction == 'move') {
       for (final path in widget.sourcePaths) {
         if (stableContext.mounted) {
-          await provider.moveItem(stableContext, path, _selectedDestPath);
+          await provider.moveItem(stableContext, path, _selectedDestPath, showToast: false);
         }
       }
       provider.clearSelection();
     } else if (_selectedAction == 'copy') {
       for (final path in widget.sourcePaths) {
         if (stableContext.mounted) {
-          await provider.copyItem(stableContext, path, _selectedDestPath);
+          await provider.copyItem(stableContext, path, _selectedDestPath, showToast: false);
         }
       }
       provider.clearSelection();
