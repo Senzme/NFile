@@ -102,7 +102,7 @@ class _DragDropActionDialogState extends State<DragDropActionDialog> {
     final showSelectedFolderOption = widget.initialTargetPath != provider.currentPath;
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       elevation: 12,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 480),
@@ -113,15 +113,21 @@ class _DragDropActionDialogState extends State<DragDropActionDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Visual Pathway Header
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: _getFileIconColor(context).withOpacity(0.12),
+                        color: _getFileIconColor(context).withOpacity(0.1),
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: _getFileIconColor(context).withOpacity(0.2),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          )
+                        ]
                       ),
                       child: Icon(
                         _getFileIcon(),
@@ -129,7 +135,7 @@ class _DragDropActionDialogState extends State<DragDropActionDialog> {
                         size: 28,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -137,18 +143,26 @@ class _DragDropActionDialogState extends State<DragDropActionDialog> {
                           Text(
                             'Drag & Drop Options',
                             style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 20,
+                              letterSpacing: -0.5,
                             ),
                           ),
                           const SizedBox(height: 4),
-                          Text(
-                            itemName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: theme.colorScheme.onSurface.withOpacity(0.6),
-                              fontSize: 13,
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primaryContainer.withOpacity(0.25),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: theme.colorScheme.primary.withOpacity(0.12)),
+                            ),
+                            child: Text(
+                              itemName,
+                              style: TextStyle(
+                                color: theme.colorScheme.primary,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ],
@@ -156,21 +170,32 @@ class _DragDropActionDialogState extends State<DragDropActionDialog> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
-                const Divider(height: 1),
+                const SizedBox(height: 16),
+                Container(
+                  height: 1.5,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.transparent,
+                        theme.colorScheme.primary.withOpacity(0.25),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 20),
 
-                // Destination options
                 Text(
-                  'Destination Location',
+                  'Destination Location'.toUpperCase(),
                   style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 11,
+                    letterSpacing: 1.3,
+                    color: theme.colorScheme.primary.withOpacity(0.85),
                   ),
                 ),
                 const SizedBox(height: 10),
 
-                // Radio options for target folder selection
                 if (showSelectedFolderOption)
                   _buildDestinationCard(
                     theme: theme,
@@ -192,30 +217,39 @@ class _DragDropActionDialogState extends State<DragDropActionDialog> {
                   subtitle: _customPath != null ? p.basename(_customPath!) : 'Choose any destination',
                   pathValue: _customPath ?? 'custom_action',
                   icon: Broken.folder_add,
-                  onTapCustom: () => _pickCustomLocation(provider),
+                  onTapCustom: () {
+                    if (_customPath == null || _selectedDestPath == _customPath) {
+                      _pickCustomLocation(provider);
+                    } else {
+                      setState(() {
+                        _selectedDestPath = _customPath!;
+                      });
+                    }
+                  },
                 ),
 
-                const SizedBox(height: 10),
-                // Display absolute target path
+                const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(10),
+                    color: theme.colorScheme.surfaceVariant.withOpacity(0.35),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: theme.colorScheme.onSurface.withOpacity(0.06)),
                   ),
                   child: Row(
                     children: [
-                      Icon(Broken.info_circle, size: 16, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6)),
-                      const SizedBox(width: 8),
+                      Icon(Broken.info_circle, size: 18, color: theme.colorScheme.primary.withOpacity(0.7)),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           _selectedDestPath,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             fontFamily: 'monospace',
-                            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.8),
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.onSurface.withOpacity(0.8),
                           ),
                         ),
                       ),
@@ -224,17 +258,17 @@ class _DragDropActionDialogState extends State<DragDropActionDialog> {
                 ),
 
                 const SizedBox(height: 24),
-                // Actions Selector
                 Text(
-                  'Choose Action',
+                  'Choose Action'.toUpperCase(),
                   style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 11,
+                    letterSpacing: 1.3,
+                    color: theme.colorScheme.primary.withOpacity(0.85),
                   ),
                 ),
                 const SizedBox(height: 12),
 
-                // Action Choices
                 _buildActionCard(
                   theme: theme,
                   action: 'move',
@@ -263,28 +297,53 @@ class _DragDropActionDialogState extends State<DragDropActionDialog> {
 
                 const SizedBox(height: 24),
 
-                // Dialog Buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      ),
                       child: Text(
                         'Cancel',
-                        style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6)),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface.withOpacity(0.55),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primary,
-                        foregroundColor: theme.colorScheme.onPrimary,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: theme.colorScheme.primary.withOpacity(0.35),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          )
+                        ],
                       ),
-                      onPressed: () => _executeAction(provider),
-                      child: const Text('Apply', style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: theme.colorScheme.onPrimary,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                        ),
+                        onPressed: () => _executeAction(provider),
+                        child: const Text(
+                          'Apply',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -306,70 +365,107 @@ class _DragDropActionDialogState extends State<DragDropActionDialog> {
   }) {
     final isSelected = _selectedDestPath == pathValue;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isSelected ? theme.colorScheme.primary : theme.dividerColor.withOpacity(0.08),
-          width: isSelected ? 1.5 : 1.0,
-        ),
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: isSelected
+            ? [
+                BoxShadow(
+                  color: theme.colorScheme.primary.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                )
+              ]
+            : null,
       ),
-      color: isSelected ? theme.colorScheme.primary.withOpacity(0.05) : theme.colorScheme.surface,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () {
-          if (onTapCustom != null) {
-            onTapCustom();
-          } else {
+      child: Card(
+        margin: EdgeInsets.zero,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: isSelected
+                ? theme.colorScheme.primary
+                : theme.colorScheme.onSurface.withOpacity(0.08),
+            width: isSelected ? 2.0 : 1.0,
+          ),
+        ),
+        color: isSelected
+            ? theme.colorScheme.primary.withOpacity(0.06)
+            : theme.colorScheme.surface,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTapCustom ?? () {
             setState(() {
               _selectedDestPath = pathValue;
             });
-          }
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Row(
-            children: [
-              Icon(icon, color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface.withOpacity(0.5), size: 20),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: theme.colorScheme.onSurface.withOpacity(0.5),
-                      ),
-                    ),
-                  ],
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: (isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface).withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface.withOpacity(0.55),
+                    size: 20,
+                  ),
                 ),
-              ),
-              Radio<String>(
-                value: pathValue,
-                groupValue: _selectedDestPath,
-                onChanged: (val) {
-                  if (onTapCustom != null && val == 'custom_action') {
-                    onTapCustom();
-                  } else if (val != null) {
-                    setState(() {
-                      _selectedDestPath = val;
-                    });
-                  }
-                },
-              ),
-            ],
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
+                          fontSize: 14.5,
+                          color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                          color: theme.colorScheme.onSurface.withOpacity(0.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurface.withOpacity(0.25),
+                      width: 2,
+                    ),
+                  ),
+                  padding: const EdgeInsets.all(3.5),
+                  child: isSelected
+                      ? Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: theme.colorScheme.primary,
+                          ),
+                        )
+                      : null,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -389,75 +485,98 @@ class _DragDropActionDialogState extends State<DragDropActionDialog> {
 
     return Opacity(
       opacity: isDisabled ? 0.45 : 1.0,
-      child: Card(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(
-            color: isSelected ? theme.colorScheme.primary : theme.dividerColor.withOpacity(0.08),
-            width: isSelected ? 1.5 : 1.0,
-          ),
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: color.withOpacity(0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  )
+                ]
+              : null,
         ),
-        color: isSelected ? theme.colorScheme.primary.withOpacity(0.05) : theme.colorScheme.surface,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: isDisabled
-              ? null
-              : () {
-                  setState(() {
-                    _selectedAction = action;
-                  });
-                },
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(10),
+        child: Card(
+          margin: EdgeInsets.zero,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: isSelected ? color : theme.colorScheme.onSurface.withOpacity(0.08),
+              width: isSelected ? 2.0 : 1.0,
+            ),
+          ),
+          color: isSelected ? color.withOpacity(0.06) : theme.colorScheme.surface,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: isDisabled
+                ? null
+                : () {
+                    setState(() {
+                      _selectedAction = action;
+                    });
+                  },
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: color, size: 22),
                   ),
-                  child: Icon(icon, color: color, size: 22),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                          fontSize: 14,
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
+                            fontSize: 14.5,
+                            color: isSelected ? color : theme.colorScheme.onSurface,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: theme.colorScheme.onSurface.withOpacity(0.5),
+                        const SizedBox(height: 3),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
+                            color: theme.colorScheme.onSurface.withOpacity(0.5),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                Checkbox(
-                  value: isSelected,
-                  shape: const CircleBorder(),
-                  onChanged: isDisabled
-                      ? null
-                      : (val) {
-                          if (val == true) {
-                            setState(() {
-                              _selectedAction = action;
-                            });
-                          }
-                        },
-                ),
-              ],
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isSelected ? color : theme.colorScheme.onSurface.withOpacity(0.25),
+                        width: 2.0,
+                      ),
+                      color: isSelected ? color : Colors.transparent,
+                    ),
+                    child: isSelected
+                        ? const Icon(
+                            Icons.check,
+                            color: Colors.white,
+                            size: 14,
+                          )
+                        : null,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
