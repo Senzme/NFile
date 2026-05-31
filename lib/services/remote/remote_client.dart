@@ -1,4 +1,3 @@
-import 'dart:io';
 
 class RemoteFileItem {
   final String name;

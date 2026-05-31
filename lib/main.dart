@@ -250,7 +250,7 @@ class _NFileAppState extends State<NFileApp> {
                     ? AppTheme.getAppTheme(light: false, pitchBlack: fileManager.amoledMode, seed: baseSeedColor, customScheme: activeDarkScheme, fontFamily: fileManager.fontFamilyOption)
                     : AppTheme.getAppTheme(light: true, seed: baseSeedColor, customScheme: activeLightScheme, fontFamily: fileManager.fontFamilyOption);
 
-                final navBarColor = theme.scaffoldBackgroundColor ?? theme.colorScheme.surface;
+                final navBarColor = theme.scaffoldBackgroundColor;
 
                 final style = SystemUiOverlayStyle(
                   statusBarColor: Colors.transparent,

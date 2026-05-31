@@ -26,7 +26,6 @@ import '../models/custom_shortcut_model.dart';
 import '../services/root_shizuku_service.dart';
 import '../services/recycle_bin_service.dart';
 import 'package:on_audio_query/on_audio_query.dart';
-import '../core/icon_fonts/broken_icons.dart';
 import '../ui/widgets/open_with_sheet.dart';
 import '../ui/widgets/conflict_dialog.dart';
 import '../ui/widgets/file_action_dialogs.dart';
