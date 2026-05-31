@@ -476,12 +476,14 @@ class _DragDropActionDialogState extends State<DragDropActionDialog> {
           await provider.moveItem(stableContext, path, _selectedDestPath);
         }
       }
+      provider.clearSelection();
     } else if (_selectedAction == 'copy') {
       for (final path in widget.sourcePaths) {
         if (stableContext.mounted) {
           await provider.copyItem(stableContext, path, _selectedDestPath);
         }
       }
+      provider.clearSelection();
     } else if (_selectedAction == 'archive') {
       final isSingle = widget.sourcePaths.length == 1;
       final initialName = isSingle ? p.basename(widget.sourcePaths.first) : 'Archive';
@@ -526,6 +528,7 @@ class _DragDropActionDialogState extends State<DragDropActionDialog> {
           }
         }
 
+        provider.clearSelection();
         await provider.loadDirectory(provider.currentPath, showLoading: false);
       }
     }

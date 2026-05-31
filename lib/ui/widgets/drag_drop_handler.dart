@@ -222,7 +222,7 @@ class _DragDropHandlerState extends State<DragDropHandler> {
           });
           _hoverTimer?.cancel();
         },
-        onAccept: (data) {
+        onAccept: (data) async {
           setState(() {
             _isDragOver = false;
           });
@@ -234,7 +234,8 @@ class _DragDropHandlerState extends State<DragDropHandler> {
               initialTargetPath: widget.path,
             );
           } else {
-            Future.wait(data.paths.map((p) => provider.moveItem(context, p, widget.path)));
+            await Future.wait(data.paths.map((p) => provider.moveItem(context, p, widget.path)));
+            provider.clearSelection();
           }
         },
         builder: (context, candidateData, rejectedData) {
