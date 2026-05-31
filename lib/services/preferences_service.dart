@@ -22,6 +22,7 @@ class PreferencesService {
   static const String _keyShowAddressBar = 'show_address_bar';
   static const String _keyAmoledMode = 'amoled_mode';
   static const String _keyFolderSortTypes = 'folder_sort_types';
+  static const String _keyHideActionText = 'hide_action_text';
 
   static SharedPreferences? _prefs;
 
@@ -486,5 +487,13 @@ class PreferencesService {
 
   static Future<void> saveActiveAppIcon(String val) async {
     await _prefs?.setString(_keyActiveAppIcon, val);
+  }
+
+  static bool getHideActionText() {
+    return _prefs?.getBool(_keyHideActionText) ?? false;
+  }
+
+  static Future<void> saveHideActionText(bool val) async {
+    await _prefs?.setBool(_keyHideActionText, val);
   }
 }

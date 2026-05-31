@@ -43,6 +43,7 @@ class SelectionActionBar extends StatelessWidget {
             _ActionButton(
               icon: Broken.document_copy,
               label: 'Copy',
+              hideLabel: provider.hideActionText,
               onTap: () {
                 provider.copySelected();
                 // ScaffoldMessenger.of(context).showSnackBar(
@@ -53,6 +54,7 @@ class SelectionActionBar extends StatelessWidget {
             _ActionButton(
               icon: Broken.scissor,
               label: 'Cut',
+              hideLabel: provider.hideActionText,
               onTap: () {
                 provider.cutSelected();
                 // ScaffoldMessenger.of(context).showSnackBar(
@@ -64,6 +66,7 @@ class SelectionActionBar extends StatelessWidget {
               icon: Broken.trash,
               label: 'Delete',
               color: Colors.redAccent,
+              hideLabel: provider.hideActionText,
               onTap: () async {
                 final confirm = await FileActionDialogs.showConfirmDialog(
                   context,
@@ -78,6 +81,7 @@ class SelectionActionBar extends StatelessWidget {
             _ActionButton(
               icon: Broken.edit,
               label: 'Rename',
+              hideLabel: provider.hideActionText,
               onTap: () async {
                 if (selectedCount == 1) {
                   final path = provider.selectedPaths.first;
@@ -101,15 +105,18 @@ class SelectionActionBar extends StatelessWidget {
             _ActionButton(
               icon: Broken.info_circle,
               label: 'Properties',
+              hideLabel: provider.hideActionText,
               onTap: () => _showPropertiesModal(context, provider),
             ),
             PopupMenuButton<String>(
-              icon: const Column(
+              icon: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Broken.more, size: 24),
-                  SizedBox(height: 4),
-                  Text('More', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
+                  const Icon(Broken.more, size: 24),
+                  if (!provider.hideActionText) ...[
+                    const SizedBox(height: 4),
+                    const Text('More', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
+                  ],
                 ],
               ),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -467,8 +474,15 @@ class _ActionButton extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   final Color? color;
+  final bool hideLabel;
 
-  const _ActionButton({required this.icon, required this.label, required this.onTap, this.color});
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.color,
+    this.hideLabel = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -484,15 +498,17 @@ class _ActionButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, color: displayColor, size: 24),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: displayColor,
+            if (!hideLabel) ...[
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: displayColor,
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),

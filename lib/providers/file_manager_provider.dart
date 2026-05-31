@@ -94,6 +94,7 @@ class FileManagerProvider extends ChangeNotifier {
     _adaptiveMultiLineNames = PreferencesService.getAdaptiveMultiLineNames();
     _hideActionMenuButtons = PreferencesService.getHideActionMenuButtons();
     _activeAppIcon = PreferencesService.getActiveAppIcon();
+    _hideActionText = PreferencesService.getHideActionText();
 
     // Synchronously load cached storage sizes and pre-populate internal storage volume
     // to prevent any visual delay, shimmer, or refreshing animation on app startup!
@@ -677,6 +678,15 @@ class FileManagerProvider extends ChangeNotifier {
   void toggleHideActionMenuButtons() {
     _hideActionMenuButtons = !_hideActionMenuButtons;
     PreferencesService.saveHideActionMenuButtons(_hideActionMenuButtons);
+    notifyListeners();
+  }
+
+  bool _hideActionText = false;
+  bool get hideActionText => _hideActionText;
+
+  void toggleHideActionText() {
+    _hideActionText = !_hideActionText;
+    PreferencesService.saveHideActionText(_hideActionText);
     notifyListeners();
   }
 

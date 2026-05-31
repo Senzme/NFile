@@ -267,6 +267,21 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
             ),
             _buildSettingTile(
               theme,
+              icon: Icons.label_off_rounded,
+              title: 'Hide Action Bar Text Labels',
+              subtitle: 'Show only icons in selection action bar at bottom of Browse & Media screens',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.hideActionText,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleHideActionText(),
+                ),
+              ),
+              onTap: () => fileManager.toggleHideActionText(),
+            ),
+            _buildSettingTile(
+              theme,
               icon: Broken.menu,
               title: 'Show Home & Browse Bottom Bar',
               subtitle: 'Toggle bottom navigation bar visibility on the Home screen',
