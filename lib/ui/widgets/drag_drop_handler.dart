@@ -229,7 +229,7 @@ class _DragDropHandlerState extends State<DragDropHandler> {
           _hoverTimer?.cancel();
           if (provider.showDragDropDialog) {
             DragDropActionDialog.show(
-              context: context,
+              context: Navigator.of(context).context,
               sourcePaths: data.paths,
               initialTargetPath: widget.path,
             );

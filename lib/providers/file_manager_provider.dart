@@ -2275,6 +2275,12 @@ class FileManagerProvider extends ChangeNotifier {
       return;
     }
 
+    // Ensure destination parent directory exists recursively
+    final destDir = Directory(destFolderPath);
+    if (!destDir.existsSync()) {
+      await destDir.create(recursive: true);
+    }
+
     activeTab.isLoading = true;
     notifyListeners();
 
@@ -2344,6 +2350,12 @@ class FileManagerProvider extends ChangeNotifier {
         const SnackBar(content: Text('Cannot copy a folder inside itself or same location')),
       );
       return;
+    }
+
+    // Ensure destination parent directory exists recursively
+    final destDir = Directory(destFolderPath);
+    if (!destDir.existsSync()) {
+      await destDir.create(recursive: true);
     }
 
     activeTab.isLoading = true;

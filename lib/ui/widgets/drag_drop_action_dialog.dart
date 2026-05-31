@@ -12,11 +12,13 @@ import '../screens/internal_file_picker_screen.dart';
 class DragDropActionDialog extends StatefulWidget {
   final List<String> sourcePaths;
   final String initialTargetPath;
+  final BuildContext parentContext;
 
   const DragDropActionDialog({
     super.key,
     required this.sourcePaths,
     required this.initialTargetPath,
+    required this.parentContext,
   });
 
   static Future<void> show({
@@ -30,6 +32,7 @@ class DragDropActionDialog extends StatefulWidget {
       builder: (_) => DragDropActionDialog(
         sourcePaths: sourcePaths,
         initialTargetPath: initialTargetPath,
+        parentContext: context,
       ),
     );
   }
@@ -465,18 +468,25 @@ class _DragDropActionDialogState extends State<DragDropActionDialog> {
   Future<void> _executeAction(FileManagerProvider provider) async {
     Navigator.pop(context);
 
+    final stableContext = widget.parentContext;
+
     if (_selectedAction == 'move') {
       for (final path in widget.sourcePaths) {
-        await provider.moveItem(context, path, _selectedDestPath);
+        if (stableContext.mounted) {
+          await provider.moveItem(stableContext, path, _selectedDestPath);
+        }
       }
     } else if (_selectedAction == 'copy') {
       for (final path in widget.sourcePaths) {
-        await provider.copyItem(context, path, _selectedDestPath);
+        if (stableContext.mounted) {
+          await provider.copyItem(stableContext, path, _selectedDestPath);
+        }
       }
     } else if (_selectedAction == 'archive') {
       final isSingle = widget.sourcePaths.length == 1;
       final initialName = isSingle ? p.basename(widget.sourcePaths.first) : 'Archive';
-      final res = await CreateArchiveDialog.show(context, initialName: initialName, isMultiSelection: !isSingle);
+      if (!stableContext.mounted) return;
+      final res = await CreateArchiveDialog.show(stableContext, initialName: initialName, isMultiSelection: !isSingle);
 
       if (res != null) {
         provider.activeTab.isLoading = true;
@@ -495,21 +505,25 @@ class _DragDropActionDialogState extends State<DragDropActionDialog> {
             separateArchives: res.separateArchives,
           );
           
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Archive "${res.archiveName}.${res.format}" created successfully!'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          if (stableContext.mounted) {
+            ScaffoldMessenger.of(stableContext).showSnackBar(
+              SnackBar(
+                content: Text('Archive "${res.archiveName}.${res.format}" created successfully!'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
         } catch (e) {
           debugPrint('Error creating drag-drop archive: $e');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to create archive: $e'),
-              backgroundColor: Colors.redAccent,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          if (stableContext.mounted) {
+            ScaffoldMessenger.of(stableContext).showSnackBar(
+              SnackBar(
+                content: Text('Failed to create archive: $e'),
+                backgroundColor: Colors.redAccent,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
         }
 
         await provider.loadDirectory(provider.currentPath, showLoading: false);
