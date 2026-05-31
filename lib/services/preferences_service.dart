@@ -72,7 +72,7 @@ class PreferencesService {
   }
 
   static bool getShowFloatingAddButton() {
-    return _prefs?.getBool(_keyShowFloatingAddButton) ?? true;
+    return _prefs?.getBool(_keyShowFloatingAddButton) ?? false;
   }
 
   static Future<void> saveShowFloatingAddButton(bool val) async {
@@ -348,7 +348,7 @@ class PreferencesService {
 
   // --- Address Bar Settings ---
   static bool getShowAddressBar() {
-    return _prefs?.getBool(_keyShowAddressBar) ?? true;
+    return _prefs?.getBool(_keyShowAddressBar) ?? false;
   }
 
   static Future<void> saveShowAddressBar(bool val) async {

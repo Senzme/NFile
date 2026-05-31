@@ -440,7 +440,7 @@ class FileManagerProvider extends ChangeNotifier {
     }
   }
 
-  bool _showFloatingAddButton = true;
+  bool _showFloatingAddButton = false;
   bool get showFloatingAddButton => _showFloatingAddButton;
 
   void toggleFloatingAddButton() {
@@ -619,7 +619,7 @@ class FileManagerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool _showAddressBar = true;
+  bool _showAddressBar = false;
   bool get showAddressBar => _showAddressBar;
 
   void toggleShowAddressBar() {

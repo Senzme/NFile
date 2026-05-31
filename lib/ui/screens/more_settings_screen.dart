@@ -6,6 +6,7 @@ import '../../core/utils.dart';
 import '../widgets/quick_categories_grid.dart';
 import '../../services/preferences_service.dart';
 import '../../services/recycle_bin_service.dart';
+import '../widgets/settings_search.dart';
 
 class MoreSettingsScreen extends StatefulWidget {
   const MoreSettingsScreen({super.key});
@@ -16,6 +17,9 @@ class MoreSettingsScreen extends StatefulWidget {
 
 class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
   bool _preferFolders = false;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  bool _isSearching = false;
 
   @override
   void initState() {
@@ -24,511 +28,726 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
   }
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  bool _shouldShow(String title, String subtitle) {
+    if (_searchQuery.isEmpty) return true;
+    final query = _searchQuery.toLowerCase();
+    return title.toLowerCase().contains(query) || subtitle.toLowerCase().contains(query);
+  }
+
+  bool _shouldShowHeader(List<bool> visibilities) {
+    if (_searchQuery.isEmpty) return true;
+    return visibilities.contains(true);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final fileManager = context.watch<FileManagerProvider>();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('More Settings'),
-        leading: IconButton(
-          icon: const Icon(Broken.arrow_left),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SafeArea(
-        child: ListView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-          children: [
-            _buildSectionHeader(theme, 'Browser Experience'),
-            _buildSettingTile(
-              theme,
-              icon: Broken.edit,
-              title: 'Show Address Bar',
-              subtitle: 'Display an editable Windows-Explorer-style address bar at the top of file list',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: fileManager.showAddressBar,
-                  activeColor: theme.colorScheme.primary,
-                  onChanged: (_) => fileManager.toggleShowAddressBar(),
-                ),
-              ),
-              onTap: () => fileManager.toggleShowAddressBar(),
-            ),
-            _buildSettingTile(
-              theme,
-              icon: Broken.folder_2,
-              title: 'Default Album Preferred View',
-              subtitle: 'Open Images/Videos quick categories directly in Folders (Albums) preferred view',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: _preferFolders,
-                  activeColor: theme.colorScheme.primary,
-                  onChanged: (val) {
-                    setState(() {
-                      _preferFolders = val;
-                    });
-                    PreferencesService.savePreferFoldersInMedia(val);
-                  },
-                ),
-              ),
-              onTap: () {
-                final val = !_preferFolders;
-                setState(() {
-                  _preferFolders = val;
-                });
-                PreferencesService.savePreferFoldersInMedia(val);
-              },
-            ),
-            _buildSettingTile(
-              theme,
-              icon: Icons.android,
-              title: 'Hide Android Navigation Bar',
-              subtitle: 'Hide bottom navigation bar to maximize screen real estate (swiping up displays it)',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: fileManager.hideNavigationBar,
-                  activeColor: theme.colorScheme.primary,
-                  onChanged: (_) => fileManager.toggleHideNavigationBar(),
-                ),
-              ),
-              onTap: () => fileManager.toggleHideNavigationBar(),
-            ),
-            _buildSettingTile(
-              theme,
-              icon: Broken.refresh_2,
-              title: 'Reset Default File Viewers',
-              subtitle: 'Clear all remembered "Open With" associations for file viewers',
-              onTap: () async {
-                await PreferencesService.clearAllDefaultOpenActions();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('All default viewer choices have been reset'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
-              },
-            ),
-            _buildSettingTile(
-              theme,
-              icon: Broken.setting_3,
-              title: 'Skip "Open With" Dialog',
-              subtitle: 'Bypass the application choice dialog and immediately open files with default viewers',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: fileManager.skipOpenWithDialog,
-                  activeColor: theme.colorScheme.primary,
-                  onChanged: (_) => fileManager.toggleSkipOpenWithDialog(),
-                ),
-              ),
-              onTap: () => fileManager.toggleSkipOpenWithDialog(),
-            ),
-            _buildSettingTile(
-              theme,
-              icon: Broken.folder_favorite,
-              title: 'Default to Browse Screen',
-              subtitle: 'Directly launch into the Browse storage explorer on app start',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: fileManager.defaultToBrowseScreen,
-                  activeColor: theme.colorScheme.primary,
-                  onChanged: (_) => fileManager.toggleDefaultToBrowseScreen(),
-                ),
-              ),
-              onTap: () => fileManager.toggleDefaultToBrowseScreen(),
-            ),
-            _buildSettingTile(
-              theme,
-              icon: Broken.add_square,
-              title: "Show Floating '+' Button",
-              subtitle: 'Enable quick creation (+) button at bottom of Browse screen',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: fileManager.showFloatingAddButton,
-                  activeColor: theme.colorScheme.primary,
-                  onChanged: (_) => fileManager.toggleFloatingAddButton(),
-                ),
-              ),
-              onTap: () => fileManager.toggleFloatingAddButton(),
-            ),
-            _buildSettingTile(
-              theme,
-              icon: Broken.folder_open,
-              title: 'Show Hidden Files',
-              subtitle: 'Display system files and folders starting with a dot (.)',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: fileManager.showHiddenFiles,
-                  activeColor: theme.colorScheme.primary,
-                  onChanged: (_) => fileManager.toggleHiddenFiles(),
-                ),
-              ),
-              onTap: () => fileManager.toggleHiddenFiles(),
-            ),
-            _buildSettingTile(
-              theme,
-              icon: Broken.document_text_1,
-              title: 'Show Folder & File Count Header',
-              subtitle: 'Display total folders and files count under storage title bar',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: fileManager.showFolderFileCount,
-                  activeColor: theme.colorScheme.primary,
-                  onChanged: (_) => fileManager.toggleFolderFileCount(),
-                ),
-              ),
-              onTap: () => fileManager.toggleFolderFileCount(),
-            ),
-            _buildSettingTile(
-              theme,
-              icon: Icons.access_time_rounded,
-              title: 'Use 24-Hour Time Format',
-              subtitle: 'Toggle between 12-hour (AM/PM) and 24-hour time formatting across lists',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: fileManager.use24HourFormat,
-                  activeColor: theme.colorScheme.primary,
-                  onChanged: (_) => fileManager.toggleUse24HourFormat(),
-                ),
-              ),
-              onTap: () => fileManager.toggleUse24HourFormat(),
-            ),
-            _buildSettingTile(
-              theme,
-              icon: Icons.visibility_off_rounded,
-              title: 'Hide Time & Date from Lists',
-              subtitle: 'Completely hide modification dates and times under files and folders',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: fileManager.hideTimeAndDate,
-                  activeColor: theme.colorScheme.primary,
-                  onChanged: (_) => fileManager.toggleHideTimeAndDate(),
-                ),
-              ),
-              onTap: () => fileManager.toggleHideTimeAndDate(),
-            ),
-            _buildSettingTile(
-              theme,
-              icon: Broken.folder_open,
-              title: 'Show Folder Content Count',
-              subtitle: 'Calculate and display total files and folders inside directory listings',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: fileManager.showFolderContentsCount,
-                  activeColor: theme.colorScheme.primary,
-                  onChanged: (_) => fileManager.toggleFolderContentsCount(),
-                ),
-              ),
-              onTap: () => fileManager.toggleFolderContentsCount(),
-            ),
-            _buildSettingTile(
-              theme,
-              icon: Broken.document_text_1,
-              title: 'Show Folder Size',
-              subtitle: 'Calculate and display total size of all files inside directories (can affect listing performance)',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: fileManager.showFolderSizes,
-                  activeColor: theme.colorScheme.primary,
-                  onChanged: (_) => fileManager.toggleShowFolderSizes(),
-                ),
-              ),
-              onTap: () => fileManager.toggleShowFolderSizes(),
-            ),
-            _buildSettingTile(
-              theme,
-              icon: Broken.menu,
-              title: 'Show Bottom Navigation Bar',
-              subtitle: 'Enable bottom action bar on Browse screen',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: fileManager.showBottomActionBar,
-                  activeColor: theme.colorScheme.primary,
-                  onChanged: (_) => fileManager.toggleBottomActionBar(),
-                ),
-              ),
-              onTap: () => fileManager.toggleBottomActionBar(),
-            ),
-            _buildSettingTile(
-              theme,
-              icon: Icons.label_off_rounded,
-              title: 'Hide Action Bar Text Labels',
-              subtitle: 'Show only icons in selection action bar at bottom of Browse & Media screens',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: fileManager.hideActionText,
-                  activeColor: theme.colorScheme.primary,
-                  onChanged: (_) => fileManager.toggleHideActionText(),
-                ),
-              ),
-              onTap: () => fileManager.toggleHideActionText(),
-            ),
-            _buildSettingTile(
-              theme,
-              icon: Broken.menu,
-              title: 'Show Home & Browse Bottom Bar',
-              subtitle: 'Toggle bottom navigation bar visibility on the Home screen',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: fileManager.showHomeBrowseNav,
-                  activeColor: theme.colorScheme.primary,
-                  onChanged: (_) => fileManager.toggleShowHomeBrowseNav(),
-                ),
-              ),
-              onTap: () => fileManager.toggleShowHomeBrowseNav(),
-            ),
-            _buildSettingTile(
-              theme,
-              icon: Broken.colorfilter,
-              title: 'Highlight Exited Folder',
-              subtitle: 'Briefly flash and scroll to the folder you just exited when going back',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: fileManager.enableFolderHighlight,
-                  activeColor: theme.colorScheme.primary,
-                  onChanged: (_) => fileManager.toggleEnableFolderHighlight(),
-                ),
-              ),
-              onTap: () => fileManager.toggleEnableFolderHighlight(),
-            ),
-            _buildSettingTile(
-              theme,
-              icon: Broken.image,
-              title: 'Show Media Previews',
-              subtitle: 'Display actual image and video thumbnails instead of generic file icons',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: fileManager.showMediaPreviews,
-                  activeColor: theme.colorScheme.primary,
-                  onChanged: (_) => fileManager.toggleMediaPreviews(),
-                ),
-              ),
-              onTap: () => fileManager.toggleMediaPreviews(),
-            ),
-            _buildSettingTile(
-              theme,
-              icon: Broken.text,
-              title: 'Adaptive Multi-line Filenames',
-              subtitle: 'Allow filenames to wrap 3 lines instead of truncating',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: fileManager.adaptiveMultiLineNames,
-                  activeColor: theme.colorScheme.primary,
-                  onChanged: (_) => fileManager.toggleAdaptiveMultiLineNames(),
-                ),
-              ),
-              onTap: () => fileManager.toggleAdaptiveMultiLineNames(),
-            ),
-            _buildSettingTile(
-              theme,
-              icon: Icons.more_vert_rounded,
-              title: 'Hide 3-Dot Action Buttons',
-              subtitle: 'Hide the three-dot option menu button next to folders and files',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: fileManager.hideActionMenuButtons,
-                  activeColor: theme.colorScheme.primary,
-                  onChanged: (_) => fileManager.toggleHideActionMenuButtons(),
-                ),
-              ),
-              onTap: () => fileManager.toggleHideActionMenuButtons(),
-            ),
-            _buildSettingTile(
-              theme,
-              icon: Broken.folder_connection,
-              title: 'Enable Drag & Drop',
-              subtitle: 'Long press and drag folders or files to move them into other folders',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: fileManager.enableDragDrop,
-                  activeColor: theme.colorScheme.primary,
-                  onChanged: (_) => fileManager.toggleEnableDragDrop(),
-                ),
-              ),
-              onTap: () => fileManager.toggleEnableDragDrop(),
-            ),
-            if (fileManager.enableDragDrop)
-              Padding(
-                padding: const EdgeInsets.only(left: 16.0),
-                child: _buildSettingTile(
-                  theme,
-                  icon: Broken.task_square,
-                  title: 'Confirm Drag & Drop Actions',
-                  subtitle: 'Show options popup (Copy, Move, Archive) when dropping files',
-                  trailing: Transform.scale(
-                    scale: 0.85,
-                    child: Switch(
-                      value: fileManager.showDragDropDialog,
-                      activeColor: theme.colorScheme.primary,
-                      onChanged: (_) => fileManager.toggleShowDragDropDialog(),
+    // Browser Experience visibilities
+    final showAddressBarVis = _shouldShow('Show Address Bar', 'Display an editable Windows-Explorer-style address bar at the top of file list');
+    final preferFoldersVis = _shouldShow('Default Album Preferred View', 'Open Images/Videos quick categories directly in Folders (Albums) preferred view');
+    final hideNavBarVis = _shouldShow('Hide Android Navigation Bar', 'Hide bottom navigation bar to maximize screen real estate (swiping up displays it)');
+    final resetViewersVis = _shouldShow('Reset Default File Viewers', 'Clear all remembered "Open With" associations for file viewers');
+    final skipDialogVis = _shouldShow('Skip "Open With" Dialog', 'Bypass the application choice dialog and immediately open files with default viewers');
+    final defaultBrowseVis = _shouldShow('Default to Browse Screen', 'Directly launch into the Browse storage explorer on app start');
+    final showFloatingVis = _shouldShow("Show Floating '+' Button", 'Enable quick creation (+) button at bottom of Browse screen');
+    final showHiddenVis = _shouldShow('Show Hidden Files', 'Display system files and folders starting with a dot (.)');
+    final folderFileCountVis = _shouldShow('Show Folder & File Count Header', 'Display total folders and files count under storage title bar');
+    final use24HourVis = _shouldShow('Use 24-Hour Time Format', 'Toggle between 12-hour (AM/PM) and 24-hour time formatting across lists');
+    final hideTimeDateVis = _shouldShow('Hide Time & Date from Lists', 'Completely hide modification dates and times under files and folders');
+    final folderContentsVis = _shouldShow('Show Folder Content Count', 'Calculate and display total files and folders inside directory listings');
+    final folderSizesVis = _shouldShow('Show Folder Size', 'Calculate and display total size of all files inside directories (can affect listing performance)');
+    final bottomActionBarVis = _shouldShow('Show Bottom Navigation Bar', 'Enable bottom action bar on Browse screen');
+    final hideActionTextVis = _shouldShow('Hide Action Bar Text Labels', 'Show only icons in selection action bar at bottom of Browse & Media screens');
+    final showHomeBrowseNavVis = _shouldShow('Show Home & Browse Bottom Bar', 'Toggle bottom navigation bar visibility on the Home screen');
+    final highlightFolderVis = _shouldShow('Highlight Exited Folder', 'Briefly flash and scroll to the folder you just exited when going back');
+    final mediaPreviewsVis = _shouldShow('Show Media Previews', 'Display actual image and video thumbnails instead of generic file icons');
+    final adaptiveNamesVis = _shouldShow('Adaptive Multi-line Filenames', 'Allow filenames to wrap 3 lines instead of truncating');
+    final hideActionButtonsVis = _shouldShow('Hide 3-Dot Action Buttons', 'Hide the three-dot option menu button next to folders and files');
+    final dragDropVis = _shouldShow('Enable Drag & Drop', 'Long press and drag folders or files to move them into other folders');
+    final confirmDragVis = fileManager.enableDragDrop && _shouldShow('Confirm Drag & Drop Actions', 'Show options popup (Copy, Move, Archive) when dropping files');
+    final multipleTabsVis = _shouldShow('Enable Multiple Tabs', 'Allow opening multiple folders in separate tabs for quick navigation');
+    final splitScreenVis = _shouldShow('Enable Split Screen', 'Browse two directories side by side and transfer files easily');
+
+    final browserExperienceList = [
+      showAddressBarVis, preferFoldersVis, hideNavBarVis, resetViewersVis, skipDialogVis,
+      defaultBrowseVis, showFloatingVis, showHiddenVis, folderFileCountVis, use24HourVis,
+      hideTimeDateVis, folderContentsVis, folderSizesVis, bottomActionBarVis, hideActionTextVis,
+      showHomeBrowseNavVis, highlightFolderVis, mediaPreviewsVis, adaptiveNamesVis,
+      hideActionButtonsVis, dragDropVis, confirmDragVis, multipleTabsVis, splitScreenVis
+    ];
+
+    // Recycle Bin visibilities
+    final recycleBinVis = _shouldShow('Enable Recycle Bin', 'Move deleted files and folders to a hidden Recycle Bin instead of deleting permanently');
+    final autoDeleteDurationVis = RecycleBinService.isEnabled() && _shouldShow('Auto-Delete Trash Duration', _getAutoDeleteDaysLabel(RecycleBinService.getAutoDeleteDays()));
+    final recycleBinList = [recycleBinVis, autoDeleteDurationVis];
+
+    // Appearance visibilities
+    final accentColorVis = _shouldShow('Accent Color / Dynamic Theme', _getAccentColorLabel(fileManager.accentColorOption));
+    final folderIconVis = _shouldShow('Folder Icon Style', _getFolderIconLabel(fileManager.folderIconOption));
+    final amoledVis = _shouldShow('AMOLED Black Mode', 'Use pitch black background in Dark Mode for AMOLED screens');
+    final appIconVis = _shouldShow('App Icon', _getAppIconLabel(fileManager.activeAppIcon));
+    final typographyVis = _shouldShow('App Typography / Font Family', _getFontFamilyLabel(fileManager.fontFamilyOption));
+    final appearanceList = [accentColorVis, folderIconVis, amoledVis, appIconVis, typographyVis];
+
+    // Home Screen visibilities
+    final customizeShortcutsVis = _shouldShow('Customize Shortcuts', 'Reorder and toggle visibility of quick category items');
+    final showRecentVis = _shouldShow('Show Recent Files', 'Display the list of recently accessed files on the Home screen');
+    final homeScreenList = [customizeShortcutsVis, showRecentVis];
+
+    final hasAnyMatch = browserExperienceList.contains(true) ||
+        recycleBinList.contains(true) ||
+        appearanceList.contains(true) ||
+        homeScreenList.contains(true);
+
+    return PopScope(
+      canPop: !_isSearching,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        if (_isSearching) {
+          setState(() {
+            _isSearching = false;
+            _searchQuery = '';
+            _searchController.clear();
+          });
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: _isSearching
+              ? TextField(
+                  controller: _searchController,
+                  autofocus: true,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Search settings...',
+                    border: InputBorder.none,
+                    hintStyle: TextStyle(
+                      color: theme.colorScheme.onSurface.withOpacity(0.4),
                     ),
                   ),
-                  onTap: () => fileManager.toggleShowDragDropDialog(),
-                ),
-              ),
-            _buildSettingTile(
-              theme,
-              icon: Broken.category,
-              title: 'Enable Multiple Tabs',
-              subtitle: 'Allow opening multiple folders in separate tabs for quick navigation',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: fileManager.enableMultipleTabs,
-                  activeColor: theme.colorScheme.primary,
-                  onChanged: (_) => fileManager.toggleMultipleTabs(),
-                ),
-              ),
-              onTap: () => fileManager.toggleMultipleTabs(),
-            ),
-            _buildSettingTile(
-              theme,
-              icon: Icons.splitscreen,
-              title: 'Enable Split Screen',
-              subtitle: 'Browse two directories side by side and transfer files easily',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: fileManager.enableSplitScreen,
-                  activeColor: theme.colorScheme.primary,
-                  onChanged: (_) => fileManager.toggleSplitScreen(),
-                ),
-              ),
-              onTap: () => fileManager.toggleSplitScreen(),
-            ),
-
-            const SizedBox(height: 24),
-            _buildSectionHeader(theme, 'Recycle Bin (Trash)'),
-            _buildSettingTile(
-              theme,
-              icon: Broken.trash,
-              title: 'Enable Recycle Bin',
-              subtitle: 'Move deleted files and folders to a hidden Recycle Bin instead of deleting permanently',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: RecycleBinService.isEnabled(),
-                  activeColor: theme.colorScheme.primary,
                   onChanged: (val) {
                     setState(() {
-                      RecycleBinService.setEnabled(val);
+                      _searchQuery = val;
                     });
                   },
-                ),
-              ),
-              onTap: () {
-                final val = !RecycleBinService.isEnabled();
+                )
+              : const Text('More Settings'),
+          leading: IconButton(
+            icon: const Icon(Broken.arrow_left),
+            onPressed: () {
+              if (_isSearching) {
                 setState(() {
-                  RecycleBinService.setEnabled(val);
+                  _isSearching = false;
+                  _searchQuery = '';
+                  _searchController.clear();
                 });
-              },
-            ),
-            if (RecycleBinService.isEnabled())
-              _buildSettingTile(
-                theme,
-                icon: Icons.access_time_rounded,
-                title: 'Auto-Delete Trash Duration',
-                subtitle: _getAutoDeleteDaysLabel(RecycleBinService.getAutoDeleteDays()),
-                onTap: () => _showAutoDeleteDaysPickerDialog(context, theme),
+              } else {
+                Navigator.pop(context);
+              }
+            },
+          ),
+          actions: [
+            if (_isSearching)
+              IconButton(
+                icon: const Icon(Icons.clear_rounded),
+                onPressed: () {
+                  setState(() {
+                    if (_searchController.text.isEmpty) {
+                      _isSearching = false;
+                    } else {
+                      _searchController.clear();
+                      _searchQuery = '';
+                    }
+                  });
+                },
+              )
+            else
+              IconButton(
+                icon: const Icon(Broken.search_normal),
+                onPressed: () {
+                  setState(() {
+                    _isSearching = true;
+                  });
+                },
               ),
-
-            const SizedBox(height: 24),
-            _buildSectionHeader(theme, 'Appearance & Themes'),
-            _buildSettingTile(
-              theme,
-              icon: Broken.colorfilter,
-              title: 'Accent Color / Dynamic Theme',
-              subtitle: _getAccentColorLabel(fileManager.accentColorOption),
-              onTap: () => _showThemePickerDialog(context, fileManager, theme),
-            ),
-            _buildSettingTile(
-              theme,
-              icon: FileUtils.getFolderIcon(fileManager.folderIconOption),
-              title: 'Folder Icon Style',
-              subtitle: _getFolderIconLabel(fileManager.folderIconOption),
-              onTap: () => _showFolderIconPickerDialog(context, fileManager, theme),
-            ),
-             _buildSettingTile(
-               theme,
-               icon: Broken.moon,
-               title: 'AMOLED Black Mode',
-               subtitle: 'Use pitch black background in Dark Mode for AMOLED screens',
-               trailing: Transform.scale(
-                 scale: 0.85,
-                 child: Switch(
-                   value: fileManager.amoledMode,
-                   activeColor: theme.colorScheme.primary,
-                   onChanged: (_) => fileManager.toggleAmoledMode(),
-                 ),
-               ),
-               onTap: () => fileManager.toggleAmoledMode(),
-             ),
-             _buildSettingTile(
-               theme,
-               icon: Broken.category,
-               title: 'App Icon',
-               subtitle: _getAppIconLabel(fileManager.activeAppIcon),
-               onTap: () => _showAppIconPickerDialog(context, fileManager, theme),
-             ),
-             _buildSettingTile(
-               theme,
-               icon: Broken.text,
-               title: 'App Typography / Font Family',
-               subtitle: _getFontFamilyLabel(fileManager.fontFamilyOption),
-               onTap: () => _showFontFamilyPickerDialog(context, fileManager, theme),
-             ),
-
-            const SizedBox(height: 24),
-            _buildSectionHeader(theme, 'Home Screen'),
-            _buildSettingTile(
-              theme,
-              icon: Broken.setting_2,
-              title: 'Customize Shortcuts',
-              subtitle: 'Reorder and toggle visibility of quick category items',
-              onTap: () => QuickCategoriesGrid.showCustomizeDialog(context),
-            ),
-            _buildSettingTile(
-              theme,
-              icon: Broken.clock,
-              title: 'Show Recent Files',
-              subtitle: 'Display the list of recently accessed files on the Home screen',
-              trailing: Transform.scale(
-                scale: 0.85,
-                child: Switch(
-                  value: fileManager.showRecentFiles,
-                  activeColor: theme.colorScheme.primary,
-                  onChanged: (_) => fileManager.toggleShowRecentFiles(),
+          ],
+        ),
+        body: SafeArea(
+          child: ListView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+            children: [
+            if (!hasAnyMatch) ...[
+              const SizedBox(height: 60),
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withOpacity(0.08),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Broken.search_normal,
+                        size: 40,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'No settings found',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Try searching for another keyword',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.55),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              onTap: () => fileManager.toggleShowRecentFiles(),
-            ),
+            ] else ...[
+              if (_shouldShowHeader(browserExperienceList)) ...[
+                _buildSectionHeader(theme, 'Browser Experience'),
+                if (showAddressBarVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Broken.edit,
+                    title: 'Show Address Bar',
+                    subtitle: 'Display an editable Windows-Explorer-style address bar at the top of file list',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: fileManager.showAddressBar,
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (_) => fileManager.toggleShowAddressBar(),
+                      ),
+                    ),
+                    onTap: () => fileManager.toggleShowAddressBar(),
+                  ),
+                if (preferFoldersVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Broken.folder_2,
+                    title: 'Default Album Preferred View',
+                    subtitle: 'Open Images/Videos quick categories directly in Folders (Albums) preferred view',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: _preferFolders,
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (val) {
+                          setState(() {
+                            _preferFolders = val;
+                          });
+                          PreferencesService.savePreferFoldersInMedia(val);
+                        },
+                      ),
+                    ),
+                    onTap: () {
+                      final val = !_preferFolders;
+                      setState(() {
+                        _preferFolders = val;
+                      });
+                      PreferencesService.savePreferFoldersInMedia(val);
+                    },
+                  ),
+                if (hideNavBarVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Icons.android,
+                    title: 'Hide Android Navigation Bar',
+                    subtitle: 'Hide bottom navigation bar to maximize screen real estate (swiping up displays it)',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: fileManager.hideNavigationBar,
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (_) => fileManager.toggleHideNavigationBar(),
+                      ),
+                    ),
+                    onTap: () => fileManager.toggleHideNavigationBar(),
+                  ),
+                if (resetViewersVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Broken.refresh_2,
+                    title: 'Reset Default File Viewers',
+                    subtitle: 'Clear all remembered "Open With" associations for file viewers',
+                    onTap: () async {
+                      await PreferencesService.clearAllDefaultOpenActions();
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('All default viewer choices have been reset'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                if (skipDialogVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Broken.setting_3,
+                    title: 'Skip "Open With" Dialog',
+                    subtitle: 'Bypass the application choice dialog and immediately open files with default viewers',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: fileManager.skipOpenWithDialog,
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (_) => fileManager.toggleSkipOpenWithDialog(),
+                      ),
+                    ),
+                    onTap: () => fileManager.toggleSkipOpenWithDialog(),
+                  ),
+                if (defaultBrowseVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Broken.folder_favorite,
+                    title: 'Default to Browse Screen',
+                    subtitle: 'Directly launch into the Browse storage explorer on app start',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: fileManager.defaultToBrowseScreen,
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (_) => fileManager.toggleDefaultToBrowseScreen(),
+                      ),
+                    ),
+                    onTap: () => fileManager.toggleDefaultToBrowseScreen(),
+                  ),
+                if (showFloatingVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Broken.add_square,
+                    title: "Show Floating '+' Button",
+                    subtitle: 'Enable quick creation (+) button at bottom of Browse screen',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: fileManager.showFloatingAddButton,
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (_) => fileManager.toggleFloatingAddButton(),
+                      ),
+                    ),
+                    onTap: () => fileManager.toggleFloatingAddButton(),
+                  ),
+                if (showHiddenVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Broken.folder_open,
+                    title: 'Show Hidden Files',
+                    subtitle: 'Display system files and folders starting with a dot (.)',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: fileManager.showHiddenFiles,
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (_) => fileManager.toggleHiddenFiles(),
+                      ),
+                    ),
+                    onTap: () => fileManager.toggleHiddenFiles(),
+                  ),
+                if (folderFileCountVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Broken.document_text_1,
+                    title: 'Show Folder & File Count Header',
+                    subtitle: 'Display total folders and files count under storage title bar',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: fileManager.showFolderFileCount,
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (_) => fileManager.toggleFolderFileCount(),
+                      ),
+                    ),
+                    onTap: () => fileManager.toggleFolderFileCount(),
+                  ),
+                if (use24HourVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Icons.access_time_rounded,
+                    title: 'Use 24-Hour Time Format',
+                    subtitle: 'Toggle between 12-hour (AM/PM) and 24-hour time formatting across lists',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: fileManager.use24HourFormat,
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (_) => fileManager.toggleUse24HourFormat(),
+                      ),
+                    ),
+                    onTap: () => fileManager.toggleUse24HourFormat(),
+                  ),
+                if (hideTimeDateVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Icons.visibility_off_rounded,
+                    title: 'Hide Time & Date from Lists',
+                    subtitle: 'Completely hide modification dates and times under files and folders',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: fileManager.hideTimeAndDate,
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (_) => fileManager.toggleHideTimeAndDate(),
+                      ),
+                    ),
+                    onTap: () => fileManager.toggleHideTimeAndDate(),
+                  ),
+                if (folderContentsVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Broken.folder_open,
+                    title: 'Show Folder Content Count',
+                    subtitle: 'Calculate and display total files and folders inside directory listings',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: fileManager.showFolderContentsCount,
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (_) => fileManager.toggleFolderContentsCount(),
+                      ),
+                    ),
+                    onTap: () => fileManager.toggleFolderContentsCount(),
+                  ),
+                if (folderSizesVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Broken.document_text_1,
+                    title: 'Show Folder Size',
+                    subtitle: 'Calculate and display total size of all files inside directories (can affect listing performance)',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: fileManager.showFolderSizes,
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (_) => fileManager.toggleShowFolderSizes(),
+                      ),
+                    ),
+                    onTap: () => fileManager.toggleShowFolderSizes(),
+                  ),
+                if (bottomActionBarVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Broken.menu,
+                    title: 'Show Bottom Navigation Bar',
+                    subtitle: 'Enable bottom action bar on Browse screen',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: fileManager.showBottomActionBar,
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (_) => fileManager.toggleBottomActionBar(),
+                      ),
+                    ),
+                    onTap: () => fileManager.toggleBottomActionBar(),
+                  ),
+                if (hideActionTextVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Icons.label_off_rounded,
+                    title: 'Hide Action Bar Text Labels',
+                    subtitle: 'Show only icons in selection action bar at bottom of Browse & Media screens',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: fileManager.hideActionText,
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (_) => fileManager.toggleHideActionText(),
+                      ),
+                    ),
+                    onTap: () => fileManager.toggleHideActionText(),
+                  ),
+                if (showHomeBrowseNavVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Broken.menu,
+                    title: 'Show Home & Browse Bottom Bar',
+                    subtitle: 'Toggle bottom navigation bar visibility on the Home screen',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: fileManager.showHomeBrowseNav,
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (_) => fileManager.toggleShowHomeBrowseNav(),
+                      ),
+                    ),
+                    onTap: () => fileManager.toggleShowHomeBrowseNav(),
+                  ),
+                if (highlightFolderVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Broken.colorfilter,
+                    title: 'Highlight Exited Folder',
+                    subtitle: 'Briefly flash and scroll to the folder you just exited when going back',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: fileManager.enableFolderHighlight,
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (_) => fileManager.toggleEnableFolderHighlight(),
+                      ),
+                    ),
+                    onTap: () => fileManager.toggleEnableFolderHighlight(),
+                  ),
+                if (mediaPreviewsVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Broken.image,
+                    title: 'Show Media Previews',
+                    subtitle: 'Display actual image and video thumbnails instead of generic file icons',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: fileManager.showMediaPreviews,
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (_) => fileManager.toggleMediaPreviews(),
+                      ),
+                    ),
+                    onTap: () => fileManager.toggleMediaPreviews(),
+                  ),
+                if (adaptiveNamesVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Broken.text,
+                    title: 'Adaptive Multi-line Filenames',
+                    subtitle: 'Allow filenames to wrap 3 lines instead of truncating',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: fileManager.adaptiveMultiLineNames,
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (_) => fileManager.toggleAdaptiveMultiLineNames(),
+                      ),
+                    ),
+                    onTap: () => fileManager.toggleAdaptiveMultiLineNames(),
+                  ),
+                if (hideActionButtonsVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Icons.more_vert_rounded,
+                    title: 'Hide 3-Dot Action Buttons',
+                    subtitle: 'Hide the three-dot option menu button next to folders and files',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: fileManager.hideActionMenuButtons,
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (_) => fileManager.toggleHideActionMenuButtons(),
+                      ),
+                    ),
+                    onTap: () => fileManager.toggleHideActionMenuButtons(),
+                  ),
+                if (dragDropVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Broken.folder_connection,
+                    title: 'Enable Drag & Drop',
+                    subtitle: 'Long press and drag folders or files to move them into other folders',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: fileManager.enableDragDrop,
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (_) => fileManager.toggleEnableDragDrop(),
+                      ),
+                    ),
+                    onTap: () => fileManager.toggleEnableDragDrop(),
+                  ),
+                if (confirmDragVis)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16.0),
+                    child: _buildSettingTile(
+                      theme,
+                      icon: Broken.task_square,
+                      title: 'Confirm Drag & Drop Actions',
+                      subtitle: 'Show options popup (Copy, Move, Archive) when dropping files',
+                      trailing: Transform.scale(
+                        scale: 0.85,
+                        child: Switch(
+                          value: fileManager.showDragDropDialog,
+                          activeColor: theme.colorScheme.primary,
+                          onChanged: (_) => fileManager.toggleShowDragDropDialog(),
+                        ),
+                      ),
+                      onTap: () => fileManager.toggleShowDragDropDialog(),
+                    ),
+                  ),
+                if (multipleTabsVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Broken.category,
+                    title: 'Enable Multiple Tabs',
+                    subtitle: 'Allow opening multiple folders in separate tabs for quick navigation',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: fileManager.enableMultipleTabs,
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (_) => fileManager.toggleMultipleTabs(),
+                      ),
+                    ),
+                    onTap: () => fileManager.toggleMultipleTabs(),
+                  ),
+                if (splitScreenVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Icons.splitscreen,
+                    title: 'Enable Split Screen',
+                    subtitle: 'Browse two directories side by side and transfer files easily',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: fileManager.enableSplitScreen,
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (_) => fileManager.toggleSplitScreen(),
+                      ),
+                    ),
+                    onTap: () => fileManager.toggleSplitScreen(),
+                  ),
+              ],
+              if (_shouldShowHeader(recycleBinList)) ...[
+                const SizedBox(height: 24),
+                _buildSectionHeader(theme, 'Recycle Bin (Trash)'),
+                if (recycleBinVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Broken.trash,
+                    title: 'Enable Recycle Bin',
+                    subtitle: 'Move deleted files and folders to a hidden Recycle Bin instead of deleting permanently',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: RecycleBinService.isEnabled(),
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (val) {
+                          setState(() {
+                            RecycleBinService.setEnabled(val);
+                          });
+                        },
+                      ),
+                    ),
+                    onTap: () {
+                      final val = !RecycleBinService.isEnabled();
+                      setState(() {
+                        RecycleBinService.setEnabled(val);
+                      });
+                    },
+                  ),
+                if (autoDeleteDurationVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Icons.access_time_rounded,
+                    title: 'Auto-Delete Trash Duration',
+                    subtitle: _getAutoDeleteDaysLabel(RecycleBinService.getAutoDeleteDays()),
+                    onTap: () => _showAutoDeleteDaysPickerDialog(context, theme),
+                  ),
+              ],
+              if (_shouldShowHeader(appearanceList)) ...[
+                const SizedBox(height: 24),
+                _buildSectionHeader(theme, 'Appearance & Themes'),
+                if (accentColorVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Broken.colorfilter,
+                    title: 'Accent Color / Dynamic Theme',
+                    subtitle: _getAccentColorLabel(fileManager.accentColorOption),
+                    onTap: () => _showThemePickerDialog(context, fileManager, theme),
+                  ),
+                if (folderIconVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: FileUtils.getFolderIcon(fileManager.folderIconOption),
+                    title: 'Folder Icon Style',
+                    subtitle: _getFolderIconLabel(fileManager.folderIconOption),
+                    onTap: () => _showFolderIconPickerDialog(context, fileManager, theme),
+                  ),
+                if (amoledVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Broken.moon,
+                    title: 'AMOLED Black Mode',
+                    subtitle: 'Use pitch black background in Dark Mode for AMOLED screens',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: fileManager.amoledMode,
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (_) => fileManager.toggleAmoledMode(),
+                      ),
+                    ),
+                    onTap: () => fileManager.toggleAmoledMode(),
+                  ),
+                if (appIconVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Broken.category,
+                    title: 'App Icon',
+                    subtitle: _getAppIconLabel(fileManager.activeAppIcon),
+                    onTap: () => _showAppIconPickerDialog(context, fileManager, theme),
+                  ),
+                if (typographyVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Broken.text,
+                    title: 'App Typography / Font Family',
+                    subtitle: _getFontFamilyLabel(fileManager.fontFamilyOption),
+                    onTap: () => _showFontFamilyPickerDialog(context, fileManager, theme),
+                  ),
+              ],
+              if (_shouldShowHeader(homeScreenList)) ...[
+                const SizedBox(height: 24),
+                _buildSectionHeader(theme, 'Home Screen'),
+                if (customizeShortcutsVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Broken.setting_2,
+                    title: 'Customize Shortcuts',
+                    subtitle: 'Reorder and toggle visibility of quick category items',
+                    onTap: () => QuickCategoriesGrid.showCustomizeDialog(context),
+                  ),
+                if (showRecentVis)
+                  _buildSettingTile(
+                    theme,
+                    icon: Broken.clock,
+                    title: 'Show Recent Files',
+                    subtitle: 'Display the list of recently accessed files on the Home screen',
+                    trailing: Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: fileManager.showRecentFiles,
+                        activeColor: theme.colorScheme.primary,
+                        onChanged: (_) => fileManager.toggleShowRecentFiles(),
+                      ),
+                    ),
+                    onTap: () => fileManager.toggleShowRecentFiles(),
+                  ),
+              ],
+            ],
           ],
         ),
       ),
-    );
+    ));
   }
 
   String _getAccentColorLabel(String option) {
