@@ -66,10 +66,38 @@ class FileUtils {
   }
 
   static bool isImage(String path) {
-    final mimeType = lookupMimeType(path);
-    if (mimeType != null && mimeType.startsWith('image/')) return true;
     final lower = path.toLowerCase();
-    return lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png') || lower.endsWith('.webp') || lower.endsWith('.gif') || lower.endsWith('.bmp') || lower.endsWith('.avif');
+
+    if (lower.endsWith('.3ds') ||
+        lower.endsWith('.svg') ||
+        lower.endsWith('.psd') ||
+        lower.endsWith('.tiff') ||
+        lower.endsWith('.tif') ||
+        lower.endsWith('.xcf')) {
+      return false;
+    }
+    final mimeType = lookupMimeType(path);
+    if (mimeType != null && mimeType.startsWith('image/')) {
+      final lowerMime = mimeType.toLowerCase();
+      if (lowerMime.contains('x-3ds') ||
+          lowerMime.contains('svg') ||
+          lowerMime.contains('photoshop') ||
+          lowerMime.contains('tiff') ||
+          lowerMime.contains('xcf') ||
+          lowerMime.contains('gimp')) {
+        return false;
+      }
+      return true;
+    }
+    return lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.png') ||
+        lower.endsWith('.webp') ||
+        lower.endsWith('.gif') ||
+        lower.endsWith('.bmp') ||
+        lower.endsWith('.avif') ||
+        lower.endsWith('.heic') ||
+        lower.endsWith('.heif');
   }
 
   static bool isVideo(String path) {
