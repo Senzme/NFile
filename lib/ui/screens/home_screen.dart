@@ -18,17 +18,31 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
   DateTime? _lastBrowseTapTime;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _currentIndex = context.read<FileManagerProvider>().defaultToBrowseScreen ? 1 : 0;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MediaProvider>().loadMedia();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      context.read<MediaProvider>().refreshMediaBackground();
+    }
   }
 
   void _showExitConfirmationDialog(BuildContext context) {
@@ -126,7 +140,10 @@ class _HomeScreenState extends State<HomeScreen> {
         if (didPop) return;
         if (_currentIndex == 1) {
           if (!provider.canGoBack) {
-            setState(() => _currentIndex = 0);
+            setState(() {
+              _currentIndex = 0;
+            });
+            context.read<MediaProvider>().refreshMediaBackground();
           }
         } else {
           _showExitConfirmationDialog(context);
@@ -157,6 +174,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       provider.loadDirectory(provider.rootPath);
                     }
                     _lastBrowseTapTime = now;
+                  } else if (index == 0) {
+                    context.read<MediaProvider>().refreshMediaBackground();
                   }
                   setState(() => _currentIndex = index);
                 },

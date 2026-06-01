@@ -379,6 +379,50 @@ class MediaProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  Future<void> refreshMediaBackground() async {
+    final futures = <Future<void>>[];
+    
+    bool isStorageGranted = false;
+    try {
+      isStorageGranted = await Permission.storage.isGranted || await Permission.manageExternalStorage.isGranted;
+    } catch (_) {}
+    
+    PermissionState ps = PermissionState.denied;
+    try {
+      ps = await PhotoManager.requestPermissionExtend();
+    } catch (_) {}
+
+    bool hasAudioPermission = false;
+    try {
+      hasAudioPermission = await _audioQuery.permissionsStatus();
+    } catch (_) {}
+
+    if (ps.isAuth || isStorageGranted) {
+      futures.add(_loadImagesAndVideos());
+    }
+    if (hasAudioPermission || isStorageGranted) {
+      futures.add(_loadAudios());
+    }
+    futures.add(_loadDocuments());
+    futures.add(_loadArchivesDownloadsAndApks());
+
+    await Future.wait(futures);
+    await _scanRecentFiles();
+    await _saveCache();
+    _applySort();
+    
+    PreferencesService.saveCategoryCount('Images', _images.length);
+    PreferencesService.saveCategoryCount('Videos', _videos.length);
+    PreferencesService.saveCategoryCount('Audio', _audios.length);
+    PreferencesService.saveCategoryCount('Documents', _documents.length);
+    PreferencesService.saveCategoryCount('Archives', _archives.length);
+    PreferencesService.saveCategoryCount('Downloads', _downloads.length);
+    PreferencesService.saveCategoryCount('APKs', _apks.length);
+    PreferencesService.saveCategoryCount('Screenshots', _screenshots.length);
+
+    notifyListeners();
+  }
+
   Future<void> loadMedia({bool forceRefresh = false}) async {
     if (_isLoaded && !forceRefresh) return;
 

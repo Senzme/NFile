@@ -245,6 +245,26 @@ class _MediaThumbnailState extends State<MediaThumbnail> {
     }
   }
 
+  @override
+  void didUpdateWidget(covariant MediaThumbnail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.file.path != oldWidget.file.path) {
+      setState(() {
+        _videoThumb = null;
+        _audioThumb = null;
+        _apkIcon = null;
+      });
+      final lowerPath = widget.file.path.toLowerCase();
+      if (FileUtils.isVideo(widget.file.path)) {
+        _loadVideoThumb();
+      } else if (FileUtils.isAudio(widget.file.path)) {
+        _loadAudioThumb();
+      } else if (lowerPath.endsWith('.apk') || lowerPath.endsWith('.xapk') || lowerPath.endsWith('.apks') || lowerPath.endsWith('.apkm')) {
+        _loadApkIcon();
+      }
+    }
+  }
+
   Future<void> _loadApkIcon() async {
     final path = widget.file.path;
     if (_apkIconCache.containsKey(path)) {
