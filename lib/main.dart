@@ -32,6 +32,23 @@ void main() async {
   await NetworkConnectionsService.init();
   await RecycleBinService.init();
 
+  // Load custom font dynamically if configured
+  try {
+    final customFontPath = PreferencesService.getCustomFontPath();
+    if (customFontPath != null && customFontPath.isNotEmpty) {
+      final file = File(customFontPath);
+      if (file.existsSync()) {
+        final loader = FontLoader('CustomFont');
+        final bytes = await file.readAsBytes();
+        loader.addFont(Future.value(ByteData.sublistView(bytes)));
+        await loader.load();
+        debugPrint('Successfully loaded custom font at startup');
+      }
+    }
+  } catch (e) {
+    debugPrint('Error loading custom font at startup: $e');
+  }
+
   // Initialize audio_service for background media notification
   // Wrapped in try-catch — app must still launch even if this fails
   try {

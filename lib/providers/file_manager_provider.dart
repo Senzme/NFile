@@ -81,6 +81,7 @@ class FileManagerProvider extends ChangeNotifier {
     _enableSplitScreen = PreferencesService.getEnableSplitScreen();
     _accentColorOption = PreferencesService.getAccentColor();
     _fontFamilyOption = PreferencesService.getFontFamily();
+    _customFontPath = PreferencesService.getCustomFontPath();
     _folderIconOption = PreferencesService.getFolderIconStyle();
     _pinnedFolderShortcuts = PreferencesService.getPinnedFolderShortcuts();
     _hideNavigationBar = PreferencesService.getHideNavigationBar();
@@ -191,6 +192,33 @@ class FileManagerProvider extends ChangeNotifier {
     _fontFamilyOption = val;
     PreferencesService.saveFontFamily(val);
     notifyListeners();
+  }
+
+  String? _customFontPath;
+  String? get customFontPath => _customFontPath;
+
+  Future<bool> setCustomFontPath(String? path) async {
+    if (path != null) {
+      final file = File(path);
+      if (!file.existsSync()) return false;
+      _customFontPath = path;
+      await PreferencesService.saveCustomFontPath(path);
+      // Dynamically load the font for the running app
+      try {
+        final loader = FontLoader('CustomFont');
+        final bytes = await file.readAsBytes();
+        loader.addFont(Future.value(ByteData.sublistView(bytes)));
+        await loader.load();
+      } catch (e) {
+        debugPrint('Error loading custom font: $e');
+        return false;
+      }
+    } else {
+      _customFontPath = null;
+      await PreferencesService.saveCustomFontPath(null);
+    }
+    notifyListeners();
+    return true;
   }
 
   String _folderIconOption = 'broken';

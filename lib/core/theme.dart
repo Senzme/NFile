@@ -81,6 +81,9 @@ class AppTheme {
         effectiveFontFamily = 'Montserrat';
         textTheme = GoogleFonts.montserratTextTheme(baseTextTheme);
         break;
+      case 'custom':
+        effectiveFontFamily = 'CustomFont';
+        break;
       case 'default':
       default:
         effectiveFontFamily = 'LexendDeca';

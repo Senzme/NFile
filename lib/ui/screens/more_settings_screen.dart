@@ -7,6 +7,8 @@ import '../../core/utils.dart';
 import '../widgets/quick_categories_grid.dart';
 import '../../services/preferences_service.dart';
 import '../../services/recycle_bin_service.dart';
+import 'package:path/path.dart' as p;
+import 'internal_file_picker_screen.dart';
 
 class MoreSettingsScreen extends StatefulWidget {
   const MoreSettingsScreen({super.key});
@@ -1656,6 +1658,7 @@ String _getFontFamilyLabel(String option) {
     case 'outfit': return 'Outfit Modern Sans';
     case 'jetbrains': return 'JetBrains Tech Mono';
     case 'montserrat': return 'Montserrat Urban Sans';
+    case 'custom': return 'Custom Imported Font';
     case 'default':
     default:
       return 'Signature Default (Lexend Deca)';
@@ -2013,12 +2016,15 @@ void _showFontFamilyPickerDialog(BuildContext context, FileManagerProvider fileM
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
     builder: (ctx) {
       final current = fileManager.fontFamilyOption;
+      final hasCustomFont = fileManager.customFontPath != null;
       final options = [
         {'key': 'default', 'name': 'Signature Default (Lexend Deca)', 'desc': 'Original NFile clean geometric look'},
         {'key': 'nothing', 'name': 'Nothing Dot-Matrix & Sans', 'desc': 'High-tech retro dot matrix headings + clean body'},
         {'key': 'outfit', 'name': 'Outfit Modern Sans', 'desc': 'Super sleek, minimal, and premium geometric aesthetic'},
         {'key': 'jetbrains', 'name': 'JetBrains Tech Mono', 'desc': 'Clean and futuristic developer monospaced look'},
         {'key': 'montserrat', 'name': 'Montserrat Urban Sans', 'desc': 'Bold, modern, and striking typographic scale'},
+        if (hasCustomFont)
+          {'key': 'custom', 'name': 'Custom Font (${p.basename(fileManager.customFontPath!)})', 'desc': 'Your custom loaded font file'},
       ];
 
       return SafeArea(
@@ -2078,6 +2084,85 @@ void _showFontFamilyPickerDialog(BuildContext context, FileManagerProvider fileM
                       },
                     );
                   }),
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    icon: const Icon(Broken.document_upload, size: 20),
+                    label: Text(
+                      hasCustomFont ? 'Replace Custom Font File' : 'Import Custom Font File (.ttf/.otf)',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'LexendDeca'),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(46),
+                      foregroundColor: theme.colorScheme.primary,
+                      side: BorderSide(color: theme.colorScheme.primary.withOpacity(0.5)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      final picked = await InternalFilePickerScreen.show(
+                        context,
+                        rootPath: fileManager.rootPath,
+                      );
+                      if (picked != null && picked.isNotEmpty) {
+                        final filePat = picked.first;
+                        final ext = p.extension(filePat).toLowerCase();
+                        if (ext == '.ttf' || ext == '.otf') {
+                          final success = await fileManager.setCustomFontPath(filePat);
+                          if (success) {
+                            fileManager.setFontFamilyOption('custom');
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Custom font "${p.basename(filePat)}" applied successfully!')),
+                              );
+                            }
+                          } else {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Failed to load the selected font file.')),
+                              );
+                            }
+                          }
+                        } else {
+                          if (context.mounted) {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Invalid File Type'),
+                                content: const Text('Please select a valid OpenType (.otf) or TrueType (.ttf) font file.'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('OK'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                        }
+                      }
+                    },
+                  ),
+                  if (hasCustomFont) ...[
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      icon: const Icon(Broken.trash, size: 18, color: Colors.redAccent),
+                      label: const Text('Remove Custom Font', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontFamily: 'LexendDeca')),
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        await fileManager.setCustomFontPath(null);
+                        if (current == 'custom') {
+                          fileManager.setFontFamilyOption('default');
+                        }
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Custom font removed.')),
+                          );
+                        }
+                      },
+                    ),
+                  ],
                 ],
               ),
             ),

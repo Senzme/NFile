@@ -530,4 +530,18 @@ class PreferencesService {
   static Future<void> saveExcludedDefaultPaths(Map<String, List<String>> map) async {
     await _prefs?.setString(_keyExcludedDefaultPaths, jsonEncode(map));
   }
+
+  static const String _keyCustomFontPath = 'custom_font_path';
+
+  static String? getCustomFontPath() {
+    return _prefs?.getString(_keyCustomFontPath);
+  }
+
+  static Future<void> saveCustomFontPath(String? val) async {
+    if (val == null) {
+      await _prefs?.remove(_keyCustomFontPath);
+    } else {
+      await _prefs?.setString(_keyCustomFontPath, val);
+    }
+  }
 }
