@@ -27,6 +27,8 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
   final _portController = TextEditingController();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  String _webdavProtocol = 'http';
+  final _pathController = TextEditingController(text: '/');
 
   // Testing steps states
   bool _isTesting = false;
@@ -46,6 +48,7 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
     _portController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
+    _pathController.dispose();
     super.dispose();
   }
 
@@ -90,7 +93,9 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
       } else if (protocol == 'LAN/SMB') {
         _portController.text = '445';
       } else if (protocol == 'WebDav') {
+        _webdavProtocol = 'http';
         _portController.text = '80';
+        _pathController.text = '/';
       }
     });
     _nextStep();
@@ -98,6 +103,10 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
 
   // Trigger Diagnostics & Save
   void _runDiagnosticsAndSave() async {
+    if (_selectedType == 'WebDav') {
+      _sanitizeWebdavFields();
+    }
+
     if (_nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a connection name')),
@@ -116,6 +125,7 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
     final host = _hostController.text.trim();
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
+    final path = _selectedType == 'WebDav' ? _pathController.text.trim() : '/';
 
     setState(() {
       _isTesting = true;
@@ -139,7 +149,14 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
       } else if (_selectedType == 'SFTP') {
         client = SftpRemoteClient(host: host, port: port, username: username, password: password);
       } else if (_selectedType == 'WebDav') {
-        client = WebDavRemoteClient(host: host, port: port, username: username, password: password);
+        client = WebDavRemoteClient(
+          host: host,
+          port: port,
+          username: username,
+          password: password,
+          protocol: _webdavProtocol,
+          rootPath: path,
+        );
       } else if (_selectedType == 'LAN/SMB') {
         client = LanClient(host: host, port: port, username: username, password: password);
       }
@@ -161,7 +178,8 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
         port: port,
         username: username,
         password: password,
-        rootPath: '/',
+        rootPath: path,
+        protocol: _selectedType == 'WebDav' ? _webdavProtocol : 'http',
       );
 
       await NetworkConnectionsService.saveConnection(connection);
@@ -176,7 +194,12 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
               children: [
                 const Icon(Broken.tick_circle, color: Colors.white),
                 const SizedBox(width: 8),
-                Text('"${connection.name}" connected successfully!'),
+                Expanded(
+                  child: Text(
+                    '"${connection.name}" connected successfully!',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
             behavior: SnackBarBehavior.floating,
@@ -432,10 +455,18 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
           ),
           const SizedBox(height: 18),
 
+          if (_selectedType == 'WebDav') ...[
+            _buildInputLabel('Protocol'),
+            _buildProtocolToggle(theme),
+            const SizedBox(height: 18),
+          ],
+
           _buildInputLabel('Server Address / IP'),
           _buildTextField(
             controller: _hostController,
-            hint: 'e.g., 192.168.1.100 or nas.local',
+            hint: _selectedType == 'WebDav'
+                ? 'e.g., 192.168.1.100 or 192.168.1.100/dav'
+                : 'e.g., 192.168.1.100 or nas.local',
             icon: Broken.global,
           ),
           const SizedBox(height: 18),
@@ -443,11 +474,21 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
           _buildInputLabel('Port'),
           _buildTextField(
             controller: _portController,
-            hint: '21',
+            hint: _selectedType == 'WebDav' ? '80' : '21',
             icon: Broken.hashtag,
             keyboardType: TextInputType.number,
           ),
           const SizedBox(height: 18),
+
+          if (_selectedType == 'WebDav') ...[
+            _buildInputLabel('Path'),
+            _buildTextField(
+              controller: _pathController,
+              hint: 'e.g., /dav or /',
+              icon: Broken.folder_open,
+            ),
+            const SizedBox(height: 18),
+          ],
 
           _buildInputLabel('Username (Optional)'),
           _buildTextField(
@@ -720,5 +761,125 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
       size: size,
       color: customColor ?? color,
     );
+  }
+
+  Widget _buildProtocolToggle(ThemeData theme) {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildProtocolButton(
+            theme: theme,
+            label: 'HTTP',
+            isSelected: _webdavProtocol == 'http',
+            onTap: () {
+              setState(() {
+                _webdavProtocol = 'http';
+                if (_portController.text == '443' || _portController.text.isEmpty) {
+                  _portController.text = '80';
+                }
+              });
+            },
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildProtocolButton(
+            theme: theme,
+            label: 'HTTPS (Secure)',
+            isSelected: _webdavProtocol == 'https',
+            onTap: () {
+              setState(() {
+                _webdavProtocol = 'https';
+                if (_portController.text == '80' || _portController.text.isEmpty) {
+                  _portController.text = '443';
+                }
+              });
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProtocolButton({
+    required ThemeData theme,
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final isDark = theme.brightness == Brightness.dark;
+    final activeColor = theme.colorScheme.primary;
+    
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? activeColor.withOpacity(0.12)
+              : (isDark ? const Color(0xFF1E293B) : theme.colorScheme.primary.withOpacity(0.04)),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? activeColor : theme.colorScheme.outline.withOpacity(0.1),
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: isSelected ? activeColor : theme.colorScheme.onSurface.withOpacity(0.6),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _sanitizeWebdavFields() {
+    if (_selectedType != 'WebDav') return;
+    
+    var hostInput = _hostController.text.trim();
+    if (hostInput.isEmpty) return;
+
+    String protocol = _webdavProtocol;
+    String host = hostInput;
+    String portStr = _portController.text.trim();
+    String path = _pathController.text.trim();
+
+    // 1. Extract protocol if present
+    if (host.startsWith('http://')) {
+      protocol = 'http';
+      host = host.substring(7);
+    } else if (host.startsWith('https://')) {
+      protocol = 'https';
+      host = host.substring(8);
+    }
+
+    // 2. Extract port and path if present (e.g. 192.168.100.1:5244/dav)
+    // Find the first '/' to separate host/port from path
+    final slashIdx = host.indexOf('/');
+    if (slashIdx != -1) {
+      path = host.substring(slashIdx);
+      host = host.substring(0, slashIdx);
+    }
+
+    // Check if host has a port (e.g. 192.168.100.1:5244)
+    final colonIdx = host.indexOf(':');
+    if (colonIdx != -1) {
+      portStr = host.substring(colonIdx + 1);
+      host = host.substring(0, colonIdx);
+    }
+
+    // Update controllers and state variables
+    setState(() {
+      _webdavProtocol = protocol;
+      _hostController.text = host;
+      _portController.text = portStr.isNotEmpty ? portStr : (protocol == 'https' ? '443' : '80');
+      _pathController.text = path.isNotEmpty ? path : '/';
+    });
   }
 }

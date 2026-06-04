@@ -45,12 +45,10 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
   String _transferFileName = '';
   String _transferLabel = 'Transferring...';
 
-  // Remote clipboard (remote items copied/cut to paste elsewhere on remote)
-  _RemoteClipboard? _remoteClipboard;
-
   @override
   void initState() {
     super.initState();
+    _currentPath = widget.connection.rootPath;
     _initClient();
   }
 
@@ -67,7 +65,14 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
     } else if (conn.type == 'SFTP') {
       _client = SftpRemoteClient(host: conn.host, port: conn.port, username: conn.username, password: conn.password);
     } else if (conn.type == 'WebDav') {
-      _client = WebDavRemoteClient(host: conn.host, port: conn.port, username: conn.username, password: conn.password);
+      _client = WebDavRemoteClient(
+        host: conn.host,
+        port: conn.port,
+        username: conn.username,
+        password: conn.password,
+        protocol: conn.protocol,
+        rootPath: conn.rootPath,
+      );
     } else if (conn.type == 'LAN/SMB') {
       _client = LanClient(host: conn.host, port: conn.port, username: conn.username, password: conn.password);
     }
@@ -125,11 +130,14 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
   }
 
   void _navigateUp() {
-    if (_currentPath == '/') return;
+    if (_currentPath == widget.connection.rootPath) return;
     final parts = _currentPath.split('/');
     if (parts.isNotEmpty) parts.removeLast();
     var parent = parts.join('/');
     if (parent.isEmpty) parent = '/';
+    if (parent.length < widget.connection.rootPath.length) {
+      parent = widget.connection.rootPath;
+    }
     _loadDirectoryContents(parent);
   }
 
@@ -142,25 +150,31 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
   // ─────────────────────────────────────────────────────────────────────────
 
   void _copyRemoteItem(RemoteFileItem item) {
-    setState(() {
-      _remoteClipboard = _RemoteClipboard(items: [item], isCut: false);
-    });
+    context.read<FileManagerProvider>().setRemoteClipboard(
+      [item],
+      isCut: false,
+      connection: widget.connection,
+    );
     _showSnack('Copied "${item.name}" to clipboard');
   }
 
   void _cutRemoteItem(RemoteFileItem item) {
-    setState(() {
-      _remoteClipboard = _RemoteClipboard(items: [item], isCut: true);
-    });
+    context.read<FileManagerProvider>().setRemoteClipboard(
+      [item],
+      isCut: true,
+      connection: widget.connection,
+    );
     _showSnack('Cut "${item.name}" to clipboard');
   }
 
   /// Paste remote clipboard items to current remote directory
   Future<void> _pasteRemoteClipboard() async {
-    final clip = _remoteClipboard;
-    if (clip == null || _client == null) return;
+    final provider = context.read<FileManagerProvider>();
+    if (!provider.isRemoteClipboard || _client == null) return;
+    final clipItems = provider.remoteClipboardItems;
+    final isCut = provider.isCut;
 
-    for (final item in clip.items) {
+    for (final item in clipItems) {
       final destPath = _currentPath == '/'
           ? '/${item.name}'
           : '$_currentPath/${item.name}';
@@ -174,7 +188,7 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
         _isTransferring = true;
         _transferProgress = 0.0;
         _transferFileName = item.name;
-        _transferLabel = clip.isCut ? 'Moving...' : 'Copying...';
+        _transferLabel = isCut ? 'Moving...' : 'Copying...';
       });
 
       try {
@@ -190,7 +204,7 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
           if (mounted) setState(() => _transferProgress = 0.5 + p * 0.5);
         });
 
-        if (clip.isCut) {
+        if (isCut) {
           await _client!.delete(item.path, item.isDirectory);
         }
 
@@ -208,9 +222,9 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
     if (mounted) {
       setState(() {
         _isTransferring = false;
-        if (clip.isCut) _remoteClipboard = null;
       });
-      _showSnack('Pasted ${clip.items.length} item(s) successfully');
+      if (isCut) provider.clearClipboard();
+      _showSnack('Pasted items successfully');
       await _loadDirectoryContents(_currentPath);
     }
   }
@@ -595,19 +609,26 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
     final isDark = theme.brightness == Brightness.dark;
     final provider = context.watch<FileManagerProvider>();
 
-    final pathNodes = _currentPath == '/'
-        ? ['Root']
-        : ['Root', ..._currentPath.split('/').where((n) => n.isNotEmpty)];
+    final rootPath = widget.connection.rootPath;
+    String relativePath = _currentPath;
+    if (_currentPath.startsWith(rootPath)) {
+      relativePath = _currentPath.substring(rootPath.length);
+    }
+    if (relativePath.isEmpty || relativePath == '/') relativePath = '';
 
-    final hasLocalClipboard = provider.hasClipboard;
-    final hasRemoteClipboard = _remoteClipboard != null;
+    final pathNodes = relativePath.isEmpty
+        ? ['Root']
+        : ['Root', ...relativePath.split('/').where((n) => n.isNotEmpty)];
+
+    final hasLocalClipboard = provider.clipboardPaths.isNotEmpty;
+    final hasRemoteClipboard = provider.isRemoteClipboard;
 
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           onPressed: () {
-            if (_currentPath != '/') _navigateUp();
+            if (_currentPath != widget.connection.rootPath) _navigateUp();
             else Navigator.pop(context);
           },
         ),
@@ -647,12 +668,12 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
                   Icon(Icons.content_paste_rounded, size: 20, color: theme.colorScheme.primary),
                   Container(
                     width: 8, height: 8,
-                    decoration: BoxDecoration(color: _remoteClipboard!.isCut ? Colors.orange : Colors.green, shape: BoxShape.circle,
+                    decoration: BoxDecoration(color: provider.isCut ? Colors.orange : Colors.green, shape: BoxShape.circle,
                       border: Border.all(color: theme.scaffoldBackgroundColor, width: 1)),
                   ),
                 ],
               ),
-              tooltip: _remoteClipboard!.isCut ? 'Move here' : 'Paste remote clipboard',
+              tooltip: provider.isCut ? 'Move here' : 'Paste remote clipboard',
               onPressed: _pasteRemoteClipboard,
             ),
           IconButton(
@@ -718,9 +739,10 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
                       itemCount: pathNodes.length,
                       itemBuilder: (context, idx) {
                         final isLast = idx == pathNodes.length - 1;
-                        String reconstructedPath = '/';
+                        String reconstructedPath = rootPath;
                         if (idx > 0) {
-                          reconstructedPath = '/' + pathNodes.sublist(1, idx + 1).join('/');
+                          final sub = pathNodes.sublist(1, idx + 1).join('/');
+                          reconstructedPath = rootPath.endsWith('/') ? '$rootPath$sub' : '$rootPath/$sub';
                         }
                         return Row(
                           children: [
@@ -784,7 +806,7 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
                             itemCount: _items.length,
                             itemBuilder: (context, index) {
                               final item = _items[index];
-                              final isInRemoteClip = _remoteClipboard?.items.any((e) => e.path == item.path) ?? false;
+                              final isInRemoteClip = provider.isRemoteClipboard && provider.remoteClipboardItems.any((e) => e.path == item.path);
 
                               return ListTile(
                                 leading: Container(
@@ -803,7 +825,7 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
                                   style: TextStyle(
                                     fontSize: 14, fontWeight: FontWeight.w600,
                                     color: isInRemoteClip ? theme.colorScheme.primary.withOpacity(0.6) : null,
-                                    decoration: (isInRemoteClip && (_remoteClipboard?.isCut ?? false))
+                                    decoration: (isInRemoteClip && provider.isCut)
                                         ? TextDecoration.lineThrough : null,
                                   ),
                                   overflow: TextOverflow.ellipsis),
@@ -884,7 +906,7 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
             child: Text(
               hasLocal
                   ? '${provider.clipboardPaths.length} local file(s) ready to upload'
-                  : '${_remoteClipboard!.items.length} remote item(s) ${_remoteClipboard!.isCut ? "cut" : "copied"}',
+                  : '${provider.remoteClipboardItems.length} remote item(s) ${provider.isCut ? "cut" : "copied"}',
               style: TextStyle(fontSize: 12, color: theme.colorScheme.primary, fontWeight: FontWeight.w600),
             ),
           ),
@@ -915,8 +937,7 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
           const SizedBox(width: 4),
           GestureDetector(
             onTap: () {
-              if (hasLocal) provider.clearClipboard();
-              if (hasRemote) setState(() => _remoteClipboard = null);
+              provider.clearClipboard();
             },
             child: Icon(Icons.close_rounded, size: 18, color: theme.colorScheme.onSurface.withOpacity(0.4)),
           ),

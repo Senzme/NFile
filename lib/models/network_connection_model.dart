@@ -7,6 +7,7 @@ class NetworkConnectionModel {
   final String username;
   final String password;
   final String rootPath;
+  final String protocol;
 
   NetworkConnectionModel({
     required this.id,
@@ -17,6 +18,7 @@ class NetworkConnectionModel {
     required this.username,
     required this.password,
     this.rootPath = '/',
+    this.protocol = 'http',
   });
 
   Map<String, dynamic> toJson() => {
@@ -28,6 +30,7 @@ class NetworkConnectionModel {
         'username': username,
         'password': password,
         'rootPath': rootPath,
+        'protocol': protocol,
       };
 
   factory NetworkConnectionModel.fromJson(Map<String, dynamic> json) =>
@@ -40,5 +43,6 @@ class NetworkConnectionModel {
         username: json['username'] as String,
         password: json['password'] as String,
         rootPath: (json['rootPath'] as String?) ?? '/',
+        protocol: (json['protocol'] as String?) ?? 'http',
       );
 }

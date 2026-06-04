@@ -8,6 +8,8 @@ class WebDavRemoteClient implements RemoteClient {
   final int port;
   final String username;
   final String password;
+  final String protocol;
+  final String rootPath;
   
   late HttpClient _httpClient;
 
@@ -16,14 +18,25 @@ class WebDavRemoteClient implements RemoteClient {
     required this.port,
     required this.username,
     required this.password,
+    this.protocol = 'http',
+    this.rootPath = '/',
   }) {
     _httpClient = HttpClient();
     _httpClient.connectionTimeout = const Duration(seconds: 15);
   }
 
   String get _baseUrl {
-    final scheme = (port == 443) ? 'https' : 'http';
-    return '$scheme://$host:$port';
+    var sanitizedHost = host.trim();
+    if (sanitizedHost.startsWith('http://')) {
+      sanitizedHost = sanitizedHost.substring(7);
+    } else if (sanitizedHost.startsWith('https://')) {
+      sanitizedHost = sanitizedHost.substring(8);
+    }
+    if (sanitizedHost.contains('/')) {
+      final parts = sanitizedHost.split('/');
+      sanitizedHost = parts.first;
+    }
+    return '$protocol://$sanitizedHost:$port';
   }
 
   String _authHeader() {
@@ -35,7 +48,14 @@ class WebDavRemoteClient implements RemoteClient {
 
   @override
   Future<void> connect() async {
-    final url = Uri.parse('$_baseUrl/');
+    var normalizedRoot = rootPath;
+    if (!normalizedRoot.startsWith('/')) {
+      normalizedRoot = '/$normalizedRoot';
+    }
+    if (!normalizedRoot.endsWith('/')) {
+      normalizedRoot = '$normalizedRoot/';
+    }
+    final url = Uri.parse('$_baseUrl$normalizedRoot');
     final request = await _httpClient.openUrl('PROPFIND', url);
     request.headers.set('Depth', '0');
     final auth = _authHeader();
@@ -65,6 +85,7 @@ class WebDavRemoteClient implements RemoteClient {
     }
 
     final url = Uri.parse(_baseUrl + Uri.encodeFull(normalizedPath));
+    print('[WebDAV DEBUG] PROPFIND URL: $url');
     final request = await _httpClient.openUrl('PROPFIND', url);
     request.headers.set('Depth', '1');
     final auth = _authHeader();
@@ -73,22 +94,28 @@ class WebDavRemoteClient implements RemoteClient {
     }
     
     final response = await request.close();
+    print('[WebDAV DEBUG] Response status: ${response.statusCode}');
     if (response.statusCode >= 400) {
       throw Exception('WebDAV list error: ${response.statusCode}');
     }
 
     final body = await response.transform(utf8.decoder).join();
+    print('[WebDAV DEBUG] Response body length: ${body.length}');
+    print('[WebDAV DEBUG] Response body: $body');
     final document = xml.XmlDocument.parse(body);
     
-    // Find response tags under any namespace
-    final responses = document.findAllElements('d:response').isNotEmpty 
-        ? document.findAllElements('d:response') 
-        : document.findAllElements('response');
+    // Find response tags under any namespace prefix case-insensitively
+    final responses = document.descendants
+        .whereType<xml.XmlElement>()
+        .where((element) => element.name.local.toLowerCase() == 'response');
 
     final list = <RemoteFileItem>[];
 
     for (final element in responses) {
-      final hrefElement = element.findElements('d:href').firstOrNull ?? element.findElements('href').firstOrNull;
+      final hrefElement = element.children
+          .whereType<xml.XmlElement>()
+          .where((el) => el.name.local.toLowerCase() == 'href')
+          .firstOrNull;
       if (hrefElement == null) continue;
       
       var href = Uri.decodeFull(hrefElement.innerText);
@@ -101,26 +128,38 @@ class WebDavRemoteClient implements RemoteClient {
         continue;
       }
 
-      final propstats = element.findAllElements('d:propstat').isNotEmpty 
-          ? element.findAllElements('d:propstat') 
-          : element.findAllElements('propstat');
+      final propstats = element.children
+          .whereType<xml.XmlElement>()
+          .where((el) => el.name.local.toLowerCase() == 'propstat');
       
       var isCollection = false;
       var size = 0;
       var modified = DateTime.now();
 
       for (final propstat in propstats) {
-        final resourcetype = propstat.findAllElements('d:resourcetype').firstOrNull ?? propstat.findAllElements('resourcetype').firstOrNull;
+        final resourcetype = propstat.descendants
+            .whereType<xml.XmlElement>()
+            .where((el) => el.name.local.toLowerCase() == 'resourcetype')
+            .firstOrNull;
         if (resourcetype != null) {
-          isCollection = resourcetype.findAllElements('d:collection').isNotEmpty || resourcetype.findAllElements('collection').isNotEmpty;
+          isCollection = resourcetype.descendants
+              .whereType<xml.XmlElement>()
+              .where((el) => el.name.local.toLowerCase() == 'collection')
+              .isNotEmpty;
         }
 
-        final getcontentlength = propstat.findAllElements('d:getcontentlength').firstOrNull ?? propstat.findAllElements('getcontentlength').firstOrNull;
+        final getcontentlength = propstat.descendants
+            .whereType<xml.XmlElement>()
+            .where((el) => el.name.local.toLowerCase() == 'getcontentlength')
+            .firstOrNull;
         if (getcontentlength != null) {
           size = int.tryParse(getcontentlength.innerText) ?? 0;
         }
 
-        final getlastmodified = propstat.findAllElements('d:getlastmodified').firstOrNull ?? propstat.findAllElements('getlastmodified').firstOrNull;
+        final getlastmodified = propstat.descendants
+            .whereType<xml.XmlElement>()
+            .where((el) => el.name.local.toLowerCase() == 'getlastmodified')
+            .firstOrNull;
         if (getlastmodified != null) {
           try {
             modified = HttpDate.parse(getlastmodified.innerText);

@@ -31,6 +31,12 @@ import '../ui/widgets/conflict_dialog.dart';
 import '../ui/widgets/file_action_dialogs.dart';
 import '../services/background_archive_service.dart';
 import '../services/pin_service.dart';
+import '../models/network_connection_model.dart';
+import '../services/remote/remote_client.dart';
+import '../services/remote/ftp_client.dart';
+import '../services/remote/sftp_client.dart';
+import '../services/remote/webdav_client.dart';
+import '../services/remote/lan_client.dart';
 
 enum FileSortType {
   nameAsc,
@@ -846,21 +852,47 @@ class FileManagerProvider extends ChangeNotifier {
   String? _sourceArchiveForCut;
   List<String>? _internalSourcePathsForCut;
 
-  bool get hasClipboard => _clipboardPaths.isNotEmpty;
+  // Remote Clipboard support
+  bool _isRemoteClipboard = false;
+  final List<RemoteFileItem> _remoteClipboardItems = [];
+  NetworkConnectionModel? _remoteClipboardConnection;
+
+  bool get hasClipboard => _clipboardPaths.isNotEmpty || _isRemoteClipboard;
   List<String> get clipboardPaths => _clipboardPaths;
   bool get isCut => _isCut;
+  bool get isRemoteClipboard => _isRemoteClipboard;
+  List<RemoteFileItem> get remoteClipboardItems => _remoteClipboardItems;
+  NetworkConnectionModel? get remoteClipboardConnection => _remoteClipboardConnection;
 
   void setClipboard(List<String> paths, {required bool isCut, String? sourceArchive, List<String>? internalSourcePaths}) {
     _clipboardPaths.clear();
     _clipboardPaths.addAll(paths);
+    _isRemoteClipboard = false;
+    _remoteClipboardItems.clear();
+    _remoteClipboardConnection = null;
     _isCut = isCut;
     _sourceArchiveForCut = sourceArchive;
     _internalSourcePathsForCut = internalSourcePaths;
     notifyListeners();
   }
 
+  void setRemoteClipboard(List<RemoteFileItem> items, {required bool isCut, required NetworkConnectionModel connection}) {
+    _clipboardPaths.clear();
+    _isRemoteClipboard = true;
+    _remoteClipboardItems.clear();
+    _remoteClipboardItems.addAll(items);
+    _remoteClipboardConnection = connection;
+    _isCut = isCut;
+    _sourceArchiveForCut = null;
+    _internalSourcePathsForCut = null;
+    notifyListeners();
+  }
+
   void clearClipboard() {
     _clipboardPaths.clear();
+    _isRemoteClipboard = false;
+    _remoteClipboardItems.clear();
+    _remoteClipboardConnection = null;
     _isCut = false;
     _sourceArchiveForCut = null;
     _internalSourcePathsForCut = null;
@@ -1384,7 +1416,12 @@ class FileManagerProvider extends ChangeNotifier {
   }
 
   Future<void> pasteFile(BuildContext context, {bool clearAfterPaste = true}) async {
-    if (_clipboardPaths.isEmpty) return;
+    if (_clipboardPaths.isEmpty && !_isRemoteClipboard) return;
+
+    if (_isRemoteClipboard) {
+      await _pasteFromRemoteToLocal(context, clearAfterPaste);
+      return;
+    }
 
     _isOperationCancelled = false;
     activeTab.isLoading = true;
@@ -1766,6 +1803,169 @@ class FileManagerProvider extends ChangeNotifier {
       activeTab.isLoading = false;
       await loadDirectory(currentPath, showLoading: false);
       notifyListeners();
+    }
+  }
+
+  Future<void> _pasteFromRemoteToLocal(BuildContext context, bool clearAfterPaste) async {
+    final conn = _remoteClipboardConnection;
+    if (conn == null) {
+      activeTab.isLoading = false;
+      notifyListeners();
+      return;
+    }
+
+    RemoteClient? client;
+    if (conn.type == 'FTP') {
+      client = FtpRemoteClient(host: conn.host, port: conn.port, username: conn.username, password: conn.password);
+    } else if (conn.type == 'SFTP') {
+      client = SftpRemoteClient(host: conn.host, port: conn.port, username: conn.username, password: conn.password);
+    } else if (conn.type == 'WebDav') {
+      client = WebDavRemoteClient(
+        host: conn.host,
+        port: conn.port,
+        username: conn.username,
+        password: conn.password,
+        protocol: conn.protocol,
+        rootPath: conn.rootPath,
+      );
+    } else if (conn.type == 'LAN/SMB') {
+      client = LanClient(host: conn.host, port: conn.port, username: conn.username, password: conn.password);
+    }
+
+    if (client == null) {
+      activeTab.isLoading = false;
+      notifyListeners();
+      return;
+    }
+
+    try {
+      await client.connect();
+    } catch (e) {
+      debugPrint('Failed to connect to remote server for paste: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to connect to remote server: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      activeTab.isLoading = false;
+      notifyListeners();
+      return;
+    }
+
+    try {
+      final totalFiles = _remoteClipboardItems.length;
+      progressNotifier.value = FileOperationProgress(
+        totalFiles: totalFiles,
+        currentFileIndex: 1,
+        currentFileName: 'Connecting...',
+        percentage: 0.0,
+        speedMBs: 0.0,
+        eta: Duration.zero,
+        totalBytes: 1,
+        bytesProcessed: 0,
+      );
+
+      final targetPath = currentPath;
+
+      for (int i = 0; i < _remoteClipboardItems.length; i++) {
+        if (_isOperationCancelled) {
+          throw Exception('Cancelled');
+        }
+
+        final remoteItem = _remoteClipboardItems[i];
+        final destPath = p.join(targetPath, remoteItem.name);
+
+        progressNotifier.value = FileOperationProgress(
+          totalFiles: totalFiles,
+          currentFileIndex: i + 1,
+          currentFileName: remoteItem.name,
+          percentage: (i / totalFiles),
+          speedMBs: 0.0,
+          eta: Duration.zero,
+          totalBytes: totalFiles,
+          bytesProcessed: i,
+        );
+
+        if (remoteItem.isDirectory) {
+          await _downloadRemoteDirectory(client, remoteItem.path, destPath);
+        } else {
+          await client.downloadFile(remoteItem.path, destPath, (prog) {
+            progressNotifier.value = FileOperationProgress(
+              totalFiles: totalFiles,
+              currentFileIndex: i + 1,
+              currentFileName: remoteItem.name,
+              percentage: (i + prog) / totalFiles,
+              speedMBs: 0.0,
+              eta: Duration.zero,
+              totalBytes: totalFiles,
+              bytesProcessed: i,
+            );
+          });
+        }
+
+        if (_isCut) {
+          try {
+            await client.delete(remoteItem.path, remoteItem.isDirectory);
+          } catch (e) {
+            debugPrint('Failed to delete remote item after cut: $e');
+          }
+        }
+      }
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_isCut ? 'Moved items successfully' : 'Copied items successfully'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error pasting from remote: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().contains('Cancelled') ? 'Operation Cancelled' : 'Transfer failed: $e'),
+            backgroundColor: e.toString().contains('Cancelled') ? null : Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      try {
+        await client.disconnect();
+      } catch (_) {}
+      progressNotifier.value = null;
+      if (clearAfterPaste) {
+        clearClipboard();
+      }
+      activeTab.isLoading = false;
+      await loadDirectory(currentPath, showLoading: false);
+      notifyListeners();
+    }
+  }
+
+  Future<void> _downloadRemoteDirectory(RemoteClient client, String remoteDirPath, String localDirPath) async {
+    final localDir = Directory(localDirPath);
+    if (!localDir.existsSync()) {
+      localDir.createSync(recursive: true);
+    }
+
+    final List<RemoteFileItem> remoteItems = await client.listDirectory(remoteDirPath);
+    for (final item in remoteItems) {
+      if (_isOperationCancelled) {
+        throw Exception('Cancelled');
+      }
+      final destPath = p.join(localDirPath, item.name);
+      if (item.isDirectory) {
+        await _downloadRemoteDirectory(client, item.path, destPath);
+      } else {
+        await client.downloadFile(item.path, destPath, (prog) {});
+      }
     }
   }
 
