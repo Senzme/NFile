@@ -432,49 +432,51 @@ class MediaProvider extends ChangeNotifier {
     // Fast initial load from disk cache
     await _loadFromDiskCache();
 
-    PermissionState ps = PermissionState.denied;
-    try {
-      ps = await PhotoManager.requestPermissionExtend();
-    } catch (_) {}
-
-    bool hasAudioPermission = false;
-    try {
-      hasAudioPermission = await _audioQuery.permissionsStatus();
-      if (!hasAudioPermission && Platform.isAndroid) {
-        final info = await DeviceInfoPlugin().androidInfo;
-        final sdk = info.version.sdkInt;
-        if (sdk >= 33) {
-          final status = await Permission.audio.request();
-          hasAudioPermission = status.isGranted;
-        } else {
-          final status = await Permission.storage.request();
-          hasAudioPermission = status.isGranted;
-        }
-      }
-    } catch (_) {}
-
     bool isStorageGranted = false;
     try {
       isStorageGranted = await Permission.storage.isGranted || await Permission.manageExternalStorage.isGranted;
     } catch (_) {}
 
-    // Android 10 (API 29) / 11 / 12: explicitly request legacy storage + media location
-    // so that photo_manager can access images & videos on those API levels.
-    if (Platform.isAndroid) {
-      try {
-        final info = await DeviceInfoPlugin().androidInfo;
-        final sdk = info.version.sdkInt;
-        if (sdk < 33) {
-          // Request READ_EXTERNAL_STORAGE (legacy) – required up to API 32
-          final storageStatus = await Permission.storage.request();
-          if (storageStatus.isGranted) isStorageGranted = true;
-          // ACCESS_MEDIA_LOCATION – required on API 29+ for image/video metadata
-          await Permission.accessMediaLocation.request();
-          // Tell photo_manager to bypass its own permission gate so it uses
-          // the legacy storage grant we just obtained.
-          PhotoManager.setIgnorePermissionCheck(true);
-        }
-      } catch (_) {}
+    PermissionState ps = PermissionState.denied;
+    bool hasAudioPermission = false;
+
+    if (isStorageGranted) {
+      ps = PermissionState.authorized;
+      hasAudioPermission = true;
+    } else {
+      if (Platform.isAndroid) {
+        try {
+          final info = await DeviceInfoPlugin().androidInfo;
+          final sdk = info.version.sdkInt;
+          if (sdk < 33) {
+            final storageStatus = await Permission.storage.request();
+            if (storageStatus.isGranted) {
+              isStorageGranted = true;
+              ps = PermissionState.authorized;
+              hasAudioPermission = true;
+            }
+            await Permission.accessMediaLocation.request();
+            PhotoManager.setIgnorePermissionCheck(true);
+          } else {
+            try {
+              ps = await PhotoManager.requestPermissionExtend();
+            } catch (_) {}
+
+            try {
+              hasAudioPermission = await _audioQuery.permissionsStatus();
+              if (!hasAudioPermission) {
+                final status = await Permission.audio.request();
+                hasAudioPermission = status.isGranted;
+              }
+            } catch (_) {}
+          }
+        } catch (_) {}
+      } else {
+        try {
+          ps = await PhotoManager.requestPermissionExtend();
+        } catch (_) {}
+        hasAudioPermission = true;
+      }
     }
 
     final futures = <Future<void>>[];
