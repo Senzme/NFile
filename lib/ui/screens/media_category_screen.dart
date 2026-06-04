@@ -474,7 +474,7 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
             if (count == 1) fullPath = f.path;
             if (count == 1 && nameDisplay.isEmpty) nameDisplay = f.path.split('/').last;
             try {
-              final st = f.statSync();
+              final FileStat st = f.statSync();
               totalBytes += st.size;
               if (count == 1) {
                 lastMod = st.modified;
@@ -502,7 +502,7 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
       try {
         final f = File(p);
         if (f.existsSync()) {
-          final st = f.statSync();
+          final FileStat st = f.statSync();
           totalBytes += st.size;
           if (count == 1) {
             lastMod = st.modified;
@@ -1152,35 +1152,68 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
   }
 
   Widget _buildImageTile(
-    AssetEntity asset,
+    dynamic item,
     ThemeData theme,
     bool isSelected,
     bool showDate,
     String dateStr,
-    List<AssetEntity> images,
+    List<dynamic> images,
   ) {
+    final isAsset = item is AssetEntity;
+    final id = isAsset ? item.id : item.path;
+    final path = isAsset ? '' : item.path;
+    final title = isAsset ? (item.title ?? 'Image_$id') : path_helper.basename(path);
+
     return Stack(
-      key: ValueKey(asset.id),
+      key: ValueKey(id),
       fit: StackFit.expand,
       children: [
-        _CachedImageTile(
-          asset: asset,
-          onTap: () async {
-            if (_isSelectionMode) {
-              _toggleSelection(null, asset.id);
-            } else {
-              final file = await asset.file;
-              if (file != null && mounted) {
+        if (isAsset)
+          _CachedImageTile(
+            asset: item,
+            onTap: () async {
+              if (_isSelectionMode) {
+                _toggleSelection(null, item.id);
+              } else {
+                final file = await item.file;
+                if (file != null && mounted) {
+                  Navigator.push(context, _slideRoute(ImageViewerScreen(
+                    imagePath: file.path,
+                    siblingItems: images,
+                    initialAssetId: item.id,
+                  )));
+                }
+              }
+            },
+            onLongPress: () => _toggleSelection(null, item.id),
+          )
+        else
+          GestureDetector(
+            onTap: () {
+              if (_isSelectionMode) {
+                _toggleSelection(path, null);
+              } else {
                 Navigator.push(context, _slideRoute(ImageViewerScreen(
-                  imagePath: file.path,
-                  siblingAssets: images,
-                  initialAssetId: asset.id,
+                  imagePath: path,
+                  siblingItems: images,
                 )));
               }
-            }
-          },
-          onLongPress: () => _toggleSelection(null, asset.id),
-        ),
+            },
+            onLongPress: () => _toggleSelection(path, null),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.file(
+                File(path),
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  color: Colors.grey.withOpacity(0.1),
+                  child: const Center(child: Icon(Broken.image, size: 24, color: Colors.grey)),
+                ),
+              ),
+            ),
+          ),
         if (showDate)
           Positioned(
             bottom: 4,
@@ -1210,9 +1243,13 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
             right: 4,
             child: InkWell(
               onTap: () async {
-                final f = await asset.file;
-                if (f != null) {
-                  _showSingleItemOptions(name: asset.title ?? 'Image_${asset.id}', filePath: f.path, assetId: asset.id);
+                if (isAsset) {
+                  final f = await item.file;
+                  if (f != null) {
+                    _showSingleItemOptions(name: title, filePath: f.path, assetId: item.id);
+                  }
+                } else {
+                  _showSingleItemOptions(name: title, filePath: path);
                 }
               },
               child: Container(
@@ -1226,18 +1263,28 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
     );
   }
 
-  Widget _buildImageGrid(List<AssetEntity> images, ThemeData theme, bool isDateWise, bool isGrouped) {
+  Widget _buildImageGrid(List<dynamic> images, ThemeData theme, bool isDateWise, bool isGrouped) {
     if (images.isEmpty) return _buildEmptyState(theme);
     if (isGrouped) {
-      return _buildGroupedView<AssetEntity>(
+      return _buildGroupedView<dynamic>(
         items: images,
         theme: theme,
         isGrid: true,
         isDateWise: isDateWise,
-        itemTileBuilder: (asset, showDate) {
-          final isSelected = _selectedAssetIds.contains(asset.id);
-          final dateStr = FileUtils.formatDate(asset.createDateTime);
-          return _buildImageTile(asset, theme, isSelected, showDate, dateStr, images);
+        itemTileBuilder: (item, showDate) {
+          final isSelected = item is AssetEntity
+              ? _selectedAssetIds.contains(item.id)
+              : _selectedFilePaths.contains(item.path);
+          DateTime date = DateTime.fromMillisecondsSinceEpoch(0);
+          if (item is AssetEntity) {
+            date = item.createDateTime;
+          } else if (item is FileSystemEntity) {
+            try {
+              date = File(item.path).statSync().modified;
+            } catch (_) {}
+          }
+          final dateStr = FileUtils.formatDate(date);
+          return _buildImageTile(item, theme, isSelected, showDate, dateStr, images);
         },
       );
     }
@@ -1247,49 +1294,106 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 6, mainAxisSpacing: 6),
       itemCount: images.length,
       itemBuilder: (context, index) {
-        final asset = images[index];
-        final isSelected = _selectedAssetIds.contains(asset.id);
-        final dateStr = FileUtils.formatDate(asset.createDateTime);
-        return _buildImageTile(asset, theme, isSelected, isDateWise, dateStr, images);
+        final item = images[index];
+        final isSelected = item is AssetEntity
+            ? _selectedAssetIds.contains(item.id)
+            : _selectedFilePaths.contains(item.path);
+        DateTime date = DateTime.fromMillisecondsSinceEpoch(0);
+        if (item is AssetEntity) {
+          date = item.createDateTime;
+        } else if (item is FileSystemEntity) {
+          try {
+            date = File(item.path).statSync().modified;
+          } catch (_) {}
+        }
+        final dateStr = FileUtils.formatDate(date);
+        return _buildImageTile(item, theme, isSelected, isDateWise, dateStr, images);
       },
     );
   }
 
   Widget _buildVideoTile(
-    AssetEntity asset,
+    dynamic item,
     ThemeData theme,
     bool isSelected,
     bool showDate,
     String dateStr,
-    List<AssetEntity> videoList,
+    List<dynamic> videoList,
   ) {
+    final isAsset = item is AssetEntity;
+    final id = isAsset ? item.id : item.path;
+    final path = isAsset ? '' : item.path;
+    final title = isAsset ? (item.title ?? 'Video_$id') : path_helper.basename(path);
+
     return Stack(
-      key: ValueKey(asset.id),
+      key: ValueKey(id),
       fit: StackFit.expand,
       children: [
-        _CachedVideoTile(
-          asset: asset,
-          onTap: () async {
-            if (_isSelectionMode) {
-              _toggleSelection(null, asset.id);
-            } else {
-              final file = await asset.file;
-              if (file != null && mounted) {
+        if (isAsset)
+          _CachedVideoTile(
+            asset: item,
+            onTap: () async {
+              if (_isSelectionMode) {
+                _toggleSelection(null, item.id);
+              } else {
+                final file = await item.file;
+                if (file != null && mounted) {
+                  Navigator.push(
+                    context,
+                    _slideRoute(
+                      VideoPlayerScreen(
+                        videoPath: file.path,
+                        playlist: videoList,
+                        initialIndex: videoList.indexOf(item),
+                      ),
+                    ),
+                  );
+                }
+              }
+            },
+            onLongPress: () => _toggleSelection(null, item.id),
+          )
+        else
+          GestureDetector(
+            onTap: () {
+              if (_isSelectionMode) {
+                _toggleSelection(path, null);
+              } else {
                 Navigator.push(
                   context,
                   _slideRoute(
                     VideoPlayerScreen(
-                      videoPath: file.path,
-                      assetPlaylist: videoList,
-                      initialIndex: videoList.indexOf(asset),
+                      videoPath: path,
+                      playlist: videoList,
+                      initialIndex: videoList.indexOf(item),
                     ),
                   ),
                 );
               }
-            }
-          },
-          onLongPress: () => _toggleSelection(null, asset.id),
-        ),
+            },
+            onLongPress: () => _toggleSelection(path, null),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                color: theme.colorScheme.surfaceVariant,
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Broken.video, size: 28, color: theme.colorScheme.primary),
+                    const SizedBox(height: 6),
+                    Text(
+                      title,
+                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         if (showDate)
           Positioned(
             bottom: 4,
@@ -1319,9 +1423,13 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
             right: 4,
             child: InkWell(
               onTap: () async {
-                final f = await asset.file;
-                if (f != null) {
-                  _showSingleItemOptions(name: asset.title ?? 'Video_${asset.id}', filePath: f.path, assetId: asset.id);
+                if (isAsset) {
+                  final f = await item.file;
+                  if (f != null) {
+                    _showSingleItemOptions(name: title, filePath: f.path, assetId: item.id);
+                  }
+                } else {
+                  _showSingleItemOptions(name: title, filePath: path);
                 }
               },
               child: Container(
@@ -1335,18 +1443,28 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
     );
   }
 
-  Widget _buildVideoGrid(List<AssetEntity> videos, ThemeData theme, bool isDateWise, bool isGrouped) {
+  Widget _buildVideoGrid(List<dynamic> videos, ThemeData theme, bool isDateWise, bool isGrouped) {
     if (videos.isEmpty) return _buildEmptyState(theme);
     if (isGrouped) {
-      return _buildGroupedView<AssetEntity>(
+      return _buildGroupedView<dynamic>(
         items: videos,
         theme: theme,
         isGrid: true,
         isDateWise: isDateWise,
-        itemTileBuilder: (asset, showDate) {
-          final isSelected = _selectedAssetIds.contains(asset.id);
-          final dateStr = FileUtils.formatDate(asset.createDateTime);
-          return _buildVideoTile(asset, theme, isSelected, showDate, dateStr, videos);
+        itemTileBuilder: (item, showDate) {
+          final isSelected = item is AssetEntity
+              ? _selectedAssetIds.contains(item.id)
+              : _selectedFilePaths.contains(item.path);
+          DateTime date = DateTime.fromMillisecondsSinceEpoch(0);
+          if (item is AssetEntity) {
+            date = item.createDateTime;
+          } else if (item is FileSystemEntity) {
+            try {
+              date = File(item.path).statSync().modified;
+            } catch (_) {}
+          }
+          final dateStr = FileUtils.formatDate(date);
+          return _buildVideoTile(item, theme, isSelected, showDate, dateStr, videos);
         },
       );
     }
@@ -1356,10 +1474,20 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 6, mainAxisSpacing: 6),
       itemCount: videos.length,
       itemBuilder: (context, index) {
-        final asset = videos[index];
-        final isSelected = _selectedAssetIds.contains(asset.id);
-        final dateStr = FileUtils.formatDate(asset.createDateTime);
-        return _buildVideoTile(asset, theme, isSelected, isDateWise, dateStr, videos);
+        final item = videos[index];
+        final isSelected = item is AssetEntity
+            ? _selectedAssetIds.contains(item.id)
+            : _selectedFilePaths.contains(item.path);
+        DateTime date = DateTime.fromMillisecondsSinceEpoch(0);
+        if (item is AssetEntity) {
+          date = item.createDateTime;
+        } else if (item is FileSystemEntity) {
+          try {
+            date = File(item.path).statSync().modified;
+          } catch (_) {}
+        }
+        final dateStr = FileUtils.formatDate(date);
+        return _buildVideoTile(item, theme, isSelected, isDateWise, dateStr, videos);
       },
     );
   }

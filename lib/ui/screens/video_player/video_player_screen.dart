@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
@@ -13,7 +14,7 @@ import 'vertical_slider_widget.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final String videoPath;
-  final List<String>? playlist;
+  final List<dynamic>? playlist;
   final List<AssetEntity>? assetPlaylist;
   final int? initialIndex;
 
@@ -194,7 +195,24 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     });
 
     if (widget.playlist != null) {
-      player.open(Media(widget.playlist![index]));
+      final item = widget.playlist![index];
+      if (item is String) {
+        player.open(Media(item));
+      } else if (item is FileSystemEntity) {
+        player.open(Media(item.path));
+      } else if (item is AssetEntity) {
+        setState(() => _isResolvingAsset = true);
+        try {
+          final file = await item.file;
+          if (file != null && mounted) {
+            player.open(Media(file.path));
+          }
+        } catch (e) {
+          debugPrint('Error resolving video asset: $e');
+        } finally {
+          if (mounted) setState(() => _isResolvingAsset = false);
+        }
+      }
     } else if (widget.assetPlaylist != null) {
       setState(() => _isResolvingAsset = true);
       try {
@@ -358,9 +376,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
   String get _fileName {
     String currentPath = widget.videoPath;
-    if (widget.playlist != null) {
-      currentPath = widget.playlist![_currentIndex];
-    } else if (widget.assetPlaylist != null) {
+    if (widget.playlist != null && _currentIndex < widget.playlist!.length) {
+      final item = widget.playlist![_currentIndex];
+      if (item is String) {
+        currentPath = item;
+      } else if (item is FileSystemEntity) {
+        currentPath = item.path;
+      } else if (item is AssetEntity) {
+        currentPath = item.title ?? 'Video';
+      }
+    } else if (widget.assetPlaylist != null && _currentIndex < widget.assetPlaylist!.length) {
       currentPath = widget.assetPlaylist![_currentIndex].title ?? 'Video';
     }
     final name = currentPath.split('/').last.split('\\').last;

@@ -22,6 +22,7 @@ class ImageViewerScreen extends StatefulWidget {
   final String imagePath;
   final List<String>? siblingPaths;
   final List<AssetEntity>? siblingAssets;
+  final List<dynamic>? siblingItems;
   final String? initialAssetId;
 
   const ImageViewerScreen({
@@ -29,6 +30,7 @@ class ImageViewerScreen extends StatefulWidget {
     required this.imagePath,
     this.siblingPaths,
     this.siblingAssets,
+    this.siblingItems,
     this.initialAssetId,
   });
 
@@ -53,6 +55,16 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
   }
 
   void _findSiblings() {
+    if (widget.siblingItems != null && widget.siblingItems!.isNotEmpty) {
+      _currentIndex = widget.siblingItems!.indexWhere((e) {
+        if (e is AssetEntity) return e.id == widget.initialAssetId;
+        if (e is FileSystemEntity) return e.path == widget.imagePath;
+        return false;
+      });
+      if (_currentIndex == -1) _currentIndex = 0;
+      return;
+    }
+
     if (widget.siblingAssets != null && widget.siblingAssets!.isNotEmpty) {
       _currentIndex = widget.siblingAssets!.indexWhere((e) => e.id == widget.initialAssetId);
       if (_currentIndex == -1) _currentIndex = 0;
@@ -93,21 +105,41 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
   }
 
   void _preloadAdjacent(int index) {
-    if (widget.siblingAssets == null) return;
+    if (widget.siblingItems == null && widget.siblingAssets == null) return;
     _loadAssetFile(index);
     _loadAssetFile(index - 1);
     _loadAssetFile(index + 1);
   }
 
   Future<void> _loadAssetFile(int index) async {
-    if (index < 0 || index >= widget.siblingAssets!.length) return;
+    final length = widget.siblingItems != null
+        ? widget.siblingItems!.length
+        : (widget.siblingAssets != null ? widget.siblingAssets!.length : 0);
+    if (index < 0 || index >= length) return;
     if (_fileCache.containsKey(index) && _fileCache[index] != null) return;
-    final asset = widget.siblingAssets![index];
-    final file = await asset.file;
-    if (mounted && file != null) {
-      setState(() {
-        _fileCache[index] = file;
-      });
+
+    if (widget.siblingItems != null) {
+      final item = widget.siblingItems![index];
+      if (item is AssetEntity) {
+        final file = await item.file;
+        if (mounted && file != null) {
+          setState(() {
+            _fileCache[index] = file;
+          });
+        }
+      } else if (item is FileSystemEntity) {
+        setState(() {
+          _fileCache[index] = File(item.path);
+        });
+      }
+    } else if (widget.siblingAssets != null) {
+      final asset = widget.siblingAssets![index];
+      final file = await asset.file;
+      if (mounted && file != null) {
+        setState(() {
+          _fileCache[index] = file;
+        });
+      }
     }
   }
 
@@ -119,9 +151,18 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final int totalCount = widget.siblingAssets != null ? widget.siblingAssets!.length : _imageList.length;
+    final int totalCount = widget.siblingItems != null
+        ? widget.siblingItems!.length
+        : (widget.siblingAssets != null ? widget.siblingAssets!.length : _imageList.length);
     String currentTitle = 'Image';
-    if (widget.siblingAssets != null && _currentIndex < widget.siblingAssets!.length) {
+    if (widget.siblingItems != null && _currentIndex < widget.siblingItems!.length) {
+      final item = widget.siblingItems![_currentIndex];
+      if (item is AssetEntity) {
+        currentTitle = item.title ?? 'Image';
+      } else if (item is FileSystemEntity) {
+        currentTitle = item.path.split('/').last.split('\\').last;
+      }
+    } else if (widget.siblingAssets != null && _currentIndex < widget.siblingAssets!.length) {
       currentTitle = widget.siblingAssets![_currentIndex].title ?? 'Image';
     } else if (_imageList.isNotEmpty && _currentIndex < _imageList.length) {
       currentTitle = _imageList[_currentIndex].split('/').last.split('\\').last;
@@ -204,7 +245,17 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
                 Uint8List? thumbData;
                 String tagKey = 'img_$index';
 
-                if (widget.siblingAssets != null) {
+                if (widget.siblingItems != null) {
+                  final item = widget.siblingItems![index];
+                  if (item is AssetEntity) {
+                    tagKey = item.id;
+                    imgFile = _fileCache[index];
+                    thumbData = ThumbnailCache.getCached(item.id);
+                  } else if (item is FileSystemEntity) {
+                    tagKey = item.path;
+                    imgFile = File(item.path);
+                  }
+                } else if (widget.siblingAssets != null) {
                   final asset = widget.siblingAssets![index];
                   tagKey = asset.id;
                   imgFile = _fileCache[index];

@@ -496,4 +496,38 @@ class PreferencesService {
   static Future<void> saveHideActionText(bool val) async {
     await _prefs?.setBool(_keyHideActionText, val);
   }
+
+  static const String _keyCustomCategoryPaths = 'custom_category_paths';
+
+  static Map<String, List<String>> getCustomCategoryPaths() {
+    final str = _prefs?.getString(_keyCustomCategoryPaths);
+    if (str == null) return {};
+    try {
+      final map = jsonDecode(str) as Map<String, dynamic>;
+      return map.map((key, value) => MapEntry(key, List<String>.from(value)));
+    } catch (_) {
+      return {};
+    }
+  }
+
+  static Future<void> saveCustomCategoryPaths(Map<String, List<String>> map) async {
+    await _prefs?.setString(_keyCustomCategoryPaths, jsonEncode(map));
+  }
+
+  static const String _keyExcludedDefaultPaths = 'excluded_default_paths';
+
+  static Map<String, List<String>> getExcludedDefaultPaths() {
+    final str = _prefs?.getString(_keyExcludedDefaultPaths);
+    if (str == null) return {};
+    try {
+      final map = jsonDecode(str) as Map<String, dynamic>;
+      return map.map((key, value) => MapEntry(key, List<String>.from(value)));
+    } catch (_) {
+      return {};
+    }
+  }
+
+  static Future<void> saveExcludedDefaultPaths(Map<String, List<String>> map) async {
+    await _prefs?.setString(_keyExcludedDefaultPaths, jsonEncode(map));
+  }
 }

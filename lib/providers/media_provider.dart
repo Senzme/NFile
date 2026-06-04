@@ -12,6 +12,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import '../services/preferences_service.dart';
 import '../models/custom_shortcut_model.dart';
 import '../models/file_item_model.dart';
+import '../core/utils.dart';
 
 enum MediaSortOrder {
   newest,
@@ -126,6 +127,8 @@ class MediaProvider extends ChangeNotifier {
     if (savedCustom != null) {
       _customShortcuts = savedCustom;
     }
+    _customCategoryPaths = PreferencesService.getCustomCategoryPaths();
+    _excludedDefaultPaths = PreferencesService.getExcludedDefaultPaths();
   }
 
   List<AssetEntity> _images = [];
@@ -136,6 +139,13 @@ class MediaProvider extends ChangeNotifier {
   List<FileSystemEntity> _downloads = [];
   List<FileSystemEntity> _apks = [];
   List<AssetEntity> _screenshots = [];
+  List<FileSystemEntity> _customImages = [];
+  List<FileSystemEntity> _customVideos = [];
+  List<FileSystemEntity> _customScreenshots = [];
+  Map<String, List<String>> _customCategoryPaths = {};
+  Map<String, List<String>> get customCategoryPaths => _customCategoryPaths;
+  Map<String, List<String>> _excludedDefaultPaths = {};
+  Map<String, List<String>> get excludedDefaultPaths => _excludedDefaultPaths;
   List<FileItemModel> _recentFiles = [];
   List<CustomShortcutModel> _customShortcuts = [];
   List<AssetPathEntity> _imageAlbums = [];
@@ -172,15 +182,186 @@ class MediaProvider extends ChangeNotifier {
   bool _isLoaded = false;
   MediaSortOrder _sortOrder = MediaSortOrder.newest;
 
-  List<AssetEntity> get images => _images;
-  List<AssetEntity> get videos => _videos;
-  List<SongModel> get audios => _audios;
-  List<FileSystemEntity> get documents => _documents;
-  List<FileSystemEntity> get archives => _archives;
-  List<FileSystemEntity> get downloads => _downloads;
-  List<FileSystemEntity> get apks => _apks;
-  List<AssetEntity> get screenshots => _screenshots;
+  String? _getItemPath(dynamic item) {
+    if (item is FileSystemEntity) return item.path;
+    if (item is AssetEntity) {
+      final rel = item.relativePath;
+      if (rel != null) {
+        final cleanRel = rel.endsWith('/') ? rel.substring(0, rel.length - 1) : rel;
+        if (cleanRel.startsWith('/storage/emulated/0') || cleanRel.startsWith('/storage/')) {
+          return cleanRel;
+        }
+        if (cleanRel.startsWith('storage/emulated/0') || cleanRel.startsWith('storage/')) {
+          return '/$cleanRel';
+        }
+        return '/storage/emulated/0/$cleanRel';
+      }
+    }
+    return null;
+  }
+
+  bool _isPathExcluded(String itemPath, List<String> excludedPaths) {
+    for (final excl in excludedPaths) {
+      if (itemPath == excl || p.isWithin(excl, itemPath)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  List<dynamic> get images {
+    final excluded = _excludedDefaultPaths['Images'] ?? [];
+    final excludeGallery = excluded.contains('Device Gallery (Auto)');
+    final list = [..._images, ..._customImages].where((item) {
+      if (item is AssetEntity && excludeGallery) return false;
+      final path = _getItemPath(item);
+      if (path != null && _isPathExcluded(path, excluded)) {
+        return false;
+      }
+      return true;
+    }).toList();
+    _sortDynamicList(list);
+    return list;
+  }
+
+  List<dynamic> get videos {
+    final excluded = _excludedDefaultPaths['Videos'] ?? [];
+    final excludeGallery = excluded.contains('Device Gallery (Auto)');
+    final list = [..._videos, ..._customVideos].where((item) {
+      if (item is AssetEntity && excludeGallery) return false;
+      final path = _getItemPath(item);
+      if (path != null && _isPathExcluded(path, excluded)) {
+        return false;
+      }
+      return true;
+    }).toList();
+    _sortDynamicList(list);
+    return list;
+  }
+
+  List<SongModel> get audios {
+    final excluded = _excludedDefaultPaths['Audio'] ?? [];
+    final excludeLibrary = excluded.contains('Device Audio Library (Auto)');
+    return _audios.where((song) {
+      if (excludeLibrary && song.id < 900000) return false;
+      final path = song.data;
+      if (_isPathExcluded(path, excluded)) return false;
+      return true;
+    }).toList();
+  }
+
+  List<FileSystemEntity> get documents {
+    final excluded = _excludedDefaultPaths['Documents'] ?? [];
+    final excludeAllScanned = excluded.contains('Internal Storage (All Folders Scanned)');
+    return _documents.where((file) {
+      final docPaths = _customCategoryPaths['Documents'] ?? [];
+      final isCustom = docPaths.any((dir) => p.isWithin(dir, file.path));
+      if (excludeAllScanned && !isCustom) return false;
+      if (_isPathExcluded(file.path, excluded)) return false;
+      return true;
+    }).toList();
+  }
+
+  List<FileSystemEntity> get archives {
+    final excluded = _excludedDefaultPaths['Archives'] ?? [];
+    final excludeAllScanned = excluded.contains('Internal Storage (All Folders Scanned)');
+    return _archives.where((file) {
+      final archPaths = _customCategoryPaths['Archives'] ?? [];
+      final isCustom = archPaths.any((dir) => p.isWithin(dir, file.path));
+      if (excludeAllScanned && !isCustom) return false;
+      if (_isPathExcluded(file.path, excluded)) return false;
+      return true;
+    }).toList();
+  }
+
+  List<FileSystemEntity> get downloads {
+    final excluded = _excludedDefaultPaths['Downloads'] ?? [];
+    return _downloads.where((file) {
+      if (_isPathExcluded(file.path, excluded)) return false;
+      return true;
+    }).toList();
+  }
+
+  List<FileSystemEntity> get apks {
+    final excluded = _excludedDefaultPaths['APKs'] ?? [];
+    final excludeAllScanned = excluded.contains('Internal Storage (All Folders Scanned)');
+    return _apks.where((file) {
+      final apkPaths = _customCategoryPaths['APKs'] ?? [];
+      final isCustom = apkPaths.any((dir) => p.isWithin(dir, file.path));
+      if (excludeAllScanned && !isCustom) return false;
+      if (_isPathExcluded(file.path, excluded)) return false;
+      return true;
+    }).toList();
+  }
+
+  List<dynamic> get screenshots {
+    final excluded = _excludedDefaultPaths['Screenshots'] ?? [];
+    final excludeGallery = excluded.contains('Device Gallery (Screenshots)');
+    final list = [..._screenshots, ..._customScreenshots].where((item) {
+      if (item is AssetEntity && excludeGallery) return false;
+      final path = _getItemPath(item);
+      if (path != null && _isPathExcluded(path, excluded)) {
+        return false;
+      }
+      return true;
+    }).toList();
+    _sortDynamicList(list);
+    return list;
+  }
   List<FileItemModel> get recentFiles => _recentFiles;
+
+  void _sortDynamicList(List<dynamic> list) {
+    int Function(dynamic, dynamic) compare;
+    if (_sortOrder == MediaSortOrder.newest ||
+        _sortOrder == MediaSortOrder.newestGrouped ||
+        _sortOrder == MediaSortOrder.dateWise) {
+      compare = (a, b) {
+        final aTime = _getDateTime(a);
+        final bTime = _getDateTime(b);
+        return bTime.compareTo(aTime);
+      };
+    } else if (_sortOrder == MediaSortOrder.oldest ||
+               _sortOrder == MediaSortOrder.oldestGrouped) {
+      compare = (a, b) {
+        final aTime = _getDateTime(a);
+        final bTime = _getDateTime(b);
+        return aTime.compareTo(bTime);
+      };
+    } else if (_sortOrder == MediaSortOrder.sizeLargest ||
+               _sortOrder == MediaSortOrder.sizeSmallest) {
+      final isSmallest = _sortOrder == MediaSortOrder.sizeSmallest;
+      compare = (a, b) {
+        final aSize = _getSize(a);
+        final bSize = _getSize(b);
+        return isSmallest ? aSize.compareTo(bSize) : bSize.compareTo(aSize);
+      };
+    } else {
+      return;
+    }
+    list.sort(compare);
+  }
+
+  DateTime _getDateTime(dynamic item) {
+    if (item is AssetEntity) return item.createDateTime;
+    if (item is FileSystemEntity) {
+      try {
+        return File(item.path).lastModifiedSync();
+      } catch (_) {}
+    }
+    return DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  int _getSize(dynamic item) {
+    if (item is AssetEntity) {
+      return item.width * item.height;
+    }
+    if (item is FileSystemEntity) {
+      try {
+        return File(item.path).lengthSync();
+      } catch (_) {}
+    }
+    return 0;
+  }
   List<CustomShortcutModel> get customShortcuts => _customShortcuts;
   List<String> get categoryOrder => _categoryOrder;
   List<String> get activeCategories => _activeCategories;
@@ -247,14 +428,14 @@ class MediaProvider extends ChangeNotifier {
   int getCategoryItemCount(String category) {
     if (_isLoaded) {
       switch (category) {
-        case 'Images': return _images.length;
-        case 'Videos': return _videos.length;
+        case 'Images': return images.length;
+        case 'Videos': return videos.length;
         case 'Audio': return _audios.length;
         case 'Documents': return _documents.length;
         case 'Archives': return _archives.length;
         case 'Downloads': return _downloads.length;
         case 'APKs': return _apks.length;
-        case 'Screenshots': return _screenshots.length;
+        case 'Screenshots': return screenshots.length;
         case 'Apps': return 0;
       }
     }
@@ -407,24 +588,30 @@ class MediaProvider extends ChangeNotifier {
     futures.add(_loadArchivesDownloadsAndApks());
 
     await Future.wait(futures);
+    await _scanCustomCategories();
     await _scanRecentFiles();
     await _saveCache();
     _applySort();
     
-    PreferencesService.saveCategoryCount('Images', _images.length);
-    PreferencesService.saveCategoryCount('Videos', _videos.length);
+    PreferencesService.saveCategoryCount('Images', images.length);
+    PreferencesService.saveCategoryCount('Videos', videos.length);
     PreferencesService.saveCategoryCount('Audio', _audios.length);
     PreferencesService.saveCategoryCount('Documents', _documents.length);
     PreferencesService.saveCategoryCount('Archives', _archives.length);
     PreferencesService.saveCategoryCount('Downloads', _downloads.length);
     PreferencesService.saveCategoryCount('APKs', _apks.length);
-    PreferencesService.saveCategoryCount('Screenshots', _screenshots.length);
+    PreferencesService.saveCategoryCount('Screenshots', screenshots.length);
 
     notifyListeners();
   }
 
   Future<void> loadMedia({bool forceRefresh = false}) async {
-    if (_isLoaded && !forceRefresh) return;
+    if (_isLoaded && !forceRefresh) {
+      await _scanCustomCategories();
+      _applySort();
+      notifyListeners();
+      return;
+    }
 
     _isLoading = true;
     notifyListeners();
@@ -498,6 +685,7 @@ class MediaProvider extends ChangeNotifier {
     futures.add(_loadArchivesDownloadsAndApks());
 
     await Future.wait(futures);
+    await _scanCustomCategories();
 
     // Scan recent files after all media is loaded so it can merge from providers
     await _scanRecentFiles();
@@ -506,14 +694,14 @@ class MediaProvider extends ChangeNotifier {
 
     _applySort();
 
-    PreferencesService.saveCategoryCount('Images', _images.length);
-    PreferencesService.saveCategoryCount('Videos', _videos.length);
+    PreferencesService.saveCategoryCount('Images', images.length);
+    PreferencesService.saveCategoryCount('Videos', videos.length);
     PreferencesService.saveCategoryCount('Audio', _audios.length);
     PreferencesService.saveCategoryCount('Documents', _documents.length);
     PreferencesService.saveCategoryCount('Archives', _archives.length);
     PreferencesService.saveCategoryCount('Downloads', _downloads.length);
     PreferencesService.saveCategoryCount('APKs', _apks.length);
-    PreferencesService.saveCategoryCount('Screenshots', _screenshots.length);
+    PreferencesService.saveCategoryCount('Screenshots', screenshots.length);
 
     _isLoading = false;
     _isLoaded = true;
@@ -662,13 +850,30 @@ class MediaProvider extends ChangeNotifier {
   Future<void> _loadDocuments() async {
     final docs = <FileSystemEntity>[];
     final searchDirs = await _getUserSearchDirs();
+    final excluded = _excludedDefaultPaths['Documents'] ?? [];
 
     for (final dirPath in searchDirs) {
+      if (_isPathExcluded(dirPath, excluded)) continue;
       await _scanDirectoryRecursively(
         dirPath,
         (ext) => _docExtensions.contains(ext),
         (file) => docs.add(file),
       );
+    }
+
+    final docPaths = _customCategoryPaths['Documents'] ?? [];
+    for (final dirPath in docPaths) {
+      if (await Directory(dirPath).exists()) {
+        await _scanDirectoryRecursively(
+          dirPath,
+          (ext) => _docExtensions.contains(ext),
+          (file) {
+            if (!docs.any((d) => d.path == file.path)) {
+              docs.add(file);
+            }
+          },
+        );
+      }
     }
 
     _documents = docs;
@@ -684,13 +889,19 @@ class MediaProvider extends ChangeNotifier {
 
     // For downloads
     final dlDirs = ['/storage/emulated/0/Download', '/storage/emulated/0/Downloads'];
-    for (final dirPath in dlDirs) {
+    final customDlPaths = _customCategoryPaths['Downloads'] ?? [];
+    final allDlDirs = {...dlDirs, ...customDlPaths};
+    final excludedDl = _excludedDefaultPaths['Downloads'] ?? [];
+    for (final dirPath in allDlDirs) {
+      if (_isPathExcluded(dirPath, excludedDl)) continue;
       final dir = Directory(dirPath);
       if (await dir.exists()) {
         try {
           await for (final entity in dir.list(recursive: false)) {
             if (entity is File) {
-              dl.add(entity);
+              if (!dl.any((e) => e.path == entity.path)) {
+                dl.add(entity);
+              }
             }
           }
         } catch (_) {}
@@ -698,25 +909,231 @@ class MediaProvider extends ChangeNotifier {
     }
 
     final searchDirs = await _getUserSearchDirs();
+    final excludedArch = _excludedDefaultPaths['Archives'] ?? [];
+    final excludedApk = _excludedDefaultPaths['APKs'] ?? [];
 
     for (final dirPath in searchDirs) {
+      final isArchExcl = _isPathExcluded(dirPath, excludedArch);
+      final isApkExcl = _isPathExcluded(dirPath, excludedApk);
+      if (isArchExcl && isApkExcl) continue;
+
       await _scanDirectoryRecursively(
         dirPath,
         (ext) => _archiveExtensions.contains(ext) || _apkExtensions.contains(ext),
         (file) {
           final ext = p.extension(file.path).toLowerCase();
-          if (_archiveExtensions.contains(ext)) {
+          if (_archiveExtensions.contains(ext) && !isArchExcl) {
             arch.add(file);
-          } else if (_apkExtensions.contains(ext)) {
+          } else if (_apkExtensions.contains(ext) && !isApkExcl) {
             apkList.add(file);
           }
         },
       );
     }
 
+    final archPaths = _customCategoryPaths['Archives'] ?? [];
+    for (final dirPath in archPaths) {
+      if (await Directory(dirPath).exists()) {
+        await _scanDirectoryRecursively(
+          dirPath,
+          (ext) => _archiveExtensions.contains(ext),
+          (file) {
+            if (!arch.any((d) => d.path == file.path)) {
+              arch.add(file);
+            }
+          },
+        );
+      }
+    }
+
+    final apkPaths = _customCategoryPaths['APKs'] ?? [];
+    for (final dirPath in apkPaths) {
+      if (await Directory(dirPath).exists()) {
+        await _scanDirectoryRecursively(
+          dirPath,
+          (ext) => _apkExtensions.contains(ext),
+          (file) {
+            if (!apkList.any((d) => d.path == file.path)) {
+              apkList.add(file);
+            }
+          },
+        );
+      }
+    }
+
     _downloads = dl;
     _archives = arch;
     _apks = apkList;
+  }
+
+  Future<void> _scanCustomCategories() async {
+    final imagePaths = _customCategoryPaths['Images'] ?? [];
+    _customImages = await _scanCustomPaths(imagePaths, FileUtils.isImage);
+
+    final videoPaths = _customCategoryPaths['Videos'] ?? [];
+    _customVideos = await _scanCustomPaths(videoPaths, FileUtils.isVideo);
+
+    final screenshotPaths = _customCategoryPaths['Screenshots'] ?? [];
+    _customScreenshots = await _scanCustomPaths(screenshotPaths, FileUtils.isImage);
+
+    final audioPaths = _customCategoryPaths['Audio'] ?? [];
+    final customAudFiles = await _scanCustomPaths(audioPaths, FileUtils.isAudio);
+    _audios.removeWhere((song) => song.id >= 900000);
+    final existingAudioPaths = _audios.map((s) => s.data).toSet();
+    for (int i = 0; i < customAudFiles.length; i++) {
+      final file = customAudFiles[i];
+      if (!existingAudioPaths.contains(file.path)) {
+        try {
+          final stat = file.statSync();
+          final songMap = {
+            '_id': 900000 + i,
+            '_data': file.path,
+            'title': p.basenameWithoutExtension(file.path),
+            'artist': 'Unknown Artist',
+            'album': 'Custom Folder',
+            'duration': 0,
+            'size': stat.size,
+            'display_name': p.basename(file.path),
+            'display_name_wo_ext': p.basenameWithoutExtension(file.path),
+            'is_music': true,
+          };
+          _audios.add(SongModel(songMap));
+        } catch (_) {}
+      }
+    }
+
+    // Documents custom path scan and merge
+    final docPaths = _customCategoryPaths['Documents'] ?? [];
+    final customDocs = await _scanCustomPaths(docPaths, (ext) => _docExtensions.contains(ext));
+    _documents.removeWhere((entity) {
+      final isInCustomPath = docPaths.any((dir) => p.isWithin(dir, entity.path));
+      if (isInCustomPath) {
+        return !customDocs.any((f) => f.path == entity.path);
+      }
+      return false;
+    });
+    for (final doc in customDocs) {
+      if (!_documents.any((d) => d.path == doc.path)) {
+        _documents.add(doc);
+      }
+    }
+
+    // Archives custom path scan and merge
+    final archPaths = _customCategoryPaths['Archives'] ?? [];
+    final customArch = await _scanCustomPaths(archPaths, (ext) => _archiveExtensions.contains(ext));
+    _archives.removeWhere((entity) {
+      final isInCustomPath = archPaths.any((dir) => p.isWithin(dir, entity.path));
+      if (isInCustomPath) {
+        return !customArch.any((f) => f.path == entity.path);
+      }
+      return false;
+    });
+    for (final arc in customArch) {
+      if (!_archives.any((a) => a.path == arc.path)) {
+        _archives.add(arc);
+      }
+    }
+
+    // APKs custom path scan and merge
+    final apkPaths = _customCategoryPaths['APKs'] ?? [];
+    final customApks = await _scanCustomPaths(apkPaths, (ext) => _apkExtensions.contains(ext));
+    _apks.removeWhere((entity) {
+      final isInCustomPath = apkPaths.any((dir) => p.isWithin(dir, entity.path));
+      if (isInCustomPath) {
+        return !customApks.any((f) => f.path == entity.path);
+      }
+      return false;
+    });
+    for (final apk in customApks) {
+      if (!_apks.any((a) => a.path == apk.path)) {
+        _apks.add(apk);
+      }
+    }
+
+    // Downloads custom path scan and merge
+    final customDlPaths = _customCategoryPaths['Downloads'] ?? [];
+    final customDls = <File>[];
+    for (final dirPath in customDlPaths) {
+      final dir = Directory(dirPath);
+      if (await dir.exists()) {
+        try {
+          await for (final entity in dir.list(recursive: false)) {
+            if (entity is File) {
+              customDls.add(entity);
+            }
+          }
+        } catch (_) {}
+      }
+    }
+    _downloads.removeWhere((entity) {
+      final isInCustomPath = customDlPaths.any((dir) => p.isWithin(dir, entity.path));
+      if (isInCustomPath) {
+        return !customDls.any((f) => f.path == entity.path);
+      }
+      return false;
+    });
+    for (final dl in customDls) {
+      if (!_downloads.any((d) => d.path == dl.path)) {
+        _downloads.add(dl);
+      }
+    }
+  }
+
+  Future<List<File>> _scanCustomPaths(List<String> paths, bool Function(String path) filter) async {
+    final files = <File>[];
+    for (final path in paths) {
+      if (await Directory(path).exists()) {
+        await _scanDirectoryRecursively(
+          path,
+          filter,
+          (file) => files.add(file),
+        );
+      }
+    }
+    return files;
+  }
+
+  void addCustomCategoryPath(String category, String path) {
+    if (!_customCategoryPaths.containsKey(category)) {
+      _customCategoryPaths[category] = [];
+    }
+    if (!_customCategoryPaths[category]!.contains(path)) {
+      _customCategoryPaths[category]!.add(path);
+      PreferencesService.saveCustomCategoryPaths(_customCategoryPaths);
+      notifyListeners();
+      loadMedia(forceRefresh: true);
+    }
+  }
+
+  void removeCustomCategoryPath(String category, String path) {
+    if (_customCategoryPaths.containsKey(category)) {
+      _customCategoryPaths[category]!.remove(path);
+      PreferencesService.saveCustomCategoryPaths(_customCategoryPaths);
+      notifyListeners();
+      loadMedia(forceRefresh: true);
+    }
+  }
+
+  void excludeDefaultCategoryPath(String category, String path) {
+    if (!_excludedDefaultPaths.containsKey(category)) {
+      _excludedDefaultPaths[category] = [];
+    }
+    if (!_excludedDefaultPaths[category]!.contains(path)) {
+      _excludedDefaultPaths[category]!.add(path);
+      PreferencesService.saveExcludedDefaultPaths(_excludedDefaultPaths);
+      notifyListeners();
+      loadMedia(forceRefresh: true);
+    }
+  }
+
+  void includeDefaultCategoryPath(String category, String path) {
+    if (_excludedDefaultPaths.containsKey(category)) {
+      if (_excludedDefaultPaths[category]!.remove(path)) {
+        PreferencesService.saveExcludedDefaultPaths(_excludedDefaultPaths);
+        notifyListeners();
+        loadMedia(forceRefresh: true);
+      }
+    }
   }
 
   Future<void> _scanRecentFiles() async {
@@ -933,6 +1350,10 @@ class MediaProvider extends ChangeNotifier {
       _videos.removeWhere((item) => filePaths.contains(item.title));
       _screenshots.removeWhere((item) => filePaths.contains(item.title));
 
+      _customImages.removeWhere((item) => filePaths.contains(item.path));
+      _customVideos.removeWhere((item) => filePaths.contains(item.path));
+      _customScreenshots.removeWhere((item) => filePaths.contains(item.path));
+
       _audios.removeWhere((item) => filePaths.contains(item.data));
       _documents.removeWhere((item) => filePaths.contains(item.path));
       _archives.removeWhere((item) => filePaths.contains(item.path));
@@ -941,14 +1362,14 @@ class MediaProvider extends ChangeNotifier {
     }
 
     // Update Counts and Cache
-    PreferencesService.saveCategoryCount('Images', _images.length);
-    PreferencesService.saveCategoryCount('Videos', _videos.length);
+    PreferencesService.saveCategoryCount('Images', images.length);
+    PreferencesService.saveCategoryCount('Videos', videos.length);
     PreferencesService.saveCategoryCount('Audio', _audios.length);
     PreferencesService.saveCategoryCount('Documents', _documents.length);
     PreferencesService.saveCategoryCount('Archives', _archives.length);
     PreferencesService.saveCategoryCount('Downloads', _downloads.length);
     PreferencesService.saveCategoryCount('APKs', _apks.length);
-    PreferencesService.saveCategoryCount('Screenshots', _screenshots.length);
+    PreferencesService.saveCategoryCount('Screenshots', screenshots.length);
 
     await _saveCache();
     notifyListeners();
