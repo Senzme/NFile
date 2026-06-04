@@ -18,14 +18,20 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   int _currentIndex = 0;
   DateTime? _lastBrowseTapTime;
+  late AnimationController _refreshIconController;
+  bool _isRefreshing = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _refreshIconController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    );
     _currentIndex = context.read<FileManagerProvider>().defaultToBrowseScreen ? 1 : 0;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MediaProvider>().loadMedia();
@@ -34,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _refreshIconController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -42,6 +49,35 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       context.read<MediaProvider>().refreshMediaBackground();
+    }
+  }
+
+  Future<void> _handleRefresh() async {
+    if (_isRefreshing) return;
+    setState(() {
+      _isRefreshing = true;
+    });
+    _refreshIconController.repeat();
+    try {
+      await Future.wait([
+        context.read<FileManagerProvider>().updateStorageSpace(),
+        context.read<MediaProvider>().loadMedia(forceRefresh: true),
+      ]);
+    } catch (_) {
+    } finally {
+      if (mounted) {
+        _refreshIconController.stop();
+        setState(() {
+          _isRefreshing = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Dashboard refreshed successfully'),
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
     }
   }
 
@@ -216,12 +252,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  IconButton(
-                    onPressed: widget.toggleTheme,
-                    icon: Icon(
-                      theme.brightness == Brightness.dark ? Broken.sun_1 : Broken.moon,
-                      color: theme.colorScheme.onSurface,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        onPressed: _handleRefresh,
+                        tooltip: 'Refresh Dashboard',
+                        icon: RotationTransition(
+                          turns: _refreshIconController,
+                          child: const Icon(Broken.refresh),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: widget.toggleTheme,
+                        icon: Icon(
+                          theme.brightness == Brightness.dark ? Broken.sun_1 : Broken.moon,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

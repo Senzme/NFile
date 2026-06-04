@@ -1737,7 +1737,10 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
           children: [
             Expanded(
               child: InkWell(
-                onTap: () => setState(() => _showFoldersMode = false),
+                onTap: () {
+                  setState(() => _showFoldersMode = false);
+                  PreferencesService.savePreferFoldersInMedia(false);
+                },
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
                   alignment: Alignment.center,
@@ -1758,7 +1761,10 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
             ),
             Expanded(
               child: InkWell(
-                onTap: () => setState(() => _showFoldersMode = true),
+                onTap: () {
+                  setState(() => _showFoldersMode = true);
+                  PreferencesService.savePreferFoldersInMedia(true);
+                },
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
                   alignment: Alignment.center,

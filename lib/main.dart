@@ -7,6 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 
 import 'core/theme.dart';
 import 'core/icon_fonts/broken_icons.dart';
@@ -114,10 +115,18 @@ class _NFileAppState extends State<NFileApp> {
     if (Platform.isAndroid) {
       final manageStorageGranted = await Permission.manageExternalStorage.isGranted;
       final standardStorageGranted = await Permission.storage.isGranted;
+      bool audioGranted = true;
+      try {
+        final info = await DeviceInfoPlugin().androidInfo;
+        final sdk = info.version.sdkInt;
+        if (sdk >= 33) {
+          audioGranted = await Permission.audio.isGranted;
+        }
+      } catch (_) {}
 
       if (mounted) {
         setState(() {
-          _hasPermission = manageStorageGranted || standardStorageGranted;
+          _hasPermission = manageStorageGranted || (standardStorageGranted && audioGranted);
         });
       }
     } else {
@@ -130,11 +139,21 @@ class _NFileAppState extends State<NFileApp> {
   Future<void> _requestStoragePermission() async {
     if (Platform.isAndroid) {
       final manageStorageGranted = await Permission.manageExternalStorage.request().isGranted;
-      final standardStorageGranted = await Permission.storage.request().isGranted;
+      bool standardStorageGranted = false;
+      bool audioGranted = true;
+      try {
+        final info = await DeviceInfoPlugin().androidInfo;
+        final sdk = info.version.sdkInt;
+        if (sdk >= 33) {
+          audioGranted = await Permission.audio.request().isGranted;
+        } else {
+          standardStorageGranted = await Permission.storage.request().isGranted;
+        }
+      } catch (_) {}
 
       if (mounted) {
         setState(() {
-          _hasPermission = manageStorageGranted || standardStorageGranted;
+          _hasPermission = manageStorageGranted || (standardStorageGranted && audioGranted);
         });
       }
     } else {

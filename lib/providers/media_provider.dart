@@ -440,8 +440,16 @@ class MediaProvider extends ChangeNotifier {
     bool hasAudioPermission = false;
     try {
       hasAudioPermission = await _audioQuery.permissionsStatus();
-      if (!hasAudioPermission) {
-        hasAudioPermission = await _audioQuery.permissionsRequest();
+      if (!hasAudioPermission && Platform.isAndroid) {
+        final info = await DeviceInfoPlugin().androidInfo;
+        final sdk = info.version.sdkInt;
+        if (sdk >= 33) {
+          final status = await Permission.audio.request();
+          hasAudioPermission = status.isGranted;
+        } else {
+          final status = await Permission.storage.request();
+          hasAudioPermission = status.isGranted;
+        }
       }
     } catch (_) {}
 
@@ -558,6 +566,11 @@ class MediaProvider extends ChangeNotifier {
 
   Future<void> _loadAudios() async {
     try {
+      final hasPerm = await _audioQuery.permissionsStatus();
+      if (!hasPerm) {
+        _audios = [];
+        return;
+      }
       _audios = await _audioQuery.querySongs(
         sortType: null,
         orderType: OrderType.ASC_OR_SMALLER,
