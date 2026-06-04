@@ -78,9 +78,17 @@ class RootShizukuService {
   }
 
   static Future<List<FileItemModel>> listFiles(String path, {required bool useRoot, bool showHiddenFiles = false}) async {
-    final cleanPath = (path == '/' || !path.endsWith('/')) ? path : path.substring(0, path.length - 1);
+    // Normalize path to collapse any double slashes (e.g. //data -> /data)
+    String normalizedPath = path.replaceAll(RegExp(r'/+'), '/');
+    if (normalizedPath.isEmpty) normalizedPath = '/';
+
+    final cleanPath = (normalizedPath == '/' || !normalizedPath.endsWith('/')) 
+        ? normalizedPath 
+        : normalizedPath.substring(0, normalizedPath.length - 1);
     
-    final cmd = 'for f in "$cleanPath"/* "$cleanPath"/.*; do [ -e "\$f" ] && [ "\${f##*/}" != "." ] && [ "\${f##*/}" != ".." ] && (stat -L -c "%F|%s|%Y|%n" "\$f" 2>/dev/null || stat -c "%F|%s|%Y|%n" "\$f"); done';
+    // If cleanPath is "/", use empty string prefix to prevent search pattern from becoming //* and //.*
+    final searchPrefix = cleanPath == '/' ? '' : cleanPath;
+    final cmd = 'for f in "$searchPrefix"/* "$searchPrefix"/.*; do [ -e "\$f" ] && [ "\${f##*/}" != "." ] && [ "\${f##*/}" != ".." ] && (stat -L -c "%F|%s|%Y|%n" "\$f" 2>/dev/null || stat -c "%F|%s|%Y|%n" "\$f"); done';
     
     final output = await runCommand(cmd, useRoot: useRoot);
     if (output == null || output.trim().isEmpty) return [];

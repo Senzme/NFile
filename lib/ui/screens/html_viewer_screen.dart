@@ -6,8 +6,9 @@ import '../../core/icon_fonts/broken_icons.dart';
 
 class HtmlViewerScreen extends StatefulWidget {
   final String filePath;
+  final String? initialContent;
 
-  const HtmlViewerScreen({super.key, required this.filePath});
+  const HtmlViewerScreen({super.key, required this.filePath, this.initialContent});
 
   @override
   State<HtmlViewerScreen> createState() => _HtmlViewerScreenState();
@@ -24,6 +25,11 @@ class _HtmlViewerScreenState extends State<HtmlViewerScreen> {
   }
 
   Future<void> _loadHtml() async {
+    if (widget.initialContent != null) {
+      _htmlContent = widget.initialContent!;
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
     try {
       final file = File(widget.filePath);
       if (await file.exists()) {

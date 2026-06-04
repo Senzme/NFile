@@ -6,8 +6,9 @@ import '../../core/icon_fonts/broken_icons.dart';
 
 class MarkdownViewerScreen extends StatefulWidget {
   final String filePath;
+  final String? initialContent;
 
-  const MarkdownViewerScreen({super.key, required this.filePath});
+  const MarkdownViewerScreen({super.key, required this.filePath, this.initialContent});
 
   @override
   State<MarkdownViewerScreen> createState() => _MarkdownViewerScreenState();
@@ -24,6 +25,11 @@ class _MarkdownViewerScreenState extends State<MarkdownViewerScreen> {
   }
 
   Future<void> _loadMarkdown() async {
+    if (widget.initialContent != null) {
+      _markdownContent = widget.initialContent!;
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
     try {
       final file = File(widget.filePath);
       if (await file.exists()) {

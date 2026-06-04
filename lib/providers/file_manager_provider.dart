@@ -1094,12 +1094,18 @@ class FileManagerProvider extends ChangeNotifier {
   }
 
   bool isRestrictedPath(String path) {
-    final lower = path.toLowerCase();
+    // Collapse double slashes to prevent bypasses, e.g. //data -> /data
+    String normalized = path.replaceAll(RegExp(r'/+'), '/');
+    if (path.startsWith('/') && !normalized.startsWith('/')) {
+      normalized = '/$normalized';
+    }
+
+    final lower = normalized.toLowerCase();
     if (lower.contains('/android/data') || lower.contains('/android/obb')) {
       return true;
     }
     // Only /data (excluding /data/media) is strictly restricted by default
-    if (path == '/data' || (path.startsWith('/data/') && !path.startsWith('/data/media'))) {
+    if (normalized == '/data' || (normalized.startsWith('/data/') && !normalized.startsWith('/data/media'))) {
       return true;
     }
     return false;

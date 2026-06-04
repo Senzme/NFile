@@ -169,9 +169,18 @@ class _TextEditorScreenState extends State<TextEditorScreen> {
     '\t', '{', '}', '[', ']', '(', ')', '<', '>', '/', '\\', '=', '"', '\x27', ':', ';', ',', '.', '+', '-', '*', '&', '|', '!'
   ];
 
+  late final String _normalizedPath;
+
   @override
   void initState() {
     super.initState();
+    // Normalize path to collapse double slashes
+    String norm = widget.filePath.replaceAll(RegExp(r'/+'), '/');
+    if (widget.filePath.startsWith('/') && !norm.startsWith('/')) {
+      norm = '/$norm';
+    }
+    _normalizedPath = norm;
+
     _controller = CodeTextEditingController(fontSize: _fontSize);
     _detectLanguage();
     
@@ -189,7 +198,7 @@ class _TextEditorScreenState extends State<TextEditorScreen> {
   }
 
   void _detectLanguage() {
-    final ext = p.extension(widget.filePath).toLowerCase();
+    final ext = p.extension(_normalizedPath).toLowerCase();
     switch (ext) {
       case '.html':
       case '.htm':
@@ -297,19 +306,19 @@ class _TextEditorScreenState extends State<TextEditorScreen> {
     try {
       final provider = context.read<FileManagerProvider>();
       String content;
-      if (provider.isRestrictedPath(widget.filePath)) {
+      if (provider.isRestrictedPath(_normalizedPath)) {
         final tempDir = Directory('/storage/emulated/0/.nfile_temp');
         if (!tempDir.existsSync()) {
           tempDir.createSync(recursive: true);
         }
         final tempFile = File(p.join(tempDir.path, 'temp_read_${DateTime.now().millisecondsSinceEpoch}.txt'));
-        await RootShizukuService.copyItem(widget.filePath, tempFile.path, useRoot: provider.useRootMode);
+        await RootShizukuService.copyItem(_normalizedPath, tempFile.path, useRoot: provider.useRootMode);
         content = await tempFile.readAsString();
         try {
           await tempFile.delete();
         } catch (_) {}
       } else {
-        final file = File(widget.filePath);
+        final file = File(_normalizedPath);
         content = await file.readAsString();
       }
       
@@ -333,30 +342,30 @@ class _TextEditorScreenState extends State<TextEditorScreen> {
     setState(() => _isSaving = true);
     try {
       final provider = context.read<FileManagerProvider>();
-      if (provider.isRestrictedPath(widget.filePath)) {
+      if (provider.isRestrictedPath(_normalizedPath)) {
         final tempDir = Directory('/storage/emulated/0/.nfile_temp');
         if (!tempDir.existsSync()) {
           tempDir.createSync(recursive: true);
         }
         final tempFile = File(p.join(tempDir.path, 'temp_save_${DateTime.now().millisecondsSinceEpoch}.txt'));
         await tempFile.writeAsString(_controller.text);
-        await RootShizukuService.copyItem(tempFile.path, widget.filePath, useRoot: provider.useRootMode);
+        await RootShizukuService.copyItem(tempFile.path, _normalizedPath, useRoot: provider.useRootMode);
         try {
           await tempFile.delete();
         } catch (_) {}
       } else {
-        final file = File(widget.filePath);
+        final file = File(_normalizedPath);
         await file.writeAsString(_controller.text);
       }
 
       try {
         if (mounted) {
-          context.read<FileManagerProvider>().updateFileInList(widget.filePath);
+          context.read<FileManagerProvider>().updateFileInList(_normalizedPath);
         }
       } catch (_) {}
 
-      if (IntentHandlerService.isIncomingCacheFile(widget.filePath)) {
-        final success = await IntentHandlerService.saveContentUriFile(widget.filePath, _controller.text);
+      if (IntentHandlerService.isIncomingCacheFile(_normalizedPath)) {
+        final success = await IntentHandlerService.saveContentUriFile(_normalizedPath, _controller.text);
         if (!success) {
           throw Exception("Failed to save changes back to external storage.");
         }
@@ -505,7 +514,7 @@ class _TextEditorScreenState extends State<TextEditorScreen> {
     final lineCount = _currentLineCount;
     final bool isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
-    final lowerPath = widget.filePath.toLowerCase();
+    final lowerPath = _normalizedPath.toLowerCase();
     final isHtml = lowerPath.endsWith('.html') || lowerPath.endsWith('.htm');
     final isMd = lowerPath.endsWith('.md') || lowerPath.endsWith('.markdown');
 
@@ -522,7 +531,7 @@ class _TextEditorScreenState extends State<TextEditorScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              p.basename(widget.filePath),
+              p.basename(_normalizedPath),
               style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             Text(
@@ -557,14 +566,28 @@ class _TextEditorScreenState extends State<TextEditorScreen> {
             tooltip: 'More Options',
             onSelected: (value) async {
               if (value == 'html_preview') {
-                if (_isModified) await _saveFile();
                 if (context.mounted) {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => HtmlViewerScreen(filePath: widget.filePath)));
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => HtmlViewerScreen(
+                        filePath: _normalizedPath,
+                        initialContent: _controller.text,
+                      ),
+                    ),
+                  );
                 }
               } else if (value == 'md_preview') {
-                if (_isModified) await _saveFile();
                 if (context.mounted) {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => MarkdownViewerScreen(filePath: widget.filePath)));
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => MarkdownViewerScreen(
+                        filePath: _normalizedPath,
+                        initialContent: _controller.text,
+                      ),
+                    ),
+                  );
                 }
               } else if (value == 'reset_zoom') {
                 setState(() {
