@@ -23,6 +23,7 @@ class PreferencesService {
   static const String _keyAmoledMode = 'amoled_mode';
   static const String _keyFolderSortTypes = 'folder_sort_types';
   static const String _keyHideActionText = 'hide_action_text';
+  static const String _keyMenuIconStyle = 'menu_icon_style';
 
   static SharedPreferences? _prefs;
 
@@ -296,6 +297,14 @@ class PreferencesService {
 
   static Future<void> saveFolderIconStyle(String val) async {
     await _prefs?.setString(_keyFolderIconStyle, val);
+  }
+
+  static String getMenuIconStyle() {
+    return _prefs?.getString(_keyMenuIconStyle) ?? 'hamburger';
+  }
+
+  static Future<void> saveMenuIconStyle(String val) async {
+    await _prefs?.setString(_keyMenuIconStyle, val);
   }
 
   // --- Preferred Media Category default view & Open With preferences ---

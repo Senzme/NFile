@@ -107,6 +107,7 @@ class FileManagerProvider extends ChangeNotifier {
     _fontFamilyOption = PreferencesService.getFontFamily();
     _customFontPath = PreferencesService.getCustomFontPath();
     _folderIconOption = PreferencesService.getFolderIconStyle();
+    _menuIconStyle = PreferencesService.getMenuIconStyle();
     _pinnedFolderShortcuts = PreferencesService.getPinnedFolderShortcuts();
     _hideNavigationBar = PreferencesService.getHideNavigationBar();
     _skipOpenWithDialog = PreferencesService.getSkipOpenWithDialog();
@@ -262,6 +263,16 @@ class FileManagerProvider extends ChangeNotifier {
     if (_folderIconOption == val) return;
     _folderIconOption = val;
     PreferencesService.saveFolderIconStyle(val);
+    notifyListeners();
+  }
+
+  String _menuIconStyle = 'hamburger';
+  String get menuIconStyle => _menuIconStyle;
+
+  void setMenuIconStyle(String val) {
+    if (_menuIconStyle == val) return;
+    _menuIconStyle = val;
+    PreferencesService.saveMenuIconStyle(val);
     notifyListeners();
   }
 

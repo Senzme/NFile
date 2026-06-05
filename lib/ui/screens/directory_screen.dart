@@ -860,7 +860,11 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                         )
                       : Builder(
                           builder: (context) => IconButton(
-                            icon: const Icon(Broken.menu),
+                            icon: Icon(
+                              provider.menuIconStyle == 'category'
+                                  ? Broken.category
+                                  : Broken.menu,
+                            ),
                             onPressed: () => Scaffold.of(context).openDrawer(),
                           ),
                         ),

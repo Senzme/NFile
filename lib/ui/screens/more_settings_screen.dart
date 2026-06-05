@@ -172,10 +172,11 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
 
     final accentColorVis = _shouldShow('Accent Color / Dynamic Theme', _getAccentColorLabel(fileManager.accentColorOption));
     final folderIconVis = _shouldShow('Folder Icon Style', _getFolderIconLabel(fileManager.folderIconOption));
+    final menuIconStyleVis = _shouldShow('App Drawer Button Style', _getMenuIconStyleLabel(fileManager.menuIconStyle));
     final amoledVis = _shouldShow('AMOLED Black Mode', 'Use pitch black background in Dark Mode for AMOLED screens');
     final appIconVis = _shouldShow('App Icon', _getAppIconLabel(fileManager.activeAppIcon));
     final typographyVis = _shouldShow('App Typography / Font Family', _getFontFamilyLabel(fileManager.fontFamilyOption));
-    final appearanceList = [accentColorVis, folderIconVis, amoledVis, appIconVis, typographyVis];
+    final appearanceList = [accentColorVis, folderIconVis, menuIconStyleVis, amoledVis, appIconVis, typographyVis];
 
     final customizeShortcutsVis = _shouldShow('Customize Shortcuts', 'Reorder and toggle visibility of quick category items');
     final showRecentVis = _shouldShow('Show Recent Files', 'Display the list of recently accessed files on the Home screen');
@@ -506,6 +507,13 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
                         title: 'Folder Icon Style',
                         subtitle: _getFolderIconLabel(fileManager.folderIconOption),
                         onTap: () => _showFolderIconPickerDialog(context, fileManager, theme),
+                      ),
+                    if (menuIconStyleVis)
+                      SettingsTile(
+                        icon: Broken.category,
+                        title: 'App Drawer Button Style',
+                        subtitle: _getMenuIconStyleLabel(fileManager.menuIconStyle),
+                        onTap: () => _showMenuIconStylePickerDialog(context, fileManager, theme),
                       ),
                     if (amoledVis)
                       SettingsTile(
@@ -1132,6 +1140,12 @@ class AppearanceSettingsScreen extends StatelessWidget {
               onTap: () => _showFolderIconPickerDialog(context, fileManager, theme),
             ),
             SettingsTile(
+              icon: Broken.category,
+              title: 'App Drawer Button Style',
+              subtitle: _getMenuIconStyleLabel(fileManager.menuIconStyle),
+              onTap: () => _showMenuIconStylePickerDialog(context, fileManager, theme),
+            ),
+            SettingsTile(
               icon: Broken.moon,
               title: 'AMOLED Black Mode',
               subtitle: 'Use pitch black background in Dark Mode for AMOLED screens',
@@ -1671,6 +1685,15 @@ String _getFolderIconLabel(String option) {
   }
 }
 
+String _getMenuIconStyleLabel(String option) {
+  switch (option) {
+    case 'category': return 'Category Grid / Vuesax Grid';
+    case 'hamburger':
+    default:
+      return 'Hamburger / Classic Menu';
+  }
+}
+
 String _getAppIconLabel(String option) {
   switch (option) {
     case 'logo1': return 'Logo 1';
@@ -1852,6 +1875,81 @@ void _showFolderIconPickerDialog(BuildContext context, FileManagerProvider fileM
                         trailing: isSelected ? Icon(Icons.radio_button_checked, color: theme.colorScheme.primary) : const Icon(Icons.radio_button_unchecked, color: Colors.grey),
                         onTap: () {
                           fileManager.setFolderIconOption(key);
+                          Navigator.pop(ctx);
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
+void _showMenuIconStylePickerDialog(BuildContext context, FileManagerProvider fileManager, ThemeData theme) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: theme.scaffoldBackgroundColor,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (ctx) {
+      final current = fileManager.menuIconStyle;
+      final options = [
+        {'key': 'hamburger', 'name': 'Hamburger / Classic Menu', 'icon': Broken.menu},
+        {'key': 'category', 'name': 'Category Grid / Vuesax Grid', 'icon': Broken.category},
+      ];
+
+      return SafeArea(
+        child: Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Text('Choose Drawer Button Style', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(height: 16),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: options.length,
+                    itemBuilder: (_, i) {
+                      final opt = options[i];
+                      final key = opt['key'] as String;
+                      final name = opt['name'] as String;
+                      final icon = opt['icon'] as IconData;
+                      final isSelected = current == key;
+
+                      return ListTile(
+                        leading: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: isSelected ? theme.colorScheme.primary : theme.colorScheme.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(icon, color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.primary, size: 20),
+                        ),
+                        title: Text(name, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                        trailing: isSelected ? Icon(Icons.radio_button_checked, color: theme.colorScheme.primary) : const Icon(Icons.radio_button_unchecked, color: Colors.grey),
+                        onTap: () {
+                          fileManager.setMenuIconStyle(key);
                           Navigator.pop(ctx);
                         },
                       );
