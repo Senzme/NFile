@@ -124,11 +124,13 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
     final confirmDragVis = fileManager.enableDragDrop && _shouldShow('Confirm Drag & Drop Actions', 'Show options popup (Copy, Move, Archive) when dropping files');
     final multipleTabsVis = _shouldShow('Enable Multiple Tabs', 'Allow opening multiple folders in separate tabs for quick navigation');
     final splitScreenVis = _shouldShow('Enable Split Screen', 'Browse two directories side by side and transfer files easily');
+    final disableLeftBackVis = _shouldShow('Prevent Left Back Gesture for Drawer', 'Excludes the left edge of the screen from Android system back gestures, making it easier to swipe open the drawer. You can still swipe from the right edge to go back.');
 
     final generalStartupList = [
       defaultBrowseVis,
       showHomeBrowseNavVis,
       hideNavBarVis,
+      disableLeftBackVis,
     ];
 
     final fileExplorerList = [
@@ -419,6 +421,21 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
                           ),
                         ),
                         onTap: () => fileManager.toggleHideNavigationBar(),
+                      ),
+                    if (disableLeftBackVis)
+                      SettingsTile(
+                        icon: Icons.gesture,
+                        title: 'Prevent Left Back Gesture for Drawer',
+                        subtitle: 'Excludes the left edge of the screen from Android system back gestures, making it easier to swipe open the drawer. You can still swipe from the right edge to go back.',
+                        trailing: Transform.scale(
+                          scale: 0.85,
+                          child: Switch(
+                            value: fileManager.disableLeftBackGesture,
+                            activeColor: theme.colorScheme.primary,
+                            onChanged: (_) => fileManager.toggleDisableLeftBackGesture(),
+                          ),
+                        ),
+                        onTap: () => fileManager.toggleDisableLeftBackGesture(),
                       ),
                     if (bottomActionBarVis)
                       SettingsTile(
@@ -1059,6 +1076,20 @@ class GeneralSettingsScreen extends StatelessWidget {
                 ),
               ),
               onTap: () => fileManager.toggleShowRecentFiles(),
+            ),
+            SettingsTile(
+              icon: Icons.gesture,
+              title: 'Prevent Left Back Gesture for Drawer',
+              subtitle: 'Excludes the left edge of the screen from Android system back gestures, making it easier to swipe open the drawer. You can still swipe from the right edge to go back.',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.disableLeftBackGesture,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleDisableLeftBackGesture(),
+                ),
+              ),
+              onTap: () => fileManager.toggleDisableLeftBackGesture(),
             ),
           ],
         ),

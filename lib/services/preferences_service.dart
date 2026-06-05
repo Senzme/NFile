@@ -544,4 +544,14 @@ class PreferencesService {
       await _prefs?.setString(_keyCustomFontPath, val);
     }
   }
+
+  static const String _keyDisableLeftBackGesture = 'disable_left_back_gesture';
+
+  static bool getDisableLeftBackGesture() {
+    return _prefs?.getBool(_keyDisableLeftBackGesture) ?? false;
+  }
+
+  static Future<void> saveDisableLeftBackGesture(bool val) async {
+    await _prefs?.setBool(_keyDisableLeftBackGesture, val);
+  }
 }

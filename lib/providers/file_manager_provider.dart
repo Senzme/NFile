@@ -101,6 +101,7 @@ class FileManagerProvider extends ChangeNotifier {
     _hideActionMenuButtons = PreferencesService.getHideActionMenuButtons();
     _activeAppIcon = PreferencesService.getActiveAppIcon();
     _hideActionText = PreferencesService.getHideActionText();
+    _disableLeftBackGesture = PreferencesService.getDisableLeftBackGesture();
 
     // Synchronously load cached storage sizes and pre-populate internal storage volume
     // to prevent any visual delay, shimmer, or refreshing animation on app startup!
@@ -219,6 +220,15 @@ class FileManagerProvider extends ChangeNotifier {
     }
     notifyListeners();
     return true;
+  }
+
+  bool _disableLeftBackGesture = false;
+  bool get disableLeftBackGesture => _disableLeftBackGesture;
+
+  void toggleDisableLeftBackGesture() {
+    _disableLeftBackGesture = !_disableLeftBackGesture;
+    PreferencesService.saveDisableLeftBackGesture(_disableLeftBackGesture);
+    notifyListeners();
   }
 
   String _folderIconOption = 'broken';

@@ -79,6 +79,37 @@ void main() async {
   );
 }
 
+const _gestureExclusionChannel = MethodChannel('com.rubex.nfile/gesture_exclusion');
+
+Future<void> _updateSystemGestureExclusion(bool disableLeftBack, double width, double screenHeight, double devicePixelRatio) async {
+  if (!Platform.isAndroid) return;
+  try {
+    final List<Map<String, int>> rects = [];
+    if (disableLeftBack) {
+      // Android enforces a strict vertical limit of 200dp per edge for gesture exclusions.
+      // We center a 200dp zone along the left edge of the screen.
+      const double exclusionHeight = 200.0;
+      final double topDp = (screenHeight - exclusionHeight) / 2.0;
+
+      final left = 0;
+      final top = (topDp * devicePixelRatio).toInt();
+      final right = (width * devicePixelRatio).toInt();
+      final bottom = ((topDp + exclusionHeight) * devicePixelRatio).toInt();
+      rects.add({
+        'left': left,
+        'top': top,
+        'right': right,
+        'bottom': bottom,
+      });
+    }
+    await _gestureExclusionChannel.invokeMethod('setSystemGestureExclusionRects', {
+      'rects': rects,
+    });
+  } catch (e) {
+    debugPrint('Failed to set system gesture exclusion: $e');
+  }
+}
+
 class NFileApp extends StatefulWidget {
   const NFileApp({super.key});
 
@@ -306,6 +337,13 @@ class _NFileAppState extends State<NFileApp> {
                 } else {
                   SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
                 }
+
+                final disableLeftBack = fileManager.disableLeftBackGesture;
+                final size = MediaQuery.of(context).size;
+                final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _updateSystemGestureExclusion(disableLeftBack, 40.0, size.height, devicePixelRatio);
+                });
 
                 return AnnotatedRegion<SystemUiOverlayStyle>(
                   value: style,

@@ -392,6 +392,36 @@ class MainActivity : AudioServiceFragmentActivity() {
             }
         }
 
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.rubex.nfile/gesture_exclusion").setMethodCallHandler { call, result ->
+            if (call.method == "setSystemGestureExclusionRects") {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    val rectsArg = call.argument<List<Map<String, Int>>>("rects")
+                    val exclusionRects = mutableListOf<android.graphics.Rect>()
+                    if (rectsArg != null) {
+                        for (r in rectsArg) {
+                            val left = r["left"] ?: 0
+                            val top = r["top"] ?: 0
+                            val right = r["right"] ?: 0
+                            val bottom = r["bottom"] ?: 0
+                            exclusionRects.add(android.graphics.Rect(left, top, right, bottom))
+                        }
+                    }
+                    runOnUiThread {
+                        try {
+                            window.decorView.systemGestureExclusionRects = exclusionRects
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("ERROR", e.message, null)
+                        }
+                    }
+                } else {
+                    result.success(false)
+                }
+            } else {
+                result.notImplemented()
+            }
+        }
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.rubex.nfile/ftp_service").setMethodCallHandler { call, result ->
             when (call.method) {
                 "startFtpService" -> {
