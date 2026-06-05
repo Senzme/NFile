@@ -122,7 +122,7 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
     items.sort((a, b) {
       if (a.isDirectory && !b.isDirectory) return -1;
       if (!a.isDirectory && b.isDirectory) return 1;
-      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      return FileUtils.compareNatural(a.name, b.name);
     });
 
     return items;

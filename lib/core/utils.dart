@@ -159,4 +159,59 @@ class FileUtils {
         return Broken.folder;
     }
   }
+
+  static int compareNatural(String a, String b) {
+    int i = 0;
+    int j = 0;
+    
+    final aLower = a.toLowerCase();
+    final bLower = b.toLowerCase();
+
+    while (i < aLower.length && j < bLower.length) {
+      int charA = aLower.codeUnitAt(i);
+      int charB = bLower.codeUnitAt(j);
+
+      if (_isDigit(charA) && _isDigit(charB)) {
+        int startA = i;
+        while (i < aLower.length && _isDigit(aLower.codeUnitAt(i))) {
+          i++;
+        }
+        int startB = j;
+        while (j < bLower.length && _isDigit(bLower.codeUnitAt(j))) {
+          j++;
+        }
+
+        String subA = aLower.substring(startA, i);
+        String subB = bLower.substring(startB, j);
+
+        BigInt? numA = BigInt.tryParse(subA);
+        BigInt? numB = BigInt.tryParse(subB);
+
+        if (numA != null && numB != null) {
+          int cmp = numA.compareTo(numB);
+          if (cmp != 0) return cmp;
+          if (subA.length != subB.length) {
+            return subA.length.compareTo(subB.length);
+          }
+        } else {
+          int cmp = subA.compareTo(subB);
+          if (cmp != 0) return cmp;
+        }
+      } else {
+        if (charA != charB) {
+          return charA.compareTo(charB);
+        }
+        i++;
+        j++;
+      }
+    }
+
+    if (i < aLower.length) return 1;
+    if (j < bLower.length) return -1;
+    return a.compareTo(b);
+  }
+
+  static bool _isDigit(int codeUnit) {
+    return codeUnit >= 48 && codeUnit <= 57;
+  }
 }

@@ -102,7 +102,7 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
       items.sort((a, b) {
         if (a.isDirectory && !b.isDirectory) return -1;
         if (!a.isDirectory && b.isDirectory) return 1;
-        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        return FileUtils.compareNatural(a.name, b.name);
       });
       if (mounted) {
         setState(() {

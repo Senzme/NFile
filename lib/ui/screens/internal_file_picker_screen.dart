@@ -77,8 +77,8 @@ class _InternalFilePickerScreenState extends State<InternalFilePickerScreen> {
           }
         }
 
-        folders.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-        files.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        folders.sort((a, b) => FileUtils.compareNatural(a.name, b.name));
+        files.sort((a, b) => FileUtils.compareNatural(a.name, b.name));
 
         if (mounted) {
           setState(() {
@@ -117,8 +117,8 @@ class _InternalFilePickerScreenState extends State<InternalFilePickerScreen> {
           } catch (_) {}
         }
 
-        folders.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-        files.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        folders.sort((a, b) => FileUtils.compareNatural(a.name, b.name));
+        files.sort((a, b) => FileUtils.compareNatural(a.name, b.name));
 
         if (mounted) {
           setState(() {

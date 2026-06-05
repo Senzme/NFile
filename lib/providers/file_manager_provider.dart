@@ -452,10 +452,10 @@ class FileManagerProvider extends ChangeNotifier {
     final activeSort = getSortTypeForPath(path);
     switch (activeSort) {
       case FileSortType.nameAsc:
-        items.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        items.sort((a, b) => FileUtils.compareNatural(a.name, b.name));
         break;
       case FileSortType.nameDesc:
-        items.sort((a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+        items.sort((a, b) => FileUtils.compareNatural(b.name, a.name));
         break;
       case FileSortType.dateNewest:
         items.sort((a, b) => b.modified.compareTo(a.modified));
