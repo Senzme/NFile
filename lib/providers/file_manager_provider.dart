@@ -38,6 +38,7 @@ import '../services/remote/ftp_client.dart';
 import '../services/remote/sftp_client.dart';
 import '../services/remote/webdav_client.dart';
 import '../services/remote/lan_client.dart';
+import '../services/remote/saf_client.dart';
 
 enum FileSortType {
   nameAsc,
@@ -1941,6 +1942,8 @@ class FileManagerProvider extends ChangeNotifier {
       );
     } else if (conn.type == 'LAN/SMB') {
       client = LanClient(host: conn.host, port: conn.port, username: conn.username, password: conn.password);
+    } else if (conn.type == 'saf') {
+      client = SafRemoteClient(rootUri: conn.rootPath);
     }
 
     if (client == null) {

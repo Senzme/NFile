@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import '../../models/network_connection_model.dart';
 import '../../services/network_connections_service.dart';
@@ -81,6 +82,10 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
   }
 
   void _selectProtocol(String protocol) {
+    if (protocol == 'SAF Folder') {
+      _requestSafAndSave();
+      return;
+    }
     setState(() {
       _selectedType = protocol;
       _nameController.text = '$protocol Connection';
@@ -99,6 +104,95 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
       }
     });
     _nextStep();
+  }
+
+  Future<void> _requestSafAndSave() async {
+    try {
+      const safChannel = MethodChannel('com.rubex.nfile/saf');
+      final result = await safChannel.invokeMethod('requestSafDirectory');
+      if (result == null) {
+        // User cancelled picker
+        return;
+      }
+      final map = Map<String, dynamic>.from(result);
+      final String uri = map['uri'] as String;
+      final String name = map['name'] as String;
+
+      final connection = NetworkConnectionModel(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        name: name,
+        type: 'saf',
+        host: '',
+        port: 0,
+        username: '',
+        password: '',
+        rootPath: uri,
+        protocol: 'saf',
+      );
+
+      await NetworkConnectionsService.saveConnection(connection);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Broken.tick_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '"$name" added successfully!',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Theme.of(context).colorScheme.primary,
+          ),
+        );
+        Navigator.pop(context, true); // Return success
+      }
+    } catch (e) {
+      if (mounted) {
+        if (e is PlatformException && e.code == 'ACTIVITY_NOT_FOUND') {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Text('System App Disabled', style: TextStyle(fontFamily: 'LexendDeca', fontSize: 18, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              content: const Text(
+                'Your device does not have a default System Files/Documents app (DocumentsUI) enabled, '
+                'which is required by Android to select and mount directories.\n\n'
+                'Please check if the "Files" or "Documents" system app is disabled in your device Settings, '
+                'or enable it to use SAF directory features.',
+                style: TextStyle(fontSize: 14),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('OK', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to request SAF folder: $e'),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    }
   }
 
   // Trigger Diagnostics & Save
@@ -311,6 +405,7 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
       {'name': 'FTP', 'desc': 'Standard File Transfer Protocol', 'color': const Color(0xFFF97316)},
       {'name': 'SFTP', 'desc': 'SSH Secure File Transfer Server', 'color': const Color(0xFF0D9488)},
       {'name': 'WebDav', 'desc': 'HTTP Web Distributed Authoring', 'color': const Color(0xFFE11D48)},
+      {'name': 'SAF Folder', 'desc': 'Android Storage Access Framework (SD Card / External)', 'color': const Color(0xFF0284C7)},
     ];
 
     return ScrollConfiguration(
@@ -750,6 +845,11 @@ class _NetworkConnectionWizardScreenState extends State<NetworkConnectionWizardS
       case 'WebDav':
         iconData = Icons.web_rounded;
         color = const Color(0xFFE11D48);
+        break;
+      case 'SAF Folder':
+      case 'saf':
+        iconData = Icons.sd_card_rounded;
+        color = const Color(0xFF0284C7);
         break;
       default:
         iconData = Broken.wifi;

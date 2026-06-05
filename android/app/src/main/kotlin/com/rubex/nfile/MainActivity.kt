@@ -10,6 +10,7 @@ import android.os.StatFs
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.webkit.MimeTypeMap
+import android.provider.DocumentsContract
 import com.ryanheise.audioservice.AudioServiceFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -40,6 +41,8 @@ class MainActivity : AudioServiceFragmentActivity() {
     private val SHIZUKU_REQUEST_CODE = 10001
     private val executor = Executors.newCachedThreadPool()
     private var pendingPermissionResult: MethodChannel.Result? = null
+    private var safPermissionResult: MethodChannel.Result? = null
+    private val SAF_REQUEST_CODE = 10002
 
     private val ACTION_CANCEL_OPERATION = "com.rubex.nfile.ACTION_CANCEL_OPERATION"
     private var notificationsChannel: MethodChannel? = null
@@ -95,6 +98,43 @@ class MainActivity : AudioServiceFragmentActivity() {
             e.printStackTrace()
         }
         super.onDestroy()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == SAF_REQUEST_CODE) {
+            val result = safPermissionResult
+            safPermissionResult = null
+            if (resultCode == RESULT_OK && data != null) {
+                val treeUri = data.data
+                if (treeUri != null) {
+                    try {
+                        val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                        contentResolver.takePersistableUriPermission(treeUri, takeFlags)
+                        
+                        var name = "SAF Drive"
+                        val docUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, DocumentsContract.getTreeDocumentId(treeUri))
+                        contentResolver.query(docUri, null, null, null, null)?.use { cursor ->
+                            val nameIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                            if (nameIndex != -1 && cursor.moveToFirst()) {
+                                name = cursor.getString(nameIndex)
+                            }
+                        }
+
+                        result?.success(mapOf(
+                            "uri" to treeUri.toString(),
+                            "name" to name
+                        ))
+                    } catch (e: Exception) {
+                        result?.error("PERMISSION_ERROR", e.message, null)
+                    }
+                } else {
+                    result?.success(null)
+                }
+            } else {
+                result?.success(null)
+            }
+        }
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -385,6 +425,179 @@ class MainActivity : AudioServiceFragmentActivity() {
                             runOnUiThread { result.success(true) }
                         } catch (e: Exception) {
                             runOnUiThread { result.error("ICON_ERROR", e.message, null) }
+                        }
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.rubex.nfile/saf").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "requestSafDirectory" -> {
+                    safPermissionResult = result
+                    try {
+                        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+                        startActivityForResult(intent, SAF_REQUEST_CODE)
+                    } catch (e: Exception) {
+                        safPermissionResult = null
+                        result.error("ACTIVITY_NOT_FOUND", "No application found to handle folder selection: ${e.message}", null)
+                    }
+                }
+                "listDirectory" -> {
+                    val rootUriStr = call.argument<String>("rootUri") ?: ""
+                    val pathUriStr = call.argument<String>("pathUri") ?: ""
+                    executor.execute {
+                        try {
+                            val rootUri = Uri.parse(rootUriStr)
+                            val targetDocId = if (pathUriStr.isNotEmpty()) {
+                                DocumentsContract.getDocumentId(Uri.parse(pathUriStr))
+                            } else {
+                                DocumentsContract.getTreeDocumentId(rootUri)
+                            }
+                            
+                            val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(rootUri, targetDocId)
+                            val resultList = mutableListOf<Map<String, Any>>()
+                            
+                            contentResolver.query(childrenUri, null, null, null, null)?.use { cursor ->
+                                val idIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                                val nameIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                                val mimeIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE)
+                                val sizeIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_SIZE)
+                                val dateIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+                                
+                                while (cursor.moveToNext()) {
+                                    val childDocId = if (idIndex != -1) cursor.getString(idIndex) else ""
+                                    val childName = if (nameIndex != -1) cursor.getString(nameIndex) else "unnamed"
+                                    val mimeType = if (mimeIndex != -1) cursor.getString(mimeIndex) else ""
+                                    val size = if (sizeIndex != -1) cursor.getLong(sizeIndex) else 0L
+                                    val modified = if (dateIndex != -1) cursor.getLong(dateIndex) else 0L
+                                    
+                                    val childUri = DocumentsContract.buildDocumentUriUsingTree(rootUri, childDocId)
+                                    val isDir = mimeType == DocumentsContract.Document.MIME_TYPE_DIR
+                                    
+                                    resultList.add(mapOf(
+                                        "name" to childName,
+                                        "path" to childUri.toString(),
+                                        "isDirectory" to isDir,
+                                        "size" to size,
+                                        "modified" to modified
+                                    ))
+                                }
+                            }
+                            runOnUiThread { result.success(resultList) }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            runOnUiThread { result.error("LIST_ERROR", e.message, null) }
+                        }
+                    }
+                }
+                "createDirectory" -> {
+                    val rootUriStr = call.argument<String>("rootUri") ?: ""
+                    val parentUriStr = call.argument<String>("parentUri") ?: ""
+                    val name = call.argument<String>("name") ?: "New Folder"
+                    executor.execute {
+                        try {
+                            val rootUri = Uri.parse(rootUriStr)
+                            val parentDocId = if (parentUriStr.isNotEmpty()) {
+                                DocumentsContract.getDocumentId(Uri.parse(parentUriStr))
+                            } else {
+                                DocumentsContract.getTreeDocumentId(rootUri)
+                            }
+                            val parentUri = DocumentsContract.buildDocumentUriUsingTree(rootUri, parentDocId)
+                            val newUri = DocumentsContract.createDocument(
+                                contentResolver,
+                                parentUri,
+                                DocumentsContract.Document.MIME_TYPE_DIR,
+                                name
+                            )
+                            runOnUiThread { result.success(newUri?.toString()) }
+                        } catch (e: Exception) {
+                            runOnUiThread { result.error("CREATE_ERROR", e.message, null) }
+                        }
+                    }
+                }
+                "delete" -> {
+                    val rootUriStr = call.argument<String>("rootUri") ?: ""
+                    val uriStr = call.argument<String>("uri") ?: ""
+                    executor.execute {
+                        try {
+                            val rootUri = Uri.parse(rootUriStr)
+                            val docId = DocumentsContract.getDocumentId(Uri.parse(uriStr))
+                            val docUri = DocumentsContract.buildDocumentUriUsingTree(rootUri, docId)
+                            val deleted = DocumentsContract.deleteDocument(contentResolver, docUri)
+                            runOnUiThread { result.success(deleted) }
+                        } catch (e: Exception) {
+                            runOnUiThread { result.error("DELETE_ERROR", e.message, null) }
+                        }
+                    }
+                }
+                "downloadFile" -> {
+                    val rootUriStr = call.argument<String>("rootUri") ?: ""
+                    val uriStr = call.argument<String>("uri") ?: ""
+                    val localPath = call.argument<String>("localPath") ?: ""
+                    executor.execute {
+                        try {
+                            val rootUri = Uri.parse(rootUriStr)
+                            val docId = DocumentsContract.getDocumentId(Uri.parse(uriStr))
+                            val docUri = DocumentsContract.buildDocumentUriUsingTree(rootUri, docId)
+                            
+                            val file = File(localPath)
+                            file.parentFile?.mkdirs()
+                            
+                            contentResolver.openInputStream(docUri)?.use { inputStream ->
+                                FileOutputStream(file).use { outputStream ->
+                                    inputStream.copyTo(outputStream)
+                                }
+                            }
+                            runOnUiThread { result.success(true) }
+                        } catch (e: Exception) {
+                            runOnUiThread { result.error("DOWNLOAD_ERROR", e.message, null) }
+                        }
+                    }
+                }
+                "uploadFile" -> {
+                    val rootUriStr = call.argument<String>("rootUri") ?: ""
+                    val parentUriStr = call.argument<String>("parentUri") ?: ""
+                    val localPath = call.argument<String>("localPath") ?: ""
+                    val fileName = call.argument<String>("fileName") ?: "file"
+                    executor.execute {
+                        try {
+                            val rootUri = Uri.parse(rootUriStr)
+                            val parentDocId = if (parentUriStr.isNotEmpty()) {
+                                DocumentsContract.getDocumentId(Uri.parse(parentUriStr))
+                            } else {
+                                DocumentsContract.getTreeDocumentId(rootUri)
+                            }
+                            val parentUri = DocumentsContract.buildDocumentUriUsingTree(rootUri, parentDocId)
+                            
+                            val ext = fileName.substringAfterLast(".", "")
+                            val mimeType = if (ext.isNotEmpty()) {
+                                MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext.lowercase()) ?: "application/octet-stream"
+                            } else {
+                                "application/octet-stream"
+                            }
+                            
+                            val docUri = DocumentsContract.createDocument(
+                                contentResolver,
+                                parentUri,
+                                mimeType,
+                                fileName
+                            )
+                            
+                            if (docUri != null) {
+                                val file = File(localPath)
+                                contentResolver.openOutputStream(docUri)?.use { outputStream ->
+                                    file.inputStream().use { inputStream ->
+                                        inputStream.copyTo(outputStream)
+                                    }
+                                }
+                                runOnUiThread { result.success(true) }
+                            } else {
+                                runOnUiThread { result.error("UPLOAD_ERROR", "Failed to create document in tree", null) }
+                            }
+                        } catch (e: Exception) {
+                            runOnUiThread { result.error("UPLOAD_ERROR", e.message, null) }
                         }
                     }
                 }

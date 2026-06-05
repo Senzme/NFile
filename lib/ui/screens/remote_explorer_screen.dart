@@ -13,6 +13,7 @@ import '../../services/remote/ftp_client.dart';
 import '../../services/remote/sftp_client.dart';
 import '../../services/remote/webdav_client.dart';
 import '../../services/remote/lan_client.dart';
+import '../../services/remote/saf_client.dart';
 
 // Clipboard for remote→local operations
 class _RemoteClipboard {
@@ -75,6 +76,8 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
       );
     } else if (conn.type == 'LAN/SMB') {
       _client = LanClient(host: conn.host, port: conn.port, username: conn.username, password: conn.password);
+    } else if (conn.type == 'saf') {
+      _client = SafRemoteClient(rootUri: conn.rootPath);
     }
 
     try {
@@ -129,8 +132,30 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
     }
   }
 
+  String _getSafParentUri(String currentUri, String rootUri) {
+    if (currentUri == rootUri) return rootUri;
+    final docIndex = currentUri.indexOf('/document/');
+    if (docIndex == -1) return rootUri;
+    
+    final baseUri = currentUri.substring(0, docIndex + 10); // includes "content://.../document/"
+    final documentId = Uri.decodeComponent(currentUri.substring(docIndex + 10));
+    final docParts = documentId.split('/');
+    if (docParts.isEmpty) return rootUri;
+    
+    docParts.removeLast();
+    if (docParts.isEmpty) return rootUri;
+    
+    final parentDocId = docParts.join('/');
+    return '$baseUri${Uri.encodeComponent(parentDocId)}';
+  }
+
   void _navigateUp() {
     if (_currentPath == widget.connection.rootPath) return;
+    if (widget.connection.type == 'saf') {
+      final parentUri = _getSafParentUri(_currentPath, widget.connection.rootPath);
+      _loadDirectoryContents(parentUri);
+      return;
+    }
     final parts = _currentPath.split('/');
     if (parts.isNotEmpty) parts.removeLast();
     var parent = parts.join('/');
@@ -609,16 +634,49 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
     final isDark = theme.brightness == Brightness.dark;
     final provider = context.watch<FileManagerProvider>();
 
+    final isSaf = widget.connection.type == 'saf';
     final rootPath = widget.connection.rootPath;
-    String relativePath = _currentPath;
-    if (_currentPath.startsWith(rootPath)) {
-      relativePath = _currentPath.substring(rootPath.length);
-    }
-    if (relativePath.isEmpty || relativePath == '/') relativePath = '';
+    
+    List<String> pathNodes = [];
+    List<String> pathUris = [];
+    
+    if (isSaf) {
+      pathNodes.add('Root');
+      pathUris.add(rootPath);
+      
+      final docIndex = _currentPath.indexOf('/document/');
+      if (docIndex != -1) {
+        final baseUri = _currentPath.substring(0, docIndex + 10);
+        final documentId = Uri.decodeComponent(_currentPath.substring(docIndex + 10));
+        final docParts = documentId.split('/').where((n) => n.isNotEmpty).toList();
+        
+        for (int i = 0; i < docParts.length; i++) {
+          final part = docParts[i];
+          String displayName = part;
+          if (part.contains(':')) {
+            displayName = part.split(':').last;
+            if (displayName.isEmpty) {
+              displayName = part;
+            }
+          }
+          pathNodes.add(displayName);
+          
+          final subParts = docParts.sublist(0, i + 1);
+          final subDocId = subParts.join('/');
+          pathUris.add('$baseUri${Uri.encodeComponent(subDocId)}');
+        }
+      }
+    } else {
+      String relativePath = _currentPath;
+      if (_currentPath.startsWith(rootPath)) {
+        relativePath = _currentPath.substring(rootPath.length);
+      }
+      if (relativePath.isEmpty || relativePath == '/') relativePath = '';
 
-    final pathNodes = relativePath.isEmpty
-        ? ['Root']
-        : ['Root', ...relativePath.split('/').where((n) => n.isNotEmpty)];
+      pathNodes = relativePath.isEmpty
+          ? ['Root']
+          : ['Root', ...relativePath.split('/').where((n) => n.isNotEmpty)];
+    }
 
     final hasLocalClipboard = provider.clipboardPaths.isNotEmpty;
     final hasRemoteClipboard = provider.isRemoteClipboard;
@@ -739,11 +797,11 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
                       itemCount: pathNodes.length,
                       itemBuilder: (context, idx) {
                         final isLast = idx == pathNodes.length - 1;
-                        String reconstructedPath = rootPath;
-                        if (idx > 0) {
-                          final sub = pathNodes.sublist(1, idx + 1).join('/');
-                          reconstructedPath = rootPath.endsWith('/') ? '$rootPath$sub' : '$rootPath/$sub';
-                        }
+                        final String reconstructedPath = isSaf
+                            ? pathUris[idx]
+                            : (idx > 0
+                                ? (rootPath.endsWith('/') ? '$rootPath${pathNodes.sublist(1, idx + 1).join('/')}' : '$rootPath/${pathNodes.sublist(1, idx + 1).join('/')}')
+                                : rootPath);
                         return Row(
                           children: [
                             InkWell(
