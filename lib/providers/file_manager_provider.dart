@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
@@ -62,6 +63,28 @@ class StorageVolume {
     this.totalBytes = 0,
     this.usedBytes = 0,
   });
+}
+
+int _calculateDirectorySizeSync(String path) {
+  int totalSize = 0;
+  try {
+    final dir = Directory(path);
+    if (dir.existsSync()) {
+      final List<FileSystemEntity> entities = dir.listSync(followLinks: false);
+      for (final entity in entities) {
+        if (entity is File) {
+          try {
+            totalSize += entity.lengthSync();
+          } catch (_) {}
+        } else if (entity is Directory) {
+          try {
+            totalSize += _calculateDirectorySizeSync(entity.path);
+          } catch (_) {}
+        }
+      }
+    }
+  } catch (_) {}
+  return totalSize;
 }
 
 class FileManagerProvider extends ChangeNotifier {
@@ -581,30 +604,10 @@ class FileManagerProvider extends ChangeNotifier {
       return _folderSizes[folderPath]!;
     }
 
-    int totalSize = await _calculateDirectorySize(folderPath);
+    // Offload directory size calculation to a background isolate (compute)
+    // to prevent blocking the main UI thread during recursive disk reads.
+    int totalSize = await compute(_calculateDirectorySizeSync, folderPath);
     _folderSizes[folderPath] = totalSize;
-    return totalSize;
-  }
-
-  Future<int> _calculateDirectorySize(String path) async {
-    int totalSize = 0;
-    try {
-      final dir = Directory(path);
-      if (await dir.exists()) {
-        final List<FileSystemEntity> entities = await dir.list(followLinks: false).toList();
-        for (final entity in entities) {
-          if (entity is File) {
-            try {
-              totalSize += await entity.length();
-            } catch (_) {}
-          } else if (entity is Directory) {
-            try {
-              totalSize += await _calculateDirectorySize(entity.path);
-            } catch (_) {}
-          }
-        }
-      }
-    } catch (_) {}
     return totalSize;
   }
 
@@ -789,11 +792,11 @@ class FileManagerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> loadDirectoryForTab(int tabIndex, String path, {bool showLoading = true}) async {
+  Future<void> loadDirectoryForTab(int tabIndex, String path, {bool showLoading = true, bool clearCache = false}) async {
     if (tabIndex >= 0 && tabIndex < _tabs.length) {
       final oldIndex = _activeTabIndex;
       _activeTabIndex = tabIndex;
-      await loadDirectory(path, showLoading: showLoading);
+      await loadDirectory(path, showLoading: showLoading, clearCache: clearCache);
       _activeTabIndex = oldIndex;
     }
   }
@@ -1200,8 +1203,10 @@ class FileManagerProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> loadDirectory(String path, {bool showLoading = true}) async {
-    clearFolderItemCountsCache();
+  Future<void> loadDirectory(String path, {bool showLoading = true, bool clearCache = false}) async {
+    if (clearCache) {
+      clearFolderItemCountsCache();
+    }
     if (currentPath != path) {
       _highlightedPaths.clear();
     }
@@ -1450,7 +1455,7 @@ class FileManagerProvider extends ChangeNotifier {
 
     selectedPaths.clear();
     activeTab.isLoading = false;
-    await loadDirectory(currentPath, showLoading: false);
+    await loadDirectory(currentPath, showLoading: false, clearCache: true);
   }
 
   Future<void> pasteFile(BuildContext context, {bool clearAfterPaste = true}) async {
@@ -1502,7 +1507,7 @@ class FileManagerProvider extends ChangeNotifier {
         clearClipboard();
       }
       activeTab.isLoading = false;
-      await loadDirectory(currentPath, showLoading: false);
+      await loadDirectory(currentPath, showLoading: false, clearCache: true);
       notifyListeners();
       return;
     }
@@ -1839,7 +1844,7 @@ class FileManagerProvider extends ChangeNotifier {
     } finally {
       progressNotifier.value = null;
       activeTab.isLoading = false;
-      await loadDirectory(currentPath, showLoading: false);
+      await loadDirectory(currentPath, showLoading: false, clearCache: true);
       notifyListeners();
     }
   }
@@ -1982,7 +1987,7 @@ class FileManagerProvider extends ChangeNotifier {
         clearClipboard();
       }
       activeTab.isLoading = false;
-      await loadDirectory(currentPath, showLoading: false);
+      await loadDirectory(currentPath, showLoading: false, clearCache: true);
       notifyListeners();
     }
   }
@@ -2121,7 +2126,7 @@ class FileManagerProvider extends ChangeNotifier {
           }
         }
       }
-      await loadDirectory(currentPath, showLoading: false);
+      await loadDirectory(currentPath, showLoading: false, clearCache: true);
     } catch (e) {
       debugPrint('Error deleting file: $e');
     }
@@ -2140,7 +2145,7 @@ class FileManagerProvider extends ChangeNotifier {
           await File(oldPath).rename(newPath);
         }
       }
-      await loadDirectory(currentPath, showLoading: false);
+      await loadDirectory(currentPath, showLoading: false, clearCache: true);
     } catch (e) {
       debugPrint('Error renaming file: $e');
     }
@@ -2160,7 +2165,7 @@ class FileManagerProvider extends ChangeNotifier {
         final newPath = p.join(currentPath, finalName);
         await Directory(newPath).create();
       }
-      await loadDirectory(currentPath, showLoading: false);
+      await loadDirectory(currentPath, showLoading: false, clearCache: true);
       return finalName;
     } catch (e) {
       debugPrint('Error creating folder: $e');
@@ -2182,7 +2187,7 @@ class FileManagerProvider extends ChangeNotifier {
         final newPath = p.join(currentPath, finalName);
         await File(newPath).create();
       }
-      await loadDirectory(currentPath, showLoading: false);
+      await loadDirectory(currentPath, showLoading: false, clearCache: true);
       return finalName;
     } catch (e) {
       debugPrint('Error creating file: $e');
@@ -2282,7 +2287,7 @@ class FileManagerProvider extends ChangeNotifier {
       }
 
       selectedPaths.clear();
-      await loadDirectory(currentPath, showLoading: false);
+      await loadDirectory(currentPath, showLoading: false, clearCache: true);
     }
   }
 
@@ -2573,7 +2578,7 @@ class FileManagerProvider extends ChangeNotifier {
       }
     }
 
-    await loadDirectory(currentPath, showLoading: false);
+    await loadDirectory(currentPath, showLoading: false, clearCache: true);
   }
 
   Future<void> _copyDirectory(Directory source, Directory destination) async {
@@ -2644,7 +2649,7 @@ class FileManagerProvider extends ChangeNotifier {
       }
     }
 
-    await loadDirectory(currentPath, showLoading: false);
+    await loadDirectory(currentPath, showLoading: false, clearCache: true);
   }
 }
 

@@ -1131,7 +1131,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                                     physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
                                     slivers: [
                       CupertinoSliverRefreshControl(
-                        onRefresh: () => provider.loadDirectory(provider.currentPath, showLoading: false),
+                        onRefresh: () => provider.loadDirectory(provider.currentPath, showLoading: false, clearCache: true),
                       ),
                       if (!isSelectionMode && provider.showFolderFileCount)
                         SliverToBoxAdapter(

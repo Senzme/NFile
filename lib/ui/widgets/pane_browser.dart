@@ -321,7 +321,7 @@ class _PaneBrowserState extends State<PaneBrowser> {
                                       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
                                       slivers: [
                                       CupertinoSliverRefreshControl(
-                                        onRefresh: () => provider.loadDirectoryForTab(widget.tabIndex, tab.currentPath, showLoading: false),
+                                        onRefresh: () => provider.loadDirectoryForTab(widget.tabIndex, tab.currentPath, showLoading: false, clearCache: true),
                                       ),
                                       if (tab.currentFiles.isEmpty)
                                         SliverFillRemaining(
