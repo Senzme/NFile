@@ -38,6 +38,17 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
   bool _isLoading = true;
   final Set<String> _selectedInternalPaths = {};
 
+  String _normalizePath(String path) {
+    var name = path.replaceAll('\\', '/');
+    while (name.startsWith('/')) {
+      name = name.substring(1);
+    }
+    while (name.startsWith('./')) {
+      name = name.substring(2);
+    }
+    return name;
+  }
+
   String get _archiveName => p.basename(widget.archivePath);
   bool get isSelectionMode => _selectedInternalPaths.isNotEmpty;
 
@@ -66,7 +77,7 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
     final List<ArchiveItem> items = [];
 
     for (final f in _archive!.files) {
-      final name = f.name.replaceAll('\\', '/');
+      final name = _normalizePath(f.name);
       if (name.isEmpty || name == _currentInternalPath) continue;
 
       if (name.startsWith(_currentInternalPath)) {
@@ -143,7 +154,7 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
 
   Future<void> _openArchiveItem(ArchiveItem item) async {
     try {
-      final fileObj = _archive!.files.firstWhere((f) => f.name.replaceAll('\\', '/') == item.fullPath);
+      final fileObj = _archive!.files.firstWhere((f) => _normalizePath(f.name) == item.fullPath);
       final tempDir = Directory.systemTemp.createTempSync('zip_preview');
       final tempFile = File(p.join(tempDir.path, item.name));
       tempFile.writeAsBytesSync(fileObj.content as List<int>);
@@ -165,12 +176,12 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
 
     try {
       if (!item.isDirectory) {
-        final fileObj = _archive!.files.firstWhere((f) => f.name.replaceAll('\\', '/') == item.fullPath);
+        final fileObj = _archive!.files.firstWhere((f) => _normalizePath(f.name) == item.fullPath);
         final destFile = File(p.join(destDir, item.name));
         destFile.writeAsBytesSync(fileObj.content as List<int>);
       } else {
         for (final f in _archive!.files) {
-          final name = f.name.replaceAll('\\', '/');
+          final name = _normalizePath(f.name);
           if (name.startsWith(item.fullPath) && f.isFile) {
             final rel = name.substring(item.fullPath.length);
             final destFile = File(p.join(destDir, item.name, rel));
@@ -201,7 +212,7 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
       for (final internalPath in _selectedInternalPaths) {
         final isDir = internalPath.endsWith('/');
         if (!isDir) {
-          final fileObj = _archive!.files.firstWhere((f) => f.name.replaceAll('\\', '/') == internalPath);
+          final fileObj = _archive!.files.firstWhere((f) => _normalizePath(f.name) == internalPath);
           final fileName = p.basename(internalPath);
           final physicalFile = File(p.join(tempDir.path, fileName));
           physicalFile.writeAsBytesSync(fileObj.content as List<int>);
@@ -213,7 +224,7 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
           physicalPaths.add(targetSubDir.path);
 
           for (final f in _archive!.files) {
-            final name = f.name.replaceAll('\\', '/');
+            final name = _normalizePath(f.name);
             if (name.startsWith(internalPath) && f.isFile) {
               final rel = name.substring(internalPath.length);
               final destFile = File(p.join(targetSubDir.path, rel));

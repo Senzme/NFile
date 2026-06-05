@@ -446,7 +446,13 @@ class ArchiveService {
 
       final newArchive = Archive();
       for (final f in archive.files) {
-        final name = f.name.replaceAll('\\', '/');
+        var name = f.name.replaceAll('\\', '/');
+        while (name.startsWith('/')) {
+          name = name.substring(1);
+        }
+        while (name.startsWith('./')) {
+          name = name.substring(2);
+        }
         bool shouldDelete = false;
         for (final toDel in internalPathsToDelete) {
           if (toDel.endsWith('/')) {
