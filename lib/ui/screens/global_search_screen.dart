@@ -13,6 +13,7 @@ import '../widgets/file_action_dialogs.dart';
 import '../widgets/batch_rename_dialog.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import '../../services/folder_share_service.dart';
+import '../widgets/directory_tab_bar.dart';
 
 class GlobalSearchScreen extends StatefulWidget {
   final String? searchFolderPath;
@@ -34,6 +35,9 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
   final Set<String> _selectedPaths = {};
   bool get _isSelectionMode => _selectedPaths.isNotEmpty;
 
+  String? _searchFolderPath;
+  String? _lastActivePath;
+
   final List<String> _filters = [
     'All',
     'Folders',
@@ -44,10 +48,35 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _searchFolderPath = widget.searchFolderPath;
+    final fileProvider = context.read<FileManagerProvider>();
+    _lastActivePath = fileProvider.currentPath;
+    fileProvider.addListener(_onFileManagerChanged);
+  }
+
+  @override
   void dispose() {
     _searchSubscription?.cancel();
     _searchController.dispose();
+    context.read<FileManagerProvider>().removeListener(_onFileManagerChanged);
     super.dispose();
+  }
+
+  void _onFileManagerChanged() {
+    if (!mounted) return;
+    final fileProvider = context.read<FileManagerProvider>();
+    final newPath = fileProvider.currentPath;
+    if (newPath != _lastActivePath) {
+      _lastActivePath = newPath;
+      setState(() {
+        _searchFolderPath = newPath;
+      });
+      _executeSearch();
+    } else {
+      setState(() {});
+    }
   }
 
   void _onSearchChanged(String value) {
@@ -88,13 +117,13 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
     final qLower = _query.toLowerCase();
     
     // Resolve search scope
-    final isGlobal = widget.searchFolderPath == null ||
-                     widget.searchFolderPath == '/storage/emulated/0' ||
-                     widget.searchFolderPath == '/';
+    final isGlobal = _searchFolderPath == null ||
+                     _searchFolderPath == '/storage/emulated/0' ||
+                     _searchFolderPath == '/';
 
     final rootPath = isGlobal
         ? (Platform.isAndroid ? '/storage/emulated/0' : fileProvider.currentPath)
-        : widget.searchFolderPath!;
+        : _searchFolderPath!;
     
     // 1. Instant check from MediaProvider indexes if matching filter
     if (_selectedFilter == 'All' || _selectedFilter == 'Docs') {
@@ -386,9 +415,10 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isGlobal = widget.searchFolderPath == null ||
-                     widget.searchFolderPath == '/storage/emulated/0' ||
-                     widget.searchFolderPath == '/';
+    final fileProvider = context.read<FileManagerProvider>();
+    final isGlobal = _searchFolderPath == null ||
+                     _searchFolderPath == '/storage/emulated/0' ||
+                     _searchFolderPath == '/';
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -429,6 +459,9 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                       : null,
                 ),
               ),
+        bottom: (_isSelectionMode || !fileProvider.enableMultipleTabs)
+            ? null
+            : DirectoryTabBar(provider: fileProvider),
         actions: _isSelectionMode
             ? [
                 IconButton(
@@ -464,7 +497,30 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
               ]
             : null,
       ),
-      body: Column(
+      body: GestureDetector(
+        onHorizontalDragEnd: (details) {
+          final fileProvider = context.read<FileManagerProvider>();
+          if (!fileProvider.enableMultipleTabs || fileProvider.enableSplitScreen || _isSelectionMode) {
+            return;
+          }
+          final velocity = details.primaryVelocity ?? 0.0;
+          // Swipe Left (moves right-to-left) -> Next Tab
+          if (velocity < -300) {
+            if (fileProvider.activeTabIndex < fileProvider.tabs.length - 1) {
+              fileProvider.setActiveTab(fileProvider.activeTabIndex + 1);
+            } else if (fileProvider.activeTabIndex == fileProvider.tabs.length - 1) {
+              fileProvider.addTab(fileProvider.rootPath);
+            }
+          }
+          // Swipe Right (moves left-to-right) -> Previous Tab
+          else if (velocity > 300) {
+            if (fileProvider.activeTabIndex > 0) {
+              fileProvider.setActiveTab(fileProvider.activeTabIndex - 1);
+            }
+          }
+        },
+        behavior: HitTestBehavior.translucent,
+        child: Column(
         children: [
           // Filter Chips Row (NFile style)
           Container(
@@ -540,7 +596,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                     isGlobal ? 'Search your storage' : 'Search this folder',
                     isGlobal
                         ? 'Find any file, folder, document or media instantly across your device'
-                        : 'Search files and subfolders in: ${widget.searchFolderPath!.split("/").last}',
+                        : 'Search files and subfolders in: ${_searchFolderPath!.split("/").last}',
                   )
                 : _results.isEmpty && !_isSearching
                     ? _buildEmptyState(
@@ -591,8 +647,9 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildEmptyState(ThemeData theme, IconData icon, String title, String subtitle) {
     return Center(
