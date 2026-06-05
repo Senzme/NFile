@@ -6,6 +6,7 @@ import '../../providers/file_manager_provider.dart';
 import '../screens/media_category_screen.dart';
 import '../screens/internal_file_picker_screen.dart';
 import '../screens/storage_analyzer/app_manager_screen.dart';
+import '../screens/more_settings_screen.dart';
 
 class QuickCategoriesGrid extends StatelessWidget {
   final Function(int) onNavigateTab;
@@ -86,6 +87,14 @@ class QuickCategoriesGrid extends StatelessWidget {
         'count': 'Manager',
         'isCustom': false,
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AppManagerScreen())),
+      },
+      'Settings': {
+        'label': 'Settings',
+        'icon': Broken.setting_2,
+        'color': isDark ? Colors.blueGrey.shade300 : Colors.blueGrey,
+        'count': 'Configure',
+        'isCustom': false,
+        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MoreSettingsScreen())),
       },
     };
 
