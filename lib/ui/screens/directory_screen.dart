@@ -1101,6 +1101,8 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                       if (velocity < -300) {
                         if (provider.activeTabIndex < provider.tabs.length - 1) {
                           provider.setActiveTab(provider.activeTabIndex + 1);
+                        } else if (provider.activeTabIndex == provider.tabs.length - 1) {
+                          provider.addTab(provider.rootPath);
                         }
                       }
                       // Swipe Right (moves left-to-right) -> Previous Tab

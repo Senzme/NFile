@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import '../../providers/file_manager_provider.dart';
 import '../../core/icon_fonts/broken_icons.dart';
+import 'tab_options_sheet.dart';
 
 class DirectoryTabBar extends StatelessWidget implements PreferredSizeWidget {
   final FileManagerProvider provider;
@@ -50,6 +51,7 @@ class DirectoryTabBar extends StatelessWidget implements PreferredSizeWidget {
                     borderRadius: BorderRadius.circular(12),
                     child: InkWell(
                       onTap: () => provider.setActiveTab(index),
+                      onLongPress: () => TabOptionsSheet.show(context, provider, index),
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -66,11 +68,15 @@ class DirectoryTabBar extends StatelessWidget implements PreferredSizeWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              isRoot ? Broken.home_1 : Broken.folder,
+                              tab.isPinned
+                                  ? Icons.push_pin_rounded
+                                  : (isRoot ? Broken.home_1 : Broken.folder),
                               size: 16,
-                              color: isSelected
-                                  ? theme.colorScheme.primary
-                                  : theme.colorScheme.onSurface.withOpacity(0.6),
+                              color: tab.isPinned
+                                  ? Colors.orange
+                                  : (isSelected
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.onSurface.withOpacity(0.6)),
                             ),
                             const SizedBox(width: 8),
                             Text(
@@ -82,7 +88,7 @@ class DirectoryTabBar extends StatelessWidget implements PreferredSizeWidget {
                                       ? theme.colorScheme.primary
                                       : theme.colorScheme.onSurface.withOpacity(0.8)),
                             ),
-                            if (tabs.length > 1) ...[
+                            if (tabs.length > 1 && !tab.isPinned) ...[
                               const SizedBox(width: 8),
                               GestureDetector(
                                 onTap: () => provider.closeTab(index),

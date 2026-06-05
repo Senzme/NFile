@@ -822,6 +822,7 @@ class FileManagerProvider extends ChangeNotifier {
     );
     _tabs.add(newTab);
     _activeTabIndex = _tabs.length - 1;
+    _persistTabs();
     notifyListeners();
     loadDirectory(path);
   }
@@ -838,6 +839,7 @@ class FileManagerProvider extends ChangeNotifier {
     } else if (_activeTabIndex > index) {
       _activeTabIndex--;
     }
+    _persistTabs();
     notifyListeners();
   }
 
@@ -846,6 +848,7 @@ class FileManagerProvider extends ChangeNotifier {
     final active = activeTab;
     _tabs = [active];
     _activeTabIndex = 0;
+    _persistTabs();
     notifyListeners();
   }
 
@@ -862,17 +865,59 @@ class FileManagerProvider extends ChangeNotifier {
       useShizukuMode: active.useShizukuMode,
       isRootAvailable: active.isRootAvailable,
       scrollPositions: Map.from(active.scrollPositions),
+      isPinned: active.isPinned,
     );
     _tabs.add(dup);
     _activeTabIndex = _tabs.length - 1;
+    _persistTabs();
     notifyListeners();
+  }
+
+  void togglePinTab(int index) {
+    if (index >= 0 && index < _tabs.length) {
+      _tabs[index].isPinned = !_tabs[index].isPinned;
+      _persistTabs();
+      notifyListeners();
+    }
+  }
+
+  void duplicateTab(int index) {
+    if (index >= 0 && index < _tabs.length) {
+      final tab = _tabs[index];
+      final dup = FolderTab(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        currentPath: tab.currentPath,
+        currentFiles: List.from(tab.currentFiles),
+        isRestrictedMode: tab.isRestrictedMode,
+        needsPermission: tab.needsPermission,
+        useRootMode: tab.useRootMode,
+        useShizukuMode: tab.useShizukuMode,
+        isRootAvailable: tab.isRootAvailable,
+        scrollPositions: Map.from(tab.scrollPositions),
+        isPinned: tab.isPinned,
+      );
+      _tabs.insert(index + 1, dup);
+      _activeTabIndex = index + 1;
+      _persistTabs();
+      notifyListeners();
+    }
   }
 
   void setActiveTab(int index) {
     if (index >= 0 && index < _tabs.length) {
       _activeTabIndex = index;
+      _persistTabs();
       notifyListeners();
     }
+  }
+
+  void _persistTabs() {
+    final list = _tabs.map((t) => {
+      'id': t.id,
+      'currentPath': t.currentPath,
+      'isPinned': t.isPinned,
+    }).toList();
+    PreferencesService.saveSavedTabs(list);
   }
 
   // --- Active Tab Delegations ---
@@ -1145,24 +1190,46 @@ class FileManagerProvider extends ChangeNotifier {
     }
     
     // Initialize primary default tab
-    _tabs = [
-      FolderTab(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        currentPath: initialPath,
-      )
-    ];
-    if (_enableSplitScreen) {
-      _tabs.add(FolderTab(
-        id: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
-        currentPath: initialPath,
-      ));
+    final savedTabsData = PreferencesService.getSavedTabs();
+    if (savedTabsData.isNotEmpty) {
+      _tabs = savedTabsData.map((data) {
+        return FolderTab(
+          id: data['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+          currentPath: data['currentPath']?.toString() ?? initialPath,
+          isPinned: data['isPinned'] ?? false,
+        );
+      }).toList();
+      if (_enableSplitScreen && _tabs.length < 2) {
+        while (_tabs.length < 2) {
+          _tabs.add(FolderTab(
+            id: (DateTime.now().millisecondsSinceEpoch + _tabs.length).toString(),
+            currentPath: initialPath,
+          ));
+        }
+      }
+      _activeTabIndex = 0;
+    } else {
+      _tabs = [
+        FolderTab(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          currentPath: initialPath,
+        )
+      ];
+      if (_enableSplitScreen) {
+        _tabs.add(FolderTab(
+          id: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
+          currentPath: initialPath,
+        ));
+      }
+      _activeTabIndex = 0;
     }
-    _activeTabIndex = 0;
 
     await _detectStorageVolumes();
-    await loadDirectory(initialPath, showLoading: false);
+    final path0 = _tabs.isNotEmpty ? _tabs[0].currentPath : initialPath;
+    await loadDirectory(path0, showLoading: false);
     if (_enableSplitScreen) {
-      await loadDirectoryForTab(1, initialPath, showLoading: false);
+      final path1 = _tabs.length > 1 ? _tabs[1].currentPath : initialPath;
+      await loadDirectoryForTab(1, path1, showLoading: false);
     }
   }
 
@@ -1344,6 +1411,7 @@ class FileManagerProvider extends ChangeNotifier {
     }
 
     activeTab.isLoading = false;
+    _persistTabs();
     notifyListeners();
   }
 

@@ -554,4 +554,21 @@ class PreferencesService {
   static Future<void> saveDisableLeftBackGesture(bool val) async {
     await _prefs?.setBool(_keyDisableLeftBackGesture, val);
   }
+
+  static const String _keyTabsList = 'tabs_list';
+
+  static List<Map<String, dynamic>> getSavedTabs() {
+    final str = _prefs?.getString(_keyTabsList);
+    if (str == null) return [];
+    try {
+      final decoded = jsonDecode(str) as List<dynamic>;
+      return decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static Future<void> saveSavedTabs(List<Map<String, dynamic>> list) async {
+    await _prefs?.setString(_keyTabsList, jsonEncode(list));
+  }
 }

@@ -13,6 +13,7 @@ class FolderTab {
   final Set<String> selectedPaths;
   double scrollOffset;
   final Map<String, double> scrollPositions;
+  bool isPinned;
 
   FolderTab({
     required this.id,
@@ -27,6 +28,7 @@ class FolderTab {
     Set<String>? selectedPaths,
     this.scrollOffset = 0.0,
     Map<String, double>? scrollPositions,
+    this.isPinned = false,
   }) : selectedPaths = selectedPaths ?? {},
        scrollPositions = scrollPositions ?? {};
 }
