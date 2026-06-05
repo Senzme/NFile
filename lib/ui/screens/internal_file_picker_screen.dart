@@ -8,6 +8,7 @@ import '../../models/file_item_model.dart';
 import 'package:provider/provider.dart';
 import '../../providers/file_manager_provider.dart';
 import '../../services/root_shizuku_service.dart';
+import '../widgets/file_action_dialogs.dart';
 
 class InternalFilePickerScreen extends StatefulWidget {
   final String rootPath;
@@ -151,6 +152,46 @@ class _InternalFilePickerScreenState extends State<InternalFilePickerScreen> {
     final parent = p.dirname(_currentPath);
     await _loadDirectory(parent);
     return true;
+  }
+
+  Future<void> _createFolder() async {
+    final newFolderName = await FileActionDialogs.showTextInputDialog(
+      context,
+      title: 'Create Folder',
+      hint: 'Enter folder name',
+      actionText: 'Create',
+    );
+    if (newFolderName != null && newFolderName.isNotEmpty) {
+      setState(() => _isLoading = true);
+      try {
+        final provider = context.read<FileManagerProvider>();
+        final isRestricted = provider.isRestrictedPath(_currentPath);
+        final targetPath = p.join(_currentPath, newFolderName);
+        
+        if (isRestricted) {
+          await RootShizukuService.createFolder(
+            _currentPath, 
+            newFolderName, 
+            useRoot: provider.useRootMode
+          );
+        } else {
+          await Directory(targetPath).create();
+        }
+        
+        await _loadDirectory(_currentPath);
+      } catch (e) {
+        debugPrint('Error creating folder in picker: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error creating folder: $e')),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
+    }
   }
 
   void _toggleSelect(String path) {
@@ -370,6 +411,11 @@ class _InternalFilePickerScreenState extends State<InternalFilePickerScreen> {
             ],
           ),
           actions: [
+            IconButton(
+              icon: const Icon(Broken.folder_add),
+              tooltip: 'Create Folder',
+              onPressed: _createFolder,
+            ),
             IconButton(
               icon: const Icon(Icons.sd_storage_rounded),
               tooltip: 'Select Storage',
