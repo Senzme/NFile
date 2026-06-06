@@ -127,6 +127,7 @@ class FileManagerProvider extends ChangeNotifier {
     _activeAppIcon = PreferencesService.getActiveAppIcon();
     _hideActionText = PreferencesService.getHideActionText();
     _disableLeftBackGesture = PreferencesService.getDisableLeftBackGesture();
+    _rememberLastFolder = PreferencesService.getRememberLastFolder();
 
     // Synchronously load cached storage sizes and pre-populate internal storage volume
     // to prevent any visual delay, shimmer, or refreshing animation on app startup!
@@ -534,6 +535,15 @@ class FileManagerProvider extends ChangeNotifier {
   void toggleDefaultToBrowseScreen() {
     _defaultToBrowseScreen = !_defaultToBrowseScreen;
     PreferencesService.saveDefaultToBrowseScreen(_defaultToBrowseScreen);
+    notifyListeners();
+  }
+
+  bool _rememberLastFolder = false;
+  bool get rememberLastFolder => _rememberLastFolder;
+
+  void toggleRememberLastFolder() {
+    _rememberLastFolder = !_rememberLastFolder;
+    PreferencesService.saveRememberLastFolder(_rememberLastFolder);
     notifyListeners();
   }
 
@@ -1204,13 +1214,30 @@ class FileManagerProvider extends ChangeNotifier {
     // Initialize primary default tab
     final savedTabsData = PreferencesService.getSavedTabs();
     if (savedTabsData.isNotEmpty) {
-      _tabs = savedTabsData.map((data) {
+      final allTabs = savedTabsData.map((data) {
         return FolderTab(
           id: data['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
           currentPath: data['currentPath']?.toString() ?? initialPath,
           isPinned: data['isPinned'] ?? false,
         );
       }).toList();
+
+      if (_rememberLastFolder) {
+        _tabs = allTabs;
+      } else {
+        // Keep only pinned tabs
+        _tabs = allTabs.where((t) => t.isPinned).toList();
+      }
+
+      if (_tabs.isEmpty) {
+        _tabs = [
+          FolderTab(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            currentPath: initialPath,
+          )
+        ];
+      }
+
       if (_enableSplitScreen && _tabs.length < 2) {
         while (_tabs.length < 2) {
           _tabs.add(FolderTab(
@@ -2521,7 +2548,7 @@ class FileManagerProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> openFile(BuildContext context, String path, {bool showOpenWithPopup = false}) async {
+  Future<void> openFile(BuildContext context, String path, {bool showOpenWithPopup = false, bool forceOpenWith = false}) async {
     _highlightedPaths.clear();
     _highlightedPaths.add(path);
     notifyListeners();
@@ -2548,6 +2575,11 @@ class FileManagerProvider extends ChangeNotifier {
       } catch (e) {
         debugPrint('Error creating temporary copy for restricted file: $e');
       }
+    }
+
+    if (forceOpenWith) {
+      await OpenFilex.open(targetPath);
+      return;
     }
 
     // Universal default action check

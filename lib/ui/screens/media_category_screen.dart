@@ -574,13 +574,38 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              GestureDetector(
+                onLongPress: (filePath != null)
+                    ? () {
+                        try {
+                          HapticFeedback.mediumImpact();
+                        } catch (_) {}
+                        Navigator.pop(ctx);
+                        context.read<FileManagerProvider>().openFile(context, filePath, forceOpenWith: true);
+                      }
+                    : null,
+                child: Container(
+                  width: double.infinity,
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      if (filePath != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Long press to Open with...',
+                          style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface.withOpacity(0.4)),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
               const Divider(height: 1),
@@ -694,6 +719,15 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
                       await context.read<FileManagerProvider>().renameFile(filePath, newName);
                       context.read<MediaProvider>().loadMedia(forceRefresh: true);
                     }
+                  },
+                ),
+              if (filePath != null)
+                ListTile(
+                  leading: Icon(Broken.eye, color: theme.colorScheme.primary),
+                  title: const Text('Open with...'),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    context.read<FileManagerProvider>().openFile(context, filePath, forceOpenWith: true);
                   },
                 ),
               ListTile(

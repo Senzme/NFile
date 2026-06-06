@@ -24,6 +24,7 @@ class PreferencesService {
   static const String _keyFolderSortTypes = 'folder_sort_types';
   static const String _keyHideActionText = 'hide_action_text';
   static const String _keyMenuIconStyle = 'menu_icon_style';
+  static const String _keyRememberLastFolder = 'remember_last_folder';
 
   static SharedPreferences? _prefs;
 
@@ -62,6 +63,14 @@ class PreferencesService {
 
   static Future<void> saveDefaultToBrowseScreen(bool val) async {
     await _prefs?.setBool(_keyDefaultToBrowseScreen, val);
+  }
+
+  static bool getRememberLastFolder() {
+    return _prefs?.getBool(_keyRememberLastFolder) ?? false;
+  }
+
+  static Future<void> saveRememberLastFolder(bool val) async {
+    await _prefs?.setBool(_keyRememberLastFolder, val);
   }
 
   static bool getShowHiddenFiles() {

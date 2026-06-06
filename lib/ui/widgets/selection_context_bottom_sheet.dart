@@ -75,57 +75,68 @@ class SelectionContextBottomSheet extends StatelessWidget {
               ),
             ),
             
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(16),
+            GestureDetector(
+              onLongPress: (isSingle && !isFolder)
+                  ? () {
+                      try {
+                        HapticFeedback.mediumImpact();
+                      } catch (_) {}
+                      Navigator.pop(context);
+                      provider.openFile(context, targetPath, forceOpenWith: true);
+                    }
+                  : null,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(
+                        !isSingle 
+                            ? Broken.tick_square 
+                            : isFolder 
+                                ? Broken.folder 
+                                : Broken.document,
+                        color: theme.colorScheme.primary,
+                        size: 26,
+                      ),
                     ),
-                    child: Icon(
-                      !isSingle 
-                          ? Broken.tick_square 
-                          : isFolder 
-                              ? Broken.folder 
-                              : Broken.document,
-                      color: theme.colorScheme.primary,
-                      size: 26,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          displayTitle,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (isSingle)
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            isFolder ? 'Folder' : 'File',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: theme.colorScheme.onSurface.withOpacity(0.5),
-                              fontWeight: FontWeight.w500,
+                            displayTitle,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                      ],
+                          if (isSingle)
+                            Text(
+                              isFolder ? 'Folder' : 'File (Long press to Open with)',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: theme.colorScheme.onSurface.withOpacity(0.5),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Broken.close_circle, size: 24),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
+                    IconButton(
+                      icon: const Icon(Broken.close_circle, size: 24),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
               ),
             ),
             const Divider(height: 1),
@@ -183,6 +194,16 @@ class SelectionContextBottomSheet extends StatelessWidget {
                 onTap: () async {
                   Navigator.pop(context);
                   await BatchRenameDialog.show(context, provider);
+                },
+              ),
+            if (isSingle && !isFolder)
+              _buildMenuItem(
+                context: context,
+                icon: Broken.eye,
+                label: 'Open with...',
+                onTap: () {
+                  Navigator.pop(context);
+                  provider.openFile(context, targetPath, forceOpenWith: true);
                 },
               ),
             _buildMenuItem(

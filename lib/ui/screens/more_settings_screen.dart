@@ -125,9 +125,11 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
     final multipleTabsVis = _shouldShow('Enable Multiple Tabs', 'Allow opening multiple folders in separate tabs for quick navigation');
     final splitScreenVis = _shouldShow('Enable Split Screen', 'Browse two directories side by side and transfer files easily');
     final disableLeftBackVis = _shouldShow('Prevent Left Back Gesture for Drawer', 'Excludes the left edge of the screen from Android system back gestures, making it easier to swipe open the drawer. You can still swipe from the right edge to go back.');
+    final rememberLastFolderVis = _shouldShow('Remember Last Opened Folder', 'Open the last folder you browsed when launching the app');
 
     final generalStartupList = [
       defaultBrowseVis,
+      rememberLastFolderVis,
       showHomeBrowseNavVis,
       hideNavBarVis,
       disableLeftBackVis,
@@ -392,6 +394,21 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
                           ),
                         ),
                         onTap: () => fileManager.toggleDefaultToBrowseScreen(),
+                      ),
+                    if (rememberLastFolderVis)
+                      SettingsTile(
+                        icon: Broken.folder_open,
+                        title: 'Remember Last Opened Folder',
+                        subtitle: 'Open the last folder you browsed when launching the app',
+                        trailing: Transform.scale(
+                          scale: 0.85,
+                          child: Switch(
+                            value: fileManager.rememberLastFolder,
+                            activeColor: theme.colorScheme.primary,
+                            onChanged: (_) => fileManager.toggleRememberLastFolder(),
+                          ),
+                        ),
+                        onTap: () => fileManager.toggleRememberLastFolder(),
                       ),
                     if (showHomeBrowseNavVis)
                       SettingsTile(
@@ -1008,6 +1025,20 @@ class GeneralSettingsScreen extends StatelessWidget {
                 ),
               ),
               onTap: () => fileManager.toggleDefaultToBrowseScreen(),
+            ),
+            SettingsTile(
+              icon: Broken.folder_open,
+              title: 'Remember Last Opened Folder',
+              subtitle: 'Open the last folder you browsed when launching the app',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.rememberLastFolder,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleRememberLastFolder(),
+                ),
+              ),
+              onTap: () => fileManager.toggleRememberLastFolder(),
             ),
             SettingsTile(
               icon: Broken.menu,
