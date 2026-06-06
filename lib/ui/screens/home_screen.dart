@@ -202,6 +202,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Si
         ),
         bottomNavigationBar: provider.showHomeBrowseNav
             ? NavigationBar(
+                height: provider.hideNavLabels ? 58.0 : null,
+                labelBehavior: provider.hideNavLabels
+                    ? NavigationDestinationLabelBehavior.alwaysHide
+                    : null,
                 selectedIndex: _currentIndex,
                 onDestinationSelected: (index) {
                   if (index == 1) {

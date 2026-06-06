@@ -126,11 +126,13 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
     final splitScreenVis = _shouldShow('Enable Split Screen', 'Browse two directories side by side and transfer files easily');
     final disableLeftBackVis = _shouldShow('Prevent Left Back Gesture for Drawer', 'Excludes the left edge of the screen from Android system back gestures, making it easier to swipe open the drawer. You can still swipe from the right edge to go back.');
     final rememberLastFolderVis = _shouldShow('Remember Last Opened Folder', 'Open the last folder you browsed when launching the app');
+    final hideNavLabelsVis = _shouldShow('Hide Bottom Navigation Labels', 'Hide text labels of the bottom bar (Home/Browse) for a cleaner and compact look');
 
     final generalStartupList = [
       defaultBrowseVis,
       rememberLastFolderVis,
       showHomeBrowseNavVis,
+      hideNavLabelsVis,
       hideNavBarVis,
       disableLeftBackVis,
     ];
@@ -424,6 +426,21 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
                           ),
                         ),
                         onTap: () => fileManager.toggleShowHomeBrowseNav(),
+                      ),
+                    if (hideNavLabelsVis)
+                      SettingsTile(
+                        icon: Broken.menu_1,
+                        title: 'Hide Bottom Navigation Labels',
+                        subtitle: 'Hide text labels of the bottom bar (Home/Browse) for a cleaner and compact look',
+                        trailing: Transform.scale(
+                          scale: 0.85,
+                          child: Switch(
+                            value: fileManager.hideNavLabels,
+                            activeColor: theme.colorScheme.primary,
+                            onChanged: (_) => fileManager.toggleHideNavLabels(),
+                          ),
+                        ),
+                        onTap: () => fileManager.toggleHideNavLabels(),
                       ),
                     if (hideNavBarVis)
                       SettingsTile(
@@ -1053,6 +1070,20 @@ class GeneralSettingsScreen extends StatelessWidget {
                 ),
               ),
               onTap: () => fileManager.toggleShowHomeBrowseNav(),
+            ),
+            SettingsTile(
+              icon: Broken.menu_1,
+              title: 'Hide Bottom Navigation Labels',
+              subtitle: 'Hide text labels of the bottom bar (Home/Browse) for a cleaner and compact look',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.hideNavLabels,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (_) => fileManager.toggleHideNavLabels(),
+                ),
+              ),
+              onTap: () => fileManager.toggleHideNavLabels(),
             ),
             SettingsTile(
               icon: Icons.android,

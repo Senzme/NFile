@@ -106,6 +106,7 @@ class PreferencesService {
   }
 
   static const String _keyShowHomeBrowseNav = 'show_home_browse_nav';
+  static const String _keyHideNavLabels = 'hide_nav_labels';
 
   static bool getShowHomeBrowseNav() {
     return _prefs?.getBool(_keyShowHomeBrowseNav) ?? true;
@@ -113,6 +114,14 @@ class PreferencesService {
 
   static Future<void> saveShowHomeBrowseNav(bool val) async {
     await _prefs?.setBool(_keyShowHomeBrowseNav, val);
+  }
+
+  static bool getHideNavLabels() {
+    return _prefs?.getBool(_keyHideNavLabels) ?? false;
+  }
+
+  static Future<void> saveHideNavLabels(bool val) async {
+    await _prefs?.setBool(_keyHideNavLabels, val);
   }
 
   static const String _keyShowMediaPreviews = 'show_media_previews';

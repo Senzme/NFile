@@ -100,6 +100,7 @@ class FileManagerProvider extends ChangeNotifier {
     _showFolderFileCount = PreferencesService.getShowFolderFileCount();
     _showBottomActionBar = PreferencesService.getShowBottomActionBar();
     _showHomeBrowseNav = PreferencesService.getShowHomeBrowseNav();
+    _hideNavLabels = PreferencesService.getHideNavLabels();
     _showMediaPreviews = PreferencesService.getShowMediaPreviews();
     _enableMultipleTabs = PreferencesService.getEnableMultipleTabs();
     _enableSplitScreen = PreferencesService.getEnableSplitScreen();
@@ -664,6 +665,15 @@ class FileManagerProvider extends ChangeNotifier {
   void toggleShowHomeBrowseNav() {
     _showHomeBrowseNav = !_showHomeBrowseNav;
     PreferencesService.saveShowHomeBrowseNav(_showHomeBrowseNav);
+    notifyListeners();
+  }
+
+  bool _hideNavLabels = false;
+  bool get hideNavLabels => _hideNavLabels;
+
+  void toggleHideNavLabels() {
+    _hideNavLabels = !_hideNavLabels;
+    PreferencesService.saveHideNavLabels(_hideNavLabels);
     notifyListeners();
   }
 
