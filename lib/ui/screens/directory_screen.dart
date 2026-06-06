@@ -940,6 +940,10 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                             onSelected: (action) async {
                               if (action == 'select_all') {
                                 provider.selectAll();
+                              } else if (action == 'share') {
+                                final selectedPaths = provider.selectedPaths.toList();
+                                await FolderShareService.sharePaths(context, selectedPaths);
+                                provider.clearSelection();
                               } else if (action == 'pin_to_top') {
                                 final selected = provider.selectedPaths.toList();
                                 final allPinned = selected.every((p) => PinService.isPinned(p));
@@ -984,6 +988,16 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                                       Icon(Broken.tick_square, size: 20),
                                       SizedBox(width: 12),
                                       Text('Select All', style: TextStyle(fontWeight: FontWeight.w500)),
+                                    ],
+                                  ),
+                                ),
+                                const PopupMenuItem<String>(
+                                  value: 'share',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.share_outlined, size: 20),
+                                      SizedBox(width: 12),
+                                      Text('Share', style: TextStyle(fontWeight: FontWeight.w500)),
                                     ],
                                   ),
                                 ),

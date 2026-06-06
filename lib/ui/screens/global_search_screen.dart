@@ -14,6 +14,8 @@ import '../widgets/batch_rename_dialog.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import '../../services/folder_share_service.dart';
 import '../widgets/directory_tab_bar.dart';
+import '../../core/utils.dart';
+import '../widgets/selection_action_bar.dart';
 
 class GlobalSearchScreen extends StatefulWidget {
   final String? searchFolderPath;
@@ -34,6 +36,25 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
 
   final Set<String> _selectedPaths = {};
   bool get _isSelectionMode => _selectedPaths.isNotEmpty;
+
+  int get _totalSelectedSize {
+    int total = 0;
+    for (final path in _selectedPaths) {
+      final item = _results.firstWhere(
+        (e) => e.path == path,
+        orElse: () => FileItemModel(
+          entity: File(path),
+          name: '',
+          path: path,
+          isDirectory: false,
+          size: 0,
+          modified: DateTime.now(),
+        ),
+      );
+      total += item.size;
+    }
+    return total;
+  }
 
   String? _searchFolderPath;
   String? _lastActivePath;
@@ -335,6 +356,10 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
   void _handleAction(BuildContext context, String action, String path) async {
     final provider = context.read<FileManagerProvider>();
     switch (action) {
+      case 'show_in_location':
+        Navigator.pop(context);
+        await provider.showFileInLocation(path);
+        break;
       case 'share':
         final isMulti = _selectedPaths.isNotEmpty && _selectedPaths.contains(path);
         final paths = isMulti ? _selectedPaths.toList() : [path];
@@ -436,7 +461,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
               ),
         title: _isSelectionMode
             ? Text(
-                '${_selectedPaths.length} Selected',
+                '${_selectedPaths.length} Selected (${FileUtils.formatBytes(_totalSelectedSize, 1)})',
                 style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               )
             : TextField(
@@ -475,11 +500,6 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                   onPressed: _handleCutSelected,
                 ),
                 IconButton(
-                  icon: const Icon(Icons.share_outlined),
-                  tooltip: 'Share',
-                  onPressed: _handleShareSelected,
-                ),
-                IconButton(
                   icon: const Icon(Broken.edit),
                   tooltip: 'Rename',
                   onPressed: _handleRenameSelected,
@@ -489,10 +509,59 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                   tooltip: 'Delete',
                   onPressed: _handleDeleteSelected,
                 ),
-                IconButton(
-                  icon: const Icon(Broken.task_square),
-                  tooltip: 'Select All',
-                  onPressed: _selectAll,
+                PopupMenuButton<String>(
+                  icon: const Icon(Broken.more),
+                  tooltip: 'More Actions',
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  position: PopupMenuPosition.under,
+                  elevation: 8,
+                  onSelected: (action) {
+                    if (action == 'select_all') {
+                      _selectAll();
+                    } else if (action == 'share') {
+                      _handleShareSelected();
+                    } else if (action == 'properties') {
+                      showDialog(
+                        context: context,
+                        builder: (context) => PropertiesModalDialog(
+                          selectedPaths: _selectedPaths.toList(),
+                          provider: fileProvider,
+                        ),
+                      );
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem<String>(
+                      value: 'select_all',
+                      child: Row(
+                        children: [
+                          Icon(Broken.tick_square, size: 20),
+                          SizedBox(width: 12),
+                          Text('Select All', style: TextStyle(fontWeight: FontWeight.w500)),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem<String>(
+                      value: 'share',
+                      child: Row(
+                        children: [
+                          Icon(Icons.share_outlined, size: 20),
+                          SizedBox(width: 12),
+                          Text('Share', style: TextStyle(fontWeight: FontWeight.w500)),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem<String>(
+                      value: 'properties',
+                      child: Row(
+                        children: [
+                          Icon(Broken.info_circle, size: 20),
+                          SizedBox(width: 12),
+                          Text('Properties', style: TextStyle(fontWeight: FontWeight.w500)),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ]
             : null,
@@ -616,6 +685,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                             return FolderItem(
                               folder: item,
                               isSelected: isItemSelected,
+                              showShowInLocationOption: true,
                               onTap: () {
                                 if (_isSelectionMode) {
                                   _toggleSelection(item.path);
@@ -631,6 +701,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                             return FileItem(
                               file: item,
                               isSelected: isItemSelected,
+                              showShowInLocationOption: true,
                               onTap: () {
                                 if (_isSelectionMode) {
                                   _toggleSelection(item.path);

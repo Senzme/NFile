@@ -19,6 +19,7 @@ class FolderItem extends StatelessWidget {
   final bool isSelected;
   final double iconScale;
   final double itemPaddingMultiplier;
+  final bool showShowInLocationOption;
 
   const FolderItem({
     super.key,
@@ -30,6 +31,7 @@ class FolderItem extends StatelessWidget {
     this.isSelected = false,
     this.iconScale = 1.0,
     this.itemPaddingMultiplier = 1.0,
+    this.showShowInLocationOption = false,
   });
 
   @override
@@ -216,6 +218,16 @@ class FolderItem extends StatelessWidget {
                   onSelected: onAction,
                   itemBuilder: (context) {
                     return [
+                      if (showShowInLocationOption)
+                        const PopupMenuItem(
+                          value: 'show_in_location',
+                          child: Row(children: [Icon(Broken.folder_open, size: 20), SizedBox(width: 12), Text('Show in location', style: TextStyle(fontWeight: FontWeight.w500))]),
+                        ),
+                      if (showShowInLocationOption)
+                        const PopupMenuItem(
+                          value: 'share',
+                          child: Row(children: [Icon(Icons.share_outlined, size: 20), SizedBox(width: 12), Text('Share', style: TextStyle(fontWeight: FontWeight.w500))]),
+                        ),
                       const PopupMenuItem(value: 'archive', child: Row(children: [Icon(Broken.box_add, size: 20), SizedBox(width: 12), Text('Archive', style: TextStyle(fontWeight: FontWeight.w500))])),
                       const PopupMenuItem(value: 'copy', child: Row(children: [Icon(Broken.document_copy, size: 20), SizedBox(width: 12), Text('Copy', style: TextStyle(fontWeight: FontWeight.w500))])),
                       const PopupMenuItem(value: 'cut', child: Row(children: [Icon(Broken.scissor, size: 20), SizedBox(width: 12), Text('Cut', style: TextStyle(fontWeight: FontWeight.w500))])),
