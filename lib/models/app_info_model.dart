@@ -5,6 +5,8 @@ class AppInfoModel {
   final int apkSize;
   final bool isSystem;
   final DateTime installTime;
+  final String sourceDir;
+  final List<String> splitSourceDirs;
 
   AppInfoModel({
     required this.name,
@@ -13,6 +15,8 @@ class AppInfoModel {
     required this.apkSize,
     required this.isSystem,
     required this.installTime,
+    required this.sourceDir,
+    required this.splitSourceDirs,
   });
 
   factory AppInfoModel.fromMap(Map<dynamic, dynamic> map) {
@@ -23,6 +27,8 @@ class AppInfoModel {
       apkSize: map['apkSize'] as int? ?? 0,
       isSystem: map['isSystem'] as bool? ?? false,
       installTime: DateTime.fromMillisecondsSinceEpoch(map['installTime'] as int? ?? 0),
+      sourceDir: map['sourceDir'] ?? '',
+      splitSourceDirs: List<String>.from(map['splitSourceDirs'] ?? []),
     );
   }
 }

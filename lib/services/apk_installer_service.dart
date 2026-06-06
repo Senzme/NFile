@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import 'archive_service.dart';
+import 'app_manager_service.dart';
 
 class ApkInstallerService {
   static const List<String> apkExtensions = ['.apk', '.xapk', '.apks', '.apkm', '.aab'];
@@ -54,17 +55,11 @@ class ApkInstallerService {
 
       if (!context.mounted) return;
 
-      // Locate base.apk or the largest APK file
-      File? baseApk;
       List<File> allApks = [];
 
       await for (final entity in extractDir.list(recursive: true)) {
         if (entity is File && p.extension(entity.path).toLowerCase() == '.apk') {
           allApks.add(entity);
-          final name = p.basename(entity.path).toLowerCase();
-          if (name == 'base.apk' || name.contains('main')) {
-            baseApk = entity;
-          }
         } else if (entity is File && p.extension(entity.path).toLowerCase() == '.obb') {
           // Copy OBB file to Android/obb/ directory if possible
           try {
@@ -79,21 +74,29 @@ class ApkInstallerService {
         }
       }
 
-      if (baseApk == null && allApks.isNotEmpty) {
-        allApks.sort((a, b) => b.lengthSync().compareTo(a.lengthSync()));
-        baseApk = allApks.first;
+      if (allApks.isEmpty) {
+        if (!context.mounted) return;
+        Navigator.pop(context); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No installable APK found in package bundle')),
+        );
+        return;
       }
 
       if (!context.mounted) return;
       Navigator.pop(context); // Close loading dialog
 
-      if (baseApk != null && await baseApk.exists()) {
-        await OpenFilex.open(baseApk.path);
+      if (allApks.length == 1) {
+        await OpenFilex.open(allApks.first.path);
       } else {
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No installable APK found in package bundle')),
-        );
+        // Multiple APK splits found! Install them together using our split installer
+        final apkPaths = allApks.map((f) => f.path).toList();
+        final success = await AppManagerService.installSplitApks(apkPaths);
+        if (!success && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to trigger split APK installer')),
+          );
+        }
       }
     } catch (e) {
       if (!context.mounted) return;

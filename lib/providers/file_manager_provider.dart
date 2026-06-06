@@ -2421,7 +2421,8 @@ class FileManagerProvider extends ChangeNotifier {
     if (const ['.db', '.sqlite', '.sqlite3', '.db3'].contains(ext)) return true;
     if (docExts.contains(ext)) return true;
     if (ApkInstallerService.isApk(path)) return true;
-    return false;
+    // Fallback: any other file can be viewed as text/code in our built-in editor
+    return true;
   }
 
   Future<void> openFileNatively(BuildContext context, String path) async {
@@ -2510,7 +2511,13 @@ class FileManagerProvider extends ChangeNotifier {
     } else if (ApkInstallerService.isApk(path)) {
       await ApkInstallerService.installApk(context, path);
     } else {
-      await OpenFilex.open(path);
+      // Fallback for unrecognized files: Open in the built-in TextEditorScreen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => TextEditorScreen(filePath: path),
+        ),
+      );
     }
   }
 

@@ -2,6 +2,7 @@ package com.rubex.nfile
 
 import android.content.pm.PackageManager
 import android.content.pm.ApplicationInfo
+import android.content.pm.PackageInstaller
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -381,6 +382,10 @@ class MainActivity : AudioServiceFragmentActivity() {
                             runOnUiThread { result.error("UNINSTALL_ERROR", e.message, null) }
                         }
                     }
+                }
+                "installSplitApks" -> {
+                    val apkPaths = call.argument<List<String>>("apkPaths") ?: emptyList()
+                    installSplitApks(apkPaths, result)
                 }
                 "checkUsageStatsPermission" -> {
                     val granted = isUsageStatsPermissionGranted()
@@ -780,6 +785,50 @@ class MainActivity : AudioServiceFragmentActivity() {
         }
     }
 
+    private fun installSplitApks(apkPaths: List<String>, result: MethodChannel.Result) {
+        executor.execute {
+            try {
+                val pm = packageManager
+                val packageInstaller = pm.packageInstaller
+                val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+                
+                val sessionId = packageInstaller.createSession(params)
+                val session = packageInstaller.openSession(sessionId)
+                
+                for (path in apkPaths) {
+                    val file = File(path)
+                    if (!file.exists()) continue
+                    val name = file.name
+                    val size = file.length()
+                    
+                    val out = session.openWrite(name, 0, size)
+                    file.inputStream().use { input ->
+                        input.copyTo(out)
+                    }
+                    session.fsync(out)
+                    out.close()
+                }
+                
+                // Create a status intent
+                val intent = Intent("com.rubex.nfile.INSTALL_STATUS")
+                val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                } else {
+                    PendingIntent.FLAG_UPDATE_CURRENT
+                }
+                val pendingIntent = PendingIntent.getBroadcast(this, sessionId, intent, flags)
+                
+                session.commit(pendingIntent.intentSender)
+                session.close()
+                
+                runOnUiThread { result.success(true) }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                runOnUiThread { result.error("INSTALL_ERROR", e.message, null) }
+            }
+        }
+    }
+
     private fun getInstalledApps(includeSystem: Boolean): List<Map<String, Any>> {
         val pm = packageManager
         val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
@@ -826,13 +875,16 @@ class MainActivity : AudioServiceFragmentActivity() {
                 installTime = pkgInfo.firstInstallTime
             } catch (e: Exception) {}
 
+            val splitDirs = appInfo.splitSourceDirs?.toList() ?: emptyList<String>()
             val appMap = mapOf(
                 "name" to appName,
                 "packageName" to packageName,
                 "version" to versionName,
                 "apkSize" to totalSize,
                 "isSystem" to isSystem,
-                "installTime" to installTime
+                "installTime" to installTime,
+                "sourceDir" to appInfo.sourceDir,
+                "splitSourceDirs" to splitDirs
             )
             resultList.add(appMap)
         }
