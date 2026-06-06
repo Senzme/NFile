@@ -64,6 +64,17 @@ class RootShizukuService {
     }
   }
 
+  static String _normalize(String path) {
+    String normalized = path.replaceAll(RegExp(r'/+'), '/');
+    if (normalized.isEmpty) normalized = '/';
+    if (normalized.startsWith('/sdcard')) {
+      normalized = normalized.replaceFirst('/sdcard', '/storage/emulated/0');
+    } else if (normalized.startsWith('/mnt/sdcard')) {
+      normalized = normalized.replaceFirst('/mnt/sdcard', '/storage/emulated/0');
+    }
+    return normalized;
+  }
+
   static Future<String?> runCommand(String command, {required bool useRoot}) async {
     if (!Platform.isAndroid) return null;
     try {
@@ -78,9 +89,7 @@ class RootShizukuService {
   }
 
   static Future<List<FileItemModel>> listFiles(String path, {required bool useRoot, bool showHiddenFiles = false}) async {
-    // Normalize path to collapse any double slashes (e.g. //data -> /data)
-    String normalizedPath = path.replaceAll(RegExp(r'/+'), '/');
-    if (normalizedPath.isEmpty) normalizedPath = '/';
+    String normalizedPath = _normalize(path);
 
     final cleanPath = (normalizedPath == '/' || !normalizedPath.endsWith('/')) 
         ? normalizedPath 
@@ -128,35 +137,43 @@ class RootShizukuService {
   }
 
   static Future<void> deleteItem(String path, {required bool useRoot}) async {
-    final cmd = 'rm -rf "$path"';
+    final clean = _normalize(path);
+    final cmd = 'rm -rf "$clean"';
     await runCommand(cmd, useRoot: useRoot);
   }
 
   static Future<void> renameItem(String oldPath, String newName, {required bool useRoot}) async {
-    final newPath = p.join(p.dirname(oldPath), newName);
-    final cmd = 'mv "$oldPath" "$newPath"';
+    final cleanOld = _normalize(oldPath);
+    final cleanNew = _normalize(p.join(p.dirname(oldPath), newName));
+    final cmd = 'mv "$cleanOld" "$cleanNew"';
     await runCommand(cmd, useRoot: useRoot);
   }
 
   static Future<void> createFolder(String parentPath, String name, {required bool useRoot}) async {
-    final newPath = p.join(parentPath, name);
-    final cmd = 'mkdir -p "$newPath"';
+    final cleanParent = _normalize(parentPath);
+    final cleanPath = p.join(cleanParent, name);
+    final cmd = 'mkdir -p "$cleanPath"';
     await runCommand(cmd, useRoot: useRoot);
   }
 
   static Future<void> createFile(String parentPath, String name, {required bool useRoot}) async {
-    final newPath = p.join(parentPath, name);
-    final cmd = 'touch "$newPath"';
+    final cleanParent = _normalize(parentPath);
+    final cleanPath = p.join(cleanParent, name);
+    final cmd = 'touch "$cleanPath"';
     await runCommand(cmd, useRoot: useRoot);
   }
 
   static Future<void> copyItem(String srcPath, String destPath, {required bool useRoot}) async {
-    final cmd = 'cp -r "$srcPath" "$destPath"';
+    final cleanSrc = _normalize(srcPath);
+    final cleanDest = _normalize(destPath);
+    final cmd = 'cp -r "$cleanSrc" "$cleanDest"';
     await runCommand(cmd, useRoot: useRoot);
   }
 
   static Future<void> moveItem(String srcPath, String destPath, {required bool useRoot}) async {
-    final cmd = 'mv "$srcPath" "$destPath"';
+    final cleanSrc = _normalize(srcPath);
+    final cleanDest = _normalize(destPath);
+    final cmd = 'mv "$cleanSrc" "$cleanDest"';
     await runCommand(cmd, useRoot: useRoot);
   }
 }

@@ -1290,6 +1290,13 @@ class FileManagerProvider extends ChangeNotifier {
       normalized = '/$normalized';
     }
 
+    // Normalize /sdcard and /mnt/sdcard to /storage/emulated/0
+    if (normalized.startsWith('/sdcard')) {
+      normalized = normalized.replaceFirst('/sdcard', '/storage/emulated/0');
+    } else if (normalized.startsWith('/mnt/sdcard')) {
+      normalized = normalized.replaceFirst('/mnt/sdcard', '/storage/emulated/0');
+    }
+
     final lower = normalized.toLowerCase();
     if (lower.contains('/android/data') || lower.contains('/android/obb')) {
       return true;
@@ -1321,6 +1328,15 @@ class FileManagerProvider extends ChangeNotifier {
   }
 
   Future<void> loadDirectory(String path, {bool showLoading = true, bool clearCache = false}) async {
+    // Normalize legacy sdcard paths to canonical /storage/emulated/0
+    String resolvedPath = path.replaceAll(RegExp(r'/+'), '/');
+    if (resolvedPath.startsWith('/sdcard')) {
+      resolvedPath = resolvedPath.replaceFirst('/sdcard', '/storage/emulated/0');
+    } else if (resolvedPath.startsWith('/mnt/sdcard')) {
+      resolvedPath = resolvedPath.replaceFirst('/mnt/sdcard', '/storage/emulated/0');
+    }
+    path = resolvedPath;
+
     if (clearCache) {
       clearFolderItemCountsCache();
     }
