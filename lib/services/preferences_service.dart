@@ -356,6 +356,14 @@ class PreferencesService {
     await _prefs?.setString('$_keyDefaultOpenActionPrefix$sanitizedExt', action);
   }
 
+  static bool getPdfResetDone() {
+    return _prefs?.getBool('pdf_reset_done_v1') ?? false;
+  }
+
+  static Future<void> savePdfResetDone() async {
+    await _prefs?.setBool('pdf_reset_done_v1', true);
+  }
+
   static Future<void> clearAllDefaultOpenActions() async {
     final keys = _prefs?.getKeys() ?? {};
     final keysToRemove = keys.where((k) => k.startsWith(_keyDefaultOpenActionPrefix)).toList();

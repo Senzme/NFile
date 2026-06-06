@@ -129,6 +129,17 @@ class FileManagerProvider extends ChangeNotifier {
     _disableLeftBackGesture = PreferencesService.getDisableLeftBackGesture();
     _rememberLastFolder = PreferencesService.getRememberLastFolder();
 
+    // One-time migration: reset PDF (and other documents) default open action to 'native' if it was set to 'external'
+    if (!PreferencesService.getPdfResetDone()) {
+      const docExts = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.epub', '.odt'];
+      for (final ext in docExts) {
+        if (PreferencesService.getDefaultOpenAction(ext) == 'external') {
+          PreferencesService.saveDefaultOpenAction(ext, 'native');
+        }
+      }
+      PreferencesService.savePdfResetDone();
+    }
+
     // Synchronously load cached storage sizes and pre-populate internal storage volume
     // to prevent any visual delay, shimmer, or refreshing animation on app startup!
     _totalStorageBytes = PreferencesService.getCachedTotalStorage();

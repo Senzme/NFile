@@ -431,7 +431,7 @@ class _PaneBrowserState extends State<PaneBrowser> {
                                                               if (isSelectionMode) {
                                                                 provider.toggleSelection(item.path);
                                                               } else {
-                                                                provider.openFile(context, item.path, showOpenWithPopup: true);
+                                                                provider.openFile(context, item.path);
                                                               }
                                                             },
                                                             onLongPress: provider.enableDragDrop ? null : itemLongPress,
@@ -682,7 +682,7 @@ class _PaneBrowserState extends State<PaneBrowser> {
           if (isSelectionMode) {
             provider.toggleSelection(file.path);
           } else {
-            provider.openFile(context, file.path, showOpenWithPopup: true);
+            provider.openFile(context, file.path);
           }
         },
         onLongPress: provider.enableDragDrop ? null : itemLongPress,

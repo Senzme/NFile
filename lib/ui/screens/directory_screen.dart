@@ -1286,7 +1286,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                                               if (isSelectionMode) {
                                                 provider.toggleSelection(item.path);
                                               } else {
-                                                provider.openFile(context, item.path, showOpenWithPopup: true);
+                                                provider.openFile(context, item.path);
                                               }
                                             },
                                             onLongPress: provider.enableDragDrop ? null : itemLongPress,
@@ -1354,7 +1354,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                                               if (isSelectionMode) {
                                                 provider.toggleSelection(item.path);
                                               } else {
-                                                provider.openFile(context, item.path, showOpenWithPopup: true);
+                                                provider.openFile(context, item.path);
                                               }
                                             },
                                             onLongPress: provider.enableDragDrop ? null : itemLongPress,
