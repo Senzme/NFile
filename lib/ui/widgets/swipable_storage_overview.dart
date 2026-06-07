@@ -24,16 +24,17 @@ class _SwipableStorageOverviewState extends State<SwipableStorageOverview> {
     super.dispose();
   }
 
-  Widget _buildSkeletonCard(BuildContext context) {
+  Widget _buildSkeletonCard(BuildContext context, {required bool isMultiVolume}) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
     final borderCol = isDark ? Colors.white.withOpacity(0.05) : theme.colorScheme.primary.withOpacity(0.08);
+    final double cardHeight = isMultiVolume ? 160.0 : 144.0;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: isMultiVolume ? 8.0 : 4.0),
       child: Container(
-        height: 179,
+        height: cardHeight,
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF0F172A) : Colors.white,
           borderRadius: BorderRadius.circular(24),
@@ -47,36 +48,34 @@ class _SwipableStorageOverviewState extends State<SwipableStorageOverview> {
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              const Row(
                 children: [
-                  const ShimmerPlaceholder(width: 50, height: 50, borderRadius: 16),
-                  const SizedBox(width: 12),
+                  ShimmerPlaceholder(width: 50, height: 50, borderRadius: 16),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const ShimmerPlaceholder(width: 140, height: 16, borderRadius: 4),
-                        const SizedBox(height: 8),
-                        const ShimmerPlaceholder(width: 100, height: 12, borderRadius: 4),
+                        ShimmerPlaceholder(width: 140, height: 16, borderRadius: 4),
+                        SizedBox(height: 8),
+                        ShimmerPlaceholder(width: 100, height: 12, borderRadius: 4),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  const ShimmerPlaceholder(width: 75, height: 32, borderRadius: 14),
                 ],
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: isMultiVolume ? 16 : 12),
               const ShimmerPlaceholder(width: double.infinity, height: 8, borderRadius: 8),
-              const SizedBox(height: 16),
-              Row(
+              SizedBox(height: isMultiVolume ? 10 : 8),
+              const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const ShimmerPlaceholder(width: 90, height: 14, borderRadius: 4),
-                  const ShimmerPlaceholder(width: 80, height: 14, borderRadius: 4),
+                  ShimmerPlaceholder(width: 90, height: 14, borderRadius: 4),
+                  ShimmerPlaceholder(width: 80, height: 14, borderRadius: 4),
                 ],
               ),
             ],
@@ -93,17 +92,18 @@ class _SwipableStorageOverviewState extends State<SwipableStorageOverview> {
 
     // Show shimmering skeleton loading card while spaces are being calculated
     if (volumes.isEmpty || provider.totalStorageBytes == 0) {
-      return _buildSkeletonCard(context);
+      return _buildSkeletonCard(context, isMultiVolume: volumes.length > 1);
     }
 
     final theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
+    final double pageViewHeight = volumes.length > 1 ? 176.0 : 152.0;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          height: 195,
+          height: pageViewHeight,
           child: PageView.builder(
             controller: _pageController,
             onPageChanged: (index) {
@@ -177,7 +177,7 @@ class _SwipableStorageOverviewState extends State<SwipableStorageOverview> {
               final progressBgColor = isDark ? Colors.white.withOpacity(0.12) : Colors.white.withOpacity(0.3);
 
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: volumes.length > 1 ? 8.0 : 4.0),
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -216,7 +216,7 @@ class _SwipableStorageOverviewState extends State<SwipableStorageOverview> {
                       splashColor: Colors.white.withOpacity(0.15),
                       highlightColor: Colors.white.withOpacity(0.08),
                       child: Padding(
-                        padding: const EdgeInsets.all(20.0),
+                        padding: const EdgeInsets.all(16.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -261,29 +261,29 @@ class _SwipableStorageOverviewState extends State<SwipableStorageOverview> {
                                     ],
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(color: Colors.white.withOpacity(0.25), width: 1),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        'Browse',
-                                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 11.5),
-                                      ),
-                                      SizedBox(width: 4),
-                                      Icon(Broken.arrow_right_3, color: Colors.white, size: 14),
-                                    ],
-                                  ),
-                                ),
+                                // const SizedBox(width: 8),
+                                // Container(
+                                //   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                                //   decoration: BoxDecoration(
+                                //     color: Colors.white.withOpacity(0.15),
+                                //     borderRadius: BorderRadius.circular(14),
+                                //     border: Border.all(color: Colors.white.withOpacity(0.25), width: 1),
+                                //   ),
+                                //   child: const Row(
+                                //     mainAxisSize: MainAxisSize.min,
+                                //     children: [
+                                //       Text(
+                                //         'Browse',
+                                //         style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 11.5),
+                                //       ),
+                                //       SizedBox(width: 4),
+                                //       Icon(Broken.arrow_right_3, color: Colors.white, size: 14),
+                                //     ],
+                                //   ),
+                                // ),
                               ],
                             ),
-                            const SizedBox(height: 20),
+                            SizedBox(height: volumes.length > 1 ? 16.0 : 12.0),
                             ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: LinearProgressIndicator(
@@ -293,7 +293,7 @@ class _SwipableStorageOverviewState extends State<SwipableStorageOverview> {
                                 minHeight: 8,
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: volumes.length > 1 ? 10.0 : 8.0),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
