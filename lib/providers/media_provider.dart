@@ -675,6 +675,14 @@ class MediaProvider extends ChangeNotifier {
     if (isStorageGranted) {
       ps = PermissionState.authorized;
       hasAudioPermission = true;
+      if (Platform.isAndroid) {
+        try {
+          final info = await DeviceInfoPlugin().androidInfo;
+          if (info.version.sdkInt >= 33) {
+            await Permission.audio.request();
+          }
+        } catch (_) {}
+      }
     } else {
       if (Platform.isAndroid) {
         try {
@@ -801,10 +809,17 @@ class MediaProvider extends ChangeNotifier {
 
   Future<void> _loadAudios() async {
     try {
-      final hasPerm = await _audioQuery.permissionsStatus();
-      if (!hasPerm) {
-        _audios = [];
-        return;
+      bool isStorageGranted = false;
+      try {
+        isStorageGranted = await Permission.storage.isGranted || await Permission.manageExternalStorage.isGranted;
+      } catch (_) {}
+
+      if (!isStorageGranted) {
+        final hasPerm = await _audioQuery.permissionsStatus();
+        if (!hasPerm) {
+          _audios = [];
+          return;
+        }
       }
       _audios = await _audioQuery.querySongs(
         sortType: null,
