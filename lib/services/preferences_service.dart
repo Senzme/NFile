@@ -25,6 +25,7 @@ class PreferencesService {
   static const String _keyHideActionText = 'hide_action_text';
   static const String _keyMenuIconStyle = 'menu_icon_style';
   static const String _keyRememberLastFolder = 'remember_last_folder';
+  static const String _keyTrailingInfoType = 'trailing_info_type';
 
   static SharedPreferences? _prefs;
 
@@ -605,5 +606,13 @@ class PreferencesService {
 
   static Future<void> saveSavedTabs(List<Map<String, dynamic>> list) async {
     await _prefs?.setString(_keyTabsList, jsonEncode(list));
+  }
+
+  static String getTrailingInfoType() {
+    return _prefs?.getString(_keyTrailingInfoType) ?? 'none';
+  }
+
+  static Future<void> saveTrailingInfoType(String val) async {
+    await _prefs?.setString(_keyTrailingInfoType, val);
   }
 }

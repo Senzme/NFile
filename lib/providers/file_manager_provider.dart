@@ -125,6 +125,7 @@ class FileManagerProvider extends ChangeNotifier {
     _showFolderSizes = PreferencesService.getShowFolderSizes();
     _adaptiveMultiLineNames = PreferencesService.getAdaptiveMultiLineNames();
     _hideActionMenuButtons = PreferencesService.getHideActionMenuButtons();
+    _trailingInfoType = PreferencesService.getTrailingInfoType();
     _activeAppIcon = PreferencesService.getActiveAppIcon();
     _hideActionText = PreferencesService.getHideActionText();
     _disableLeftBackGesture = PreferencesService.getDisableLeftBackGesture();
@@ -204,6 +205,7 @@ class FileManagerProvider extends ChangeNotifier {
     _showFolderSizes = PreferencesService.getShowFolderSizes();
     _adaptiveMultiLineNames = PreferencesService.getAdaptiveMultiLineNames();
     _hideActionMenuButtons = PreferencesService.getHideActionMenuButtons();
+    _trailingInfoType = PreferencesService.getTrailingInfoType();
     _activeAppIcon = PreferencesService.getActiveAppIcon();
     _hideActionText = PreferencesService.getHideActionText();
     _disableLeftBackGesture = PreferencesService.getDisableLeftBackGesture();
@@ -810,6 +812,16 @@ class FileManagerProvider extends ChangeNotifier {
   void toggleHideActionMenuButtons() {
     _hideActionMenuButtons = !_hideActionMenuButtons;
     PreferencesService.saveHideActionMenuButtons(_hideActionMenuButtons);
+    notifyListeners();
+  }
+
+  String _trailingInfoType = 'none';
+  String get trailingInfoType => _trailingInfoType;
+
+  void setTrailingInfoType(String val) {
+    if (_trailingInfoType == val) return;
+    _trailingInfoType = val;
+    PreferencesService.saveTrailingInfoType(val);
     notifyListeners();
   }
 

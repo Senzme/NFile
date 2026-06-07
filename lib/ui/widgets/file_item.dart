@@ -175,6 +175,12 @@ class FileItem extends StatelessWidget {
                       ),
                     ];
                   },
+                )
+              else
+                _TrailingInfoWidget(
+                  isFolder: false,
+                  item: file,
+                  iconScale: iconScale,
                 ),
             ],
           ),
@@ -448,5 +454,78 @@ class _MediaThumbnailState extends State<MediaThumbnail> {
       color: widget.iconColor,
       size: 28 * widget.iconScale,
     );
+  }
+}
+
+class _TrailingInfoWidget extends StatelessWidget {
+  final bool isFolder;
+  final FileItemModel item;
+  final double iconScale;
+
+  const _TrailingInfoWidget({
+    required this.isFolder,
+    required this.item,
+    required this.iconScale,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final provider = context.watch<FileManagerProvider>();
+    if (!provider.hideActionMenuButtons) return const SizedBox.shrink();
+
+    final option = provider.trailingInfoType;
+    if (option == 'none') return const SizedBox.shrink();
+
+    if (option == 'dateTime') {
+      return Padding(
+        padding: const EdgeInsets.only(left: 8.0),
+        child: Text(
+          FileUtils.formatDate(item.modified, use24Hour: provider.use24HourFormat),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.textTheme.bodySmall?.color?.withOpacity(0.5),
+            fontSize: 12.0 * (1 + (iconScale - 1) * 0.3),
+          ),
+        ),
+      );
+    }
+
+    if (option == 'sizeAndCount') {
+      if (!isFolder) {
+        return Padding(
+          padding: const EdgeInsets.only(left: 8.0),
+          child: Text(
+            FileUtils.formatBytes(item.size, 1),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.textTheme.bodySmall?.color?.withOpacity(0.5),
+              fontSize: 12.0 * (1 + (iconScale - 1) * 0.3),
+            ),
+          ),
+        );
+      } else {
+        return FutureBuilder<int>(
+          future: provider.getFolderItemCount(item.path),
+          builder: (context, snapshot) {
+            final count = snapshot.data;
+            String label = '...';
+            if (count != null && count >= 0) {
+              label = count == 1 ? '1 item' : '$count items';
+            }
+            return Padding(
+              padding: const EdgeInsets.only(left: 8.0),
+              child: Text(
+                label,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.textTheme.bodySmall?.color?.withOpacity(0.5),
+                  fontSize: 12.0 * (1 + (iconScale - 1) * 0.3),
+                ),
+              ),
+            );
+          },
+        );
+      }
+    }
+
+    return const SizedBox.shrink();
   }
 }

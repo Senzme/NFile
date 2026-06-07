@@ -122,6 +122,7 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
     final mediaPreviewsVis = _shouldShow('Show Media Previews', 'Display actual image and video thumbnails instead of generic file icons');
     final adaptiveNamesVis = _shouldShow('Adaptive Multi-line Filenames', 'Allow filenames to wrap 3 lines instead of truncating');
     final hideActionButtonsVis = _shouldShow('Hide 3-Dot Action Buttons', 'Hide the three-dot option menu button next to folders and files');
+    final trailingInfoVis = fileManager.hideActionMenuButtons && _shouldShow('3-Dot Disabled Trailing Info', 'Choose what to show on the right side of files and folders when 3-dot is hidden');
     final dragDropVis = _shouldShow('Enable Drag & Drop', 'Long press and drag folders or files to move them into other folders');
     final confirmDragVis = fileManager.enableDragDrop && _shouldShow('Confirm Drag & Drop Actions', 'Show options popup (Copy, Move, Archive) when dropping files');
     final multipleTabsVis = _shouldShow('Enable Multiple Tabs', 'Allow opening multiple folders in separate tabs for quick navigation');
@@ -158,6 +159,7 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
       hideTimeDateVis,
       adaptiveNamesVis,
       hideActionButtonsVis,
+      trailingInfoVis,
     ];
 
     final mediaActionsList = [
@@ -828,6 +830,13 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
                           ),
                         ),
                         onTap: () => fileManager.toggleHideActionMenuButtons(),
+                      ),
+                    if (trailingInfoVis)
+                      SettingsTile(
+                        icon: Icons.info_outline_rounded,
+                        title: '3-Dot Disabled Trailing Info',
+                        subtitle: _getTrailingInfoTypeLabel(fileManager.trailingInfoType),
+                        onTap: () => _showTrailingInfoTypePickerDialog(context, fileManager, theme),
                       ),
                   ],
                   if (_shouldShowHeader(mediaActionsList)) ...[
@@ -1561,6 +1570,13 @@ class LayoutSettingsScreen extends StatelessWidget {
               ),
               onTap: () => fileManager.toggleHideActionMenuButtons(),
             ),
+            if (fileManager.hideActionMenuButtons)
+              SettingsTile(
+                icon: Icons.info_outline_rounded,
+                title: '3-Dot Disabled Trailing Info',
+                subtitle: _getTrailingInfoTypeLabel(fileManager.trailingInfoType),
+                onTap: () => _showTrailingInfoTypePickerDialog(context, fileManager, theme),
+              ),
           ],
         ),
       ),
@@ -1843,6 +1859,113 @@ String _getAutoDeleteDaysLabel(int days) {
   if (days <= 0) return 'Never (Auto-delete disabled)';
   if (days == 1) return 'After 1 Day';
   return 'After $days Days';
+}
+
+String _getTrailingInfoTypeLabel(String option) {
+  switch (option) {
+    case 'dateTime': return 'Date & Time';
+    case 'sizeAndCount': return 'File Size / Item Count';
+    case 'none':
+    default:
+      return 'None / Hide Info';
+  }
+}
+
+void _showTrailingInfoTypePickerDialog(BuildContext context, FileManagerProvider fileManager, ThemeData theme) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: theme.scaffoldBackgroundColor,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (ctx) {
+      final current = fileManager.trailingInfoType;
+      final options = [
+        {'key': 'none', 'name': 'None / Hide Info', 'desc': 'Do not display additional information on the right side'},
+        {'key': 'dateTime', 'name': 'Date & Time', 'desc': 'Display the last modified date and time'},
+        {'key': 'sizeAndCount', 'name': 'File Size / Item Count', 'desc': 'Display file size for files and item count for folders'},
+      ];
+
+      return SafeArea(
+        child: Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Text('Choose Trailing Info Style', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(height: 6),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Text(
+                      'Choose what is displayed on the right side of files and folders when the 3-dot action buttons are hidden.',
+                      style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6), fontSize: 13),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: options.length,
+                    itemBuilder: (_, i) {
+                      final opt = options[i];
+                      final key = opt['key'] as String;
+                      final name = opt['name'] as String;
+                      final desc = opt['desc'] as String;
+                      final isSelected = current == key;
+
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        leading: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: isSelected ? theme.colorScheme.primary : theme.colorScheme.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            key == 'none'
+                                ? Icons.visibility_off_rounded
+                                : key == 'dateTime'
+                                    ? Icons.access_time_rounded
+                                    : Icons.info_outline_rounded,
+                            color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.primary,
+                            size: 20,
+                          ),
+                        ),
+                        title: Text(name, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.w600)),
+                        subtitle: Text(desc, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.5))),
+                        trailing: isSelected
+                            ? Icon(Icons.radio_button_checked_rounded, color: theme.colorScheme.primary)
+                            : Icon(Icons.radio_button_off_rounded, color: theme.colorScheme.onSurface.withOpacity(0.3)),
+                        onTap: () {
+                          fileManager.setTrailingInfoType(key);
+                          Navigator.pop(ctx);
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
 }
 
 void _showThemePickerDialog(BuildContext context, FileManagerProvider fileManager, ThemeData theme) {
