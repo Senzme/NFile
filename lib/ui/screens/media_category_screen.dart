@@ -701,6 +701,15 @@ class _MediaCategoryScreenState extends State<MediaCategoryScreen>
                     widget.onNavigateTab?.call(1);
                   },
                 ),
+              if (filePath != null && FileUtils.isArchive(filePath))
+                ListTile(
+                  leading: Icon(Broken.archive, color: theme.colorScheme.primary),
+                  title: const Text('Extract'),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    await context.read<FileManagerProvider>().extractArchiveDirectly(context, filePath);
+                  },
+                ),
               if (filePath != null)
                 ListTile(
                   leading: Icon(Broken.edit, color: theme.colorScheme.primary),

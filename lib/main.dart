@@ -118,7 +118,6 @@ class NFileApp extends StatefulWidget {
 }
 
 class _NFileAppState extends State<NFileApp> {
-  ThemeMode _themeMode = ThemeMode.system;
   bool? _hasPermission;
   bool _sharingObserverSetup = false;
   bool _isResolvingIntent = false;
@@ -143,7 +142,6 @@ class _NFileAppState extends State<NFileApp> {
         }
       }
     });
-    _themeMode = PreferencesService.getThemeMode();
     // Setup sharing observer immediately to catch incoming intents at the earliest possible frame!
     _setupSharingIntentObserver();
     _initializeApplication();
@@ -283,10 +281,12 @@ class _NFileAppState extends State<NFileApp> {
   }
 
   void _toggleTheme() {
-    setState(() {
-      _themeMode = _themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
-    });
-    PreferencesService.saveThemeMode(_themeMode);
+    final current = PreferencesService.getThemeMode();
+    final next = current == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+    PreferencesService.saveThemeMode(next);
+    if (mounted) {
+      Provider.of<FileManagerProvider>(context, listen: false).reloadPreferences();
+    }
   }
 
   @override
@@ -295,6 +295,8 @@ class _NFileAppState extends State<NFileApp> {
       builder: (context, fileManager, _) {
         final currentAccentOption = fileManager.accentColorOption;
         final baseSeedColor = PreferencesService.getSeedColor(currentAccentOption);
+
+        final activeThemeMode = PreferencesService.getThemeMode();
 
         return DynamicColorBuilder(
           builder: (ColorScheme? dynamicLight, ColorScheme? dynamicDark) {
@@ -307,11 +309,11 @@ class _NFileAppState extends State<NFileApp> {
               debugShowCheckedModeBanner: false,
               theme: AppTheme.getAppTheme(light: true, seed: baseSeedColor, customScheme: activeLightScheme, fontFamily: fileManager.fontFamilyOption),
               darkTheme: AppTheme.getAppTheme(light: false, pitchBlack: fileManager.amoledMode, seed: baseSeedColor, customScheme: activeDarkScheme, fontFamily: fileManager.fontFamilyOption),
-              themeMode: _themeMode,
+              themeMode: activeThemeMode,
               builder: (context, child) {
-                final isDark = _themeMode == ThemeMode.system
+                final isDark = activeThemeMode == ThemeMode.system
                     ? (MediaQuery.platformBrightnessOf(context) == Brightness.dark)
-                    : (_themeMode == ThemeMode.dark);
+                    : (activeThemeMode == ThemeMode.dark);
                 
                 final theme = isDark
                     ? AppTheme.getAppTheme(light: false, pitchBlack: fileManager.amoledMode, seed: baseSeedColor, customScheme: activeDarkScheme, fontFamily: fileManager.fontFamilyOption)

@@ -139,6 +139,38 @@ class MediaProvider extends ChangeNotifier {
     _excludedDefaultPaths = PreferencesService.getExcludedDefaultPaths();
   }
 
+  void reloadPreferences() {
+    final savedOrder = PreferencesService.getCategoryOrder();
+    if (savedOrder != null && savedOrder.isNotEmpty) {
+      _categoryOrder = savedOrder;
+      bool orderUpdated = false;
+      if (!_categoryOrder.contains('Apps')) {
+        _categoryOrder.add('Apps');
+        orderUpdated = true;
+      }
+      if (!_categoryOrder.contains('Settings')) {
+        _categoryOrder.add('Settings');
+        orderUpdated = true;
+      }
+      if (orderUpdated) {
+        PreferencesService.saveCategoryOrder(_categoryOrder);
+      }
+    }
+    final savedActive = PreferencesService.getActiveCategories();
+    if (savedActive != null && savedActive.isNotEmpty) {
+      _activeCategories = savedActive;
+    }
+    final savedCustom = PreferencesService.getCustomShortcuts();
+    if (savedCustom != null) {
+      _customShortcuts = savedCustom;
+    } else {
+      _customShortcuts = [];
+    }
+    _customCategoryPaths = PreferencesService.getCustomCategoryPaths();
+    _excludedDefaultPaths = PreferencesService.getExcludedDefaultPaths();
+    notifyListeners();
+  }
+
   List<AssetEntity> _images = [];
   List<AssetEntity> _videos = [];
   List<SongModel> _audios = [];

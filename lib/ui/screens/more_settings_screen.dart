@@ -9,6 +9,8 @@ import '../../services/preferences_service.dart';
 import '../../services/recycle_bin_service.dart';
 import 'package:path/path.dart' as p;
 import 'internal_file_picker_screen.dart';
+import 'backup_settings_screen.dart';
+import '../../services/settings_backup_service.dart';
 
 class MoreSettingsScreen extends StatefulWidget {
   const MoreSettingsScreen({super.key});
@@ -186,6 +188,9 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
     final showRecentVis = _shouldShow('Show Recent Files', 'Display the list of recently accessed files on the Home screen');
     final homeScreenList = [customizeShortcutsVis, showRecentVis];
 
+    final backupSettingsVis = _shouldShow('Backup Settings', 'Save all your current settings to NFile/Backups/Settings/');
+    final restoreSettingsVis = _shouldShow('Restore Settings', 'Select and restore settings from a JSON backup file');
+
     final hasAnyMatch = generalStartupList.contains(true) ||
         fileExplorerList.contains(true) ||
         listLayoutList.contains(true) ||
@@ -193,7 +198,9 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
         selectionActionBarList.contains(true) ||
         recycleBinList.contains(true) ||
         appearanceList.contains(true) ||
-        homeScreenList.contains(true);
+        homeScreenList.contains(true) ||
+        backupSettingsVis ||
+        restoreSettingsVis;
 
     return PopScope(
       canPop: !_isSearching,
@@ -341,6 +348,14 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
                   title: 'Recycle Bin (Trash)',
                   subtitle: 'Recycle bin toggles and auto-delete duration',
                   targetScreen: const TrashSettingsScreen(),
+                ),
+                _buildCategoryCard(
+                  context,
+                  theme,
+                  icon: Broken.document_upload,
+                  title: 'Backup & Restore',
+                  subtitle: 'Backup your settings to a JSON file or restore them',
+                  targetScreen: const BackupSettingsScreen(),
                 ),
               ] else ...[
                 if (!hasAnyMatch) ...[
@@ -927,6 +942,49 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
                         onTap: () => _showAutoDeleteDaysPickerDialog(context, theme, () {
                           setState(() {});
                         }),
+                      ),
+                  ],
+                  if (_shouldShowHeader([backupSettingsVis, restoreSettingsVis])) ...[
+                    const SizedBox(height: 24),
+                    _buildSectionHeader(theme, 'Backup & Restore'),
+                    if (backupSettingsVis)
+                      SettingsTile(
+                        icon: Broken.document_upload,
+                        title: 'Backup Settings',
+                        subtitle: 'Save all your current settings to NFile/Backups/Settings/',
+                        onTap: () => SettingsBackupService.backupSettings(context),
+                      ),
+                    if (restoreSettingsVis)
+                      SettingsTile(
+                        icon: Broken.document_download,
+                        title: 'Restore Settings',
+                        subtitle: 'Select and restore settings from a JSON backup file',
+                        onTap: () async {
+                          final pickedPaths = await InternalFilePickerScreen.show(
+                            context,
+                            rootPath: '/storage/emulated/0',
+                            pickDirectory: false,
+                          );
+
+                          if (pickedPaths != null && pickedPaths.isNotEmpty) {
+                            final selectedPath = pickedPaths.first;
+                            if (selectedPath.toLowerCase().endsWith('.json')) {
+                              if (context.mounted) {
+                                await SettingsBackupService.restoreSettings(context, selectedPath);
+                              }
+                            } else {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: const Text('Please select a valid .json settings backup file'),
+                                    behavior: SnackBarBehavior.floating,
+                                    backgroundColor: theme.colorScheme.error,
+                                  ),
+                                );
+                              }
+                            }
+                          }
+                        },
                       ),
                   ],
                 ],

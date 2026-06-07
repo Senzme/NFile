@@ -168,6 +168,49 @@ class FileManagerProvider extends ChangeNotifier {
     _isOperationCancelled = true;
   }
 
+  void reloadPreferences() {
+    _sortType = PreferencesService.getSortType();
+    _isGridView = PreferencesService.getIsGridView();
+    _iconScale = PreferencesService.getIconScale();
+    _itemPaddingMultiplier = PreferencesService.getItemPaddingMultiplier();
+    _showHiddenFiles = PreferencesService.getShowHiddenFiles();
+    _showFloatingAddButton = PreferencesService.getShowFloatingAddButton();
+    _defaultToBrowseScreen = PreferencesService.getDefaultToBrowseScreen();
+    _showFolderFileCount = PreferencesService.getShowFolderFileCount();
+    _showBottomActionBar = PreferencesService.getShowBottomActionBar();
+    _showHomeBrowseNav = PreferencesService.getShowHomeBrowseNav();
+    _hideNavLabels = PreferencesService.getHideNavLabels();
+    _showMediaPreviews = PreferencesService.getShowMediaPreviews();
+    _enableMultipleTabs = PreferencesService.getEnableMultipleTabs();
+    _enableSplitScreen = PreferencesService.getEnableSplitScreen();
+    _accentColorOption = PreferencesService.getAccentColor();
+    _fontFamilyOption = PreferencesService.getFontFamily();
+    _customFontPath = PreferencesService.getCustomFontPath();
+    _folderIconOption = PreferencesService.getFolderIconStyle();
+    _menuIconStyle = PreferencesService.getMenuIconStyle();
+    _pinnedFolderShortcuts = PreferencesService.getPinnedFolderShortcuts();
+    _hideNavigationBar = PreferencesService.getHideNavigationBar();
+    _skipOpenWithDialog = PreferencesService.getSkipOpenWithDialog();
+    _showAddressBar = PreferencesService.getShowAddressBar();
+    _amoledMode = PreferencesService.getAmoledMode();
+    _showRecentFiles = PreferencesService.getShowRecentFiles();
+    _enableFolderHighlight = PreferencesService.getEnableFolderHighlight();
+    _folderSortTypes = PreferencesService.getFolderSortTypes();
+    _enableDragDrop = PreferencesService.getEnableDragDrop();
+    _showDragDropDialog = PreferencesService.getShowDragDropDialog();
+    _use24HourFormat = PreferencesService.getUse24HourFormat();
+    _hideTimeAndDate = PreferencesService.getHideTimeAndDate();
+    _showFolderContentsCount = PreferencesService.getShowFolderContentsCount();
+    _showFolderSizes = PreferencesService.getShowFolderSizes();
+    _adaptiveMultiLineNames = PreferencesService.getAdaptiveMultiLineNames();
+    _hideActionMenuButtons = PreferencesService.getHideActionMenuButtons();
+    _activeAppIcon = PreferencesService.getActiveAppIcon();
+    _hideActionText = PreferencesService.getHideActionText();
+    _disableLeftBackGesture = PreferencesService.getDisableLeftBackGesture();
+    _rememberLastFolder = PreferencesService.getRememberLastFolder();
+    notifyListeners();
+  }
+
   List<CustomShortcutModel> _pinnedFolderShortcuts = [];
   List<CustomShortcutModel> get pinnedFolderShortcuts => _pinnedFolderShortcuts;
 
@@ -2460,7 +2503,7 @@ class FileManagerProvider extends ChangeNotifier {
   }
 
   Future<void> extractArchiveDirectly(BuildContext context, String path) async {
-    final destDir = p.join(currentPath, p.basenameWithoutExtension(path));
+    final destDir = p.join(p.dirname(path), p.basenameWithoutExtension(path));
     final res = await ExtractArchiveDialog.show(context, archiveName: p.basename(path), defaultDestDir: destDir);
     if (res != null && context.mounted) {
       await BackgroundArchiveService.instance.startExtraction(

@@ -79,6 +79,7 @@ dependencies:
   dartssh2: ^2.8.2
   audio_service: ^0.18.17
   device_info_plus: ^12.4.0
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:
