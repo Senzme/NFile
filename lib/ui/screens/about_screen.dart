@@ -163,7 +163,7 @@ class AboutNFileScreen extends StatelessWidget {
                       border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
                     ),
                     child: Text(
-                      'v1.0.33 (Stable)',
+                      'v1.0.42 (Stable)',
                       style: TextStyle(
                         color: theme.colorScheme.primary,
                         fontSize: 12.5,
