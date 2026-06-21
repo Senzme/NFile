@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:path/path.dart' as p;
 import '../../providers/file_manager_provider.dart';
+import '../../providers/media_provider.dart';
 import '../../models/file_filter_type.dart';
 import '../../models/drag_payload.dart';
 import '../widgets/file_filter_bottom_sheet.dart';
@@ -43,19 +44,60 @@ class DirectoryScreen extends StatefulWidget {
 
 class _DirectoryScreenState extends State<DirectoryScreen> {
   final ScrollController _scrollController = ScrollController();
+  late final TextEditingController _searchController;
+  late final FocusNode _searchFocusNode;
+  int _lastActiveTabIndex = -1;
+  String _lastSearchQuery = '';
+
+  final List<String> _filters = [
+    'All',
+    'Folders',
+    'Images',
+    'Videos',
+    'Audio',
+    'Docs',
+  ];
 
   @override
   void initState() {
     super.initState();
+    _searchController = TextEditingController();
+    _searchFocusNode = FocusNode();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<FileManagerProvider>().init();
+      final provider = context.read<FileManagerProvider>();
+      provider.init();
+      _lastActiveTabIndex = provider.activeTabIndex;
+      _lastSearchQuery = provider.activeTab.searchQuery;
+      _searchController.text = _lastSearchQuery;
+      provider.addListener(_onProviderChanged);
     });
   }
 
   @override
   void dispose() {
+    try {
+      context.read<FileManagerProvider>().removeListener(_onProviderChanged);
+    } catch (_) {}
+    _searchController.dispose();
+    _searchFocusNode.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onProviderChanged() {
+    if (!mounted) return;
+    final provider = context.read<FileManagerProvider>();
+    if (provider.tabs.isEmpty) return;
+    
+    // Sync search controller if tab index changed or search query changed
+    if (provider.activeTabIndex != _lastActiveTabIndex) {
+      _lastActiveTabIndex = provider.activeTabIndex;
+      _lastSearchQuery = provider.activeTab.searchQuery;
+      _searchController.text = _lastSearchQuery;
+    } else if (provider.activeTab.searchQuery != _lastSearchQuery) {
+      _lastSearchQuery = provider.activeTab.searchQuery;
+      _searchController.text = _lastSearchQuery;
+    }
   }
 
   void _openFolder(FileManagerProvider provider, String path) {
@@ -844,30 +886,75 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
               centerTitle: false,
               title: isSelectionMode
                   ? Text('${provider.selectedPaths.length}/${provider.currentFiles.length}')
-                  : _AnimatedTitleButton(
-                      onTap: () => _showStorageVolumeModal(context, provider),
-                    ),
+                  : provider.activeTab.isSearchActive
+                      ? TextField(
+                          controller: _searchController,
+                          focusNode: _searchFocusNode,
+                          autofocus: true,
+                          style: theme.textTheme.titleMedium,
+                          decoration: InputDecoration(
+                            hintText: provider.activeTab.currentPath == '/storage/emulated/0' ||
+                                    provider.activeTab.currentPath == '/' ||
+                                    provider.activeTab.currentPath.isEmpty
+                                ? 'Search globally...'
+                                : 'Search in this folder...',
+                            hintStyle: TextStyle(color: theme.colorScheme.onSurface.withAlpha(102)),
+                            border: InputBorder.none,
+                            suffixIcon: provider.activeTab.searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Broken.close_square, size: 20),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      provider.executeSearchForTab(
+                                        provider.activeTabIndex,
+                                        '',
+                                        provider.activeTab.searchFilter,
+                                        context.read<MediaProvider>(),
+                                      );
+                                    },
+                                  )
+                                : null,
+                          ),
+                          onChanged: (val) {
+                            provider.executeSearchForTab(
+                              provider.activeTabIndex,
+                              val,
+                              provider.activeTab.searchFilter,
+                              context.read<MediaProvider>(),
+                            );
+                          },
+                        )
+                      : _AnimatedTitleButton(
+                          onTap: () => _showStorageVolumeModal(context, provider),
+                        ),
               bottom: (isSelectionMode || !provider.enableMultipleTabs) ? null : DirectoryTabBar(provider: provider),
               leading: isSelectionMode
                   ? IconButton(
                       icon: const Icon(Broken.close_square),
                       onPressed: () => provider.clearSelection(),
                     )
-                  : provider.canGoBack
+                  : provider.activeTab.isSearchActive
                       ? IconButton(
                           icon: const Icon(Broken.arrow_left),
-                          onPressed: () => _goBack(provider),
+                          onPressed: () {
+                            provider.toggleSearchForActiveTab();
+                          },
                         )
-                      : Builder(
-                          builder: (context) => IconButton(
-                            icon: Icon(
-                              provider.menuIconStyle == 'category'
-                                  ? Broken.category
-                                  : Broken.menu,
+                      : provider.canGoBack
+                          ? IconButton(
+                              icon: const Icon(Broken.arrow_left),
+                              onPressed: () => _goBack(provider),
+                            )
+                          : Builder(
+                              builder: (context) => IconButton(
+                                icon: Icon(
+                                  provider.menuIconStyle == 'category'
+                                      ? Broken.category
+                                      : Broken.menu,
+                                ),
+                                onPressed: () => Scaffold.of(context).openDrawer(),
+                              ),
                             ),
-                            onPressed: () => Scaffold.of(context).openDrawer(),
-                          ),
-                        ),
               actions: isSelectionMode
                   ? provider.showBottomActionBar
                       ? [
@@ -1048,38 +1135,42 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                             ],
                           ),
                         ]
-                      : [
-                          IconButton(
-                            icon: const Icon(Broken.search_normal),
-                            onPressed: () {
-                              Navigator.push(context, MaterialPageRoute(builder: (_) => GlobalSearchScreen(searchFolderPath: provider.currentPath)));
-                            },
-                          ),
-                          IconButton(
-                            icon: const Icon(Broken.filter_edit),
-                            tooltip: 'View & Sort Options',
-                            onPressed: () => _showSortModal(context, provider),
-                          ),
-                          PopupMenuButton<String>(
-                            icon: const Icon(Broken.add_square, size: 26),
-                            tooltip: 'Create New',
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            position: PopupMenuPosition.under,
-                            elevation: 8,
-                            onSelected: (val) => _handleMenuAction(context, val, provider),
-                            itemBuilder: (context) => [
-                              const PopupMenuItem(value: 'file', child: Row(children: [Icon(Broken.document, size: 20), SizedBox(width: 12), Text('New File', style: TextStyle(fontWeight: FontWeight.w600))])),
-                              const PopupMenuItem(value: 'folder', child: Row(children: [Icon(Broken.folder, size: 20), SizedBox(width: 12), Text('New Folder', style: TextStyle(fontWeight: FontWeight.w600))])),
-                              const PopupMenuItem(value: 'archive', child: Row(children: [Icon(Broken.archive, size: 20), SizedBox(width: 12), Text('New Archive', style: TextStyle(fontWeight: FontWeight.w600))])),
+                      : provider.activeTab.isSearchActive
+                          ? null
+                          : [
+                              IconButton(
+                                icon: const Icon(Broken.search_normal),
+                                onPressed: () {
+                                  provider.toggleSearchForActiveTab();
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(Broken.filter_edit),
+                                tooltip: 'View & Sort Options',
+                                onPressed: () => _showSortModal(context, provider),
+                              ),
+                              PopupMenuButton<String>(
+                                icon: const Icon(Broken.add_square, size: 26),
+                                tooltip: 'Create New',
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                position: PopupMenuPosition.under,
+                                elevation: 8,
+                                onSelected: (val) => _handleMenuAction(context, val, provider),
+                                itemBuilder: (context) => [
+                                  const PopupMenuItem(value: 'file', child: Row(children: [Icon(Broken.document, size: 20), SizedBox(width: 12), Text('New File', style: TextStyle(fontWeight: FontWeight.w600))])),
+                                  const PopupMenuItem(value: 'folder', child: Row(children: [Icon(Broken.folder, size: 20), SizedBox(width: 12), Text('New Folder', style: TextStyle(fontWeight: FontWeight.w600))])),
+                                  const PopupMenuItem(value: 'archive', child: Row(children: [Icon(Broken.archive, size: 20), SizedBox(width: 12), Text('New Archive', style: TextStyle(fontWeight: FontWeight.w600))])),
+                                ],
+                              ),
                             ],
-                          ),
-                        ],
             ),
             body: Column(
               children: [
                 if (provider.showAddressBar) const NFileAddressBar(),
                 if (provider.filterType != FileFilterType.all)
                   _buildActiveFilterBanner(context, provider),
+                if (provider.activeTab.isSearchActive)
+                  _buildSearchFilterChips(context, provider),
                 if (provider.isLoading && provider.currentFiles.isNotEmpty)
                   LinearProgressIndicator(
                     minHeight: 2.5,
@@ -1180,39 +1271,115 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                           child: Center(
                             child: Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(24),
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                      Broken.folder_open,
-                                      size: 72,
-                                      color: Theme.of(context).colorScheme.primary.withOpacity(0.6),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 24),
-                                  Text(
-                                    'Empty Folder',
-                                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: Theme.of(context).colorScheme.onSurface,
+                              child: provider.activeTab.isSearchActive
+                                  ? provider.activeTab.searchQuery.isEmpty
+                                      ? Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(24),
+                                              decoration: BoxDecoration(
+                                                color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Icon(
+                                                Broken.search_normal_1,
+                                                size: 72,
+                                                color: Theme.of(context).colorScheme.primary.withOpacity(0.6),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 24),
+                                            Text(
+                                              provider.activeTab.currentPath == '/storage/emulated/0' ||
+                                                      provider.activeTab.currentPath == '/' ||
+                                                      provider.activeTab.currentPath.isEmpty
+                                                  ? 'Search your storage'
+                                                  : 'Search this folder',
+                                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Theme.of(context).colorScheme.onSurface,
+                                                  ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              provider.activeTab.currentPath == '/storage/emulated/0' ||
+                                                      provider.activeTab.currentPath == '/' ||
+                                                      provider.activeTab.currentPath.isEmpty
+                                                  ? 'Find any file, folder, document or media instantly across your device'
+                                                  : 'Search files and subfolders in this directory',
+                                              textAlign: TextAlign.center,
+                                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
+                                                  ),
+                                            ),
+                                          ],
+                                        )
+                                      : Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(24),
+                                              decoration: BoxDecoration(
+                                                color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Icon(
+                                                Broken.document_filter,
+                                                size: 72,
+                                                color: Theme.of(context).colorScheme.primary.withOpacity(0.6),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 24),
+                                            Text(
+                                              'No results found',
+                                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Theme.of(context).colorScheme.onSurface,
+                                                  ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              'We could not find anything matching "${provider.activeTab.searchQuery}" under ${provider.activeTab.searchFilter}',
+                                              textAlign: TextAlign.center,
+                                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
+                                                  ),
+                                            ),
+                                          ],
+                                        )
+                                  : Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(24),
+                                          decoration: BoxDecoration(
+                                            color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            Broken.folder_open,
+                                            size: 72,
+                                            color: Theme.of(context).colorScheme.primary.withOpacity(0.6),
+                                          ),
                                         ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'This directory does not contain any files or subfolders.',
-                                    textAlign: TextAlign.center,
-                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
+                                        const SizedBox(height: 24),
+                                        Text(
+                                          'Empty Folder',
+                                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                                fontWeight: FontWeight.bold,
+                                                color: Theme.of(context).colorScheme.onSurface,
+                                              ),
                                         ),
-                                  ),
-                                ],
-                              ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'This directory does not contain any files or subfolders.',
+                                          textAlign: TextAlign.center,
+                                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
+                                              ),
+                                        ),
+                                      ],
+                                    ),
                             ),
                           ),
                         )
@@ -1465,7 +1632,9 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                         IconButton(
                           icon: const Icon(Broken.search_normal),
                           tooltip: 'Global Search',
-                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GlobalSearchScreen(searchFolderPath: provider.currentPath))),
+                          onPressed: () {
+                            provider.toggleSearchForActiveTab();
+                          },
                         ),
                         const SizedBox(width: 48), // Center dock slot for FAB
                         IconButton(
@@ -1583,6 +1752,71 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSearchFilterChips(BuildContext context, FileManagerProvider provider) {
+    final theme = Theme.of(context);
+    final activeTab = provider.activeTab;
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: _filters.length,
+        itemBuilder: (context, index) {
+          final filter = _filters[index];
+          final isSelected = filter == activeTab.searchFilter;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: InkWell(
+              onTap: () {
+                provider.executeSearchForTab(
+                  provider.activeTabIndex,
+                  activeTab.searchQuery,
+                  filter,
+                  context.read<MediaProvider>(),
+                );
+              },
+              borderRadius: BorderRadius.circular(16),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? theme.colorScheme.primary.withAlpha(38)
+                      : theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isSelected
+                        ? theme.colorScheme.primary
+                        : theme.dividerColor.withAlpha(51),
+                    width: 1.5,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    if (isSelected) ...[
+                      Icon(Broken.tick_circle, size: 16, color: theme.colorScheme.primary),
+                      const SizedBox(width: 6),
+                    ],
+                    Text(
+                      filter,
+                      style: TextStyle(
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                        color: isSelected
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurface.withAlpha(178),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

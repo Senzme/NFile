@@ -37,14 +37,30 @@ class PaneBrowser extends StatefulWidget {
 
 class _PaneBrowserState extends State<PaneBrowser> {
   final ScrollController _scrollController = ScrollController();
+  late final TextEditingController _searchController;
+  late final FocusNode _searchFocusNode;
+  String _lastSearchQuery = '';
+
+  final List<String> _filters = [
+    'All',
+    'Folders',
+    'Images',
+    'Videos',
+    'Audio',
+    'Docs',
+  ];
 
   @override
   void initState() {
     super.initState();
+    _searchController = TextEditingController();
+    _searchFocusNode = FocusNode();
   }
 
   @override
   void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -168,6 +184,11 @@ class _PaneBrowserState extends State<PaneBrowser> {
     final isActive = provider.activeTabIndex == widget.tabIndex;
     final isSelectionMode = tab.selectedPaths.isNotEmpty;
 
+    if (_searchController.text != tab.searchQuery && !_searchFocusNode.hasFocus) {
+      _searchController.text = tab.searchQuery;
+      _lastSearchQuery = tab.searchQuery;
+    }
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => _activatePane(provider),
@@ -230,6 +251,13 @@ class _PaneBrowserState extends State<PaneBrowser> {
                           ),
                         ),
                         const Spacer(),
+                        IconButton(
+                          icon: Icon(tab.isSearchActive ? Icons.search_off_rounded : Broken.search_normal_1, size: 18),
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          constraints: const BoxConstraints(),
+                          onPressed: () => provider.toggleSearchForTab(widget.tabIndex),
+                          tooltip: tab.isSearchActive ? 'Close Search' : 'Search in Pane',
+                        ),
                         // UP button for parent directory
                         if (tab.currentPath != '/' && tab.currentPath != provider.rootPath)
                           IconButton(
@@ -242,7 +270,7 @@ class _PaneBrowserState extends State<PaneBrowser> {
                       ],
                     ),
                   ),
-                  if (tab.isLoading && tab.currentFiles.isNotEmpty)
+                  if (tab.displayLoading && tab.displayFiles.isNotEmpty)
                     LinearProgressIndicator(
                       minHeight: 2.0,
                       backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
@@ -276,6 +304,118 @@ class _PaneBrowserState extends State<PaneBrowser> {
                   ),
                   if (provider.filterType != FileFilterType.all)
                     _buildActiveFilterBanner(context, provider),
+                  if (tab.isSearchActive) ...[
+                    // Search Input Row
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      color: theme.colorScheme.surfaceVariant.withOpacity(0.08),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _searchController,
+                              focusNode: _searchFocusNode,
+                              autofocus: true,
+                              style: theme.textTheme.bodyMedium,
+                              decoration: InputDecoration(
+                                hintText: 'Search...',
+                                hintStyle: TextStyle(color: theme.colorScheme.onSurface.withAlpha(102), fontSize: 13),
+                                border: InputBorder.none,
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                                suffixIcon: tab.searchQuery.isNotEmpty
+                                    ? GestureDetector(
+                                        onTap: () {
+                                          _searchController.clear();
+                                          provider.executeSearchForTab(
+                                            widget.tabIndex,
+                                            '',
+                                            tab.searchFilter,
+                                            context.read<MediaProvider>(),
+                                          );
+                                        },
+                                        child: const Icon(Broken.close_square, size: 16),
+                                      )
+                                    : null,
+                              ),
+                              onChanged: (val) {
+                                provider.executeSearchForTab(
+                                  widget.tabIndex,
+                                  val,
+                                  tab.searchFilter,
+                                  context.read<MediaProvider>(),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Search Filter Chips Row (scrollable)
+                    Container(
+                      height: 40,
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      color: theme.colorScheme.surfaceVariant.withOpacity(0.04),
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        itemCount: _filters.length,
+                        itemBuilder: (context, index) {
+                          final filter = _filters[index];
+                          final isSelected = filter == tab.searchFilter;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: InkWell(
+                              onTap: () {
+                                provider.executeSearchForTab(
+                                  widget.tabIndex,
+                                  tab.searchQuery,
+                                  filter,
+                                  context.read<MediaProvider>(),
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? theme.colorScheme.primary.withAlpha(30)
+                                      : theme.colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? theme.colorScheme.primary
+                                        : theme.dividerColor.withAlpha(30),
+                                    width: 1.2,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (isSelected) ...[
+                                      Icon(Broken.tick_circle, size: 12, color: theme.colorScheme.primary),
+                                      const SizedBox(width: 4),
+                                    ],
+                                    Text(
+                                      filter,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                        color: isSelected
+                                            ? theme.colorScheme.primary
+                                            : theme.colorScheme.onSurface.withAlpha(150),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                   
                   // --- Pane Body ---
                   Expanded(
@@ -302,7 +442,7 @@ class _PaneBrowserState extends State<PaneBrowser> {
                         }
                       },
                       builder: (context, candidateData, rejectedData) {
-                        return (tab.isLoading && tab.currentFiles.isEmpty)
+                        return (tab.displayLoading && tab.displayFiles.isEmpty)
                             ? const Center(child: CircularProgressIndicator())
                             : tab.needsPermission
                                 ? RestrictedFolderBanner(
@@ -323,37 +463,89 @@ class _PaneBrowserState extends State<PaneBrowser> {
                                       CupertinoSliverRefreshControl(
                                         onRefresh: () => provider.loadDirectoryForTab(widget.tabIndex, tab.currentPath, showLoading: false, clearCache: true),
                                       ),
-                                      if (tab.currentFiles.isEmpty)
+                                      if (tab.displayFiles.isEmpty)
                                         SliverFillRemaining(
                                           hasScrollBody: false,
                                           child: Center(
                                             child: Padding(
                                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-                                              child: Column(
-                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                children: [
-                                                  Container(
-                                                    padding: const EdgeInsets.all(16),
-                                                    decoration: BoxDecoration(
-                                                      color: theme.colorScheme.primary.withOpacity(0.08),
-                                                      shape: BoxShape.circle,
+                                              child: tab.isSearchActive
+                                                  ? tab.searchQuery.isEmpty
+                                                      ? Column(
+                                                          mainAxisAlignment: MainAxisAlignment.center,
+                                                          children: [
+                                                            Container(
+                                                              padding: const EdgeInsets.all(16),
+                                                              decoration: BoxDecoration(
+                                                                color: theme.colorScheme.primary.withOpacity(0.08),
+                                                                shape: BoxShape.circle,
+                                                              ),
+                                                              child: Icon(
+                                                                Broken.search_normal_1,
+                                                                size: 48,
+                                                                color: theme.colorScheme.primary.withOpacity(0.6),
+                                                              ),
+                                                            ),
+                                                            const SizedBox(height: 16),
+                                                            Text(
+                                                              'Search in tab',
+                                                              style: theme.textTheme.titleMedium?.copyWith(
+                                                                fontWeight: FontWeight.bold,
+                                                                color: theme.colorScheme.onSurface,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        )
+                                                      : Column(
+                                                          mainAxisAlignment: MainAxisAlignment.center,
+                                                          children: [
+                                                            Container(
+                                                              padding: const EdgeInsets.all(16),
+                                                              decoration: BoxDecoration(
+                                                                color: theme.colorScheme.primary.withOpacity(0.08),
+                                                                shape: BoxShape.circle,
+                                                              ),
+                                                              child: Icon(
+                                                                Broken.document_filter,
+                                                                size: 48,
+                                                                color: theme.colorScheme.primary.withOpacity(0.6),
+                                                              ),
+                                                            ),
+                                                            const SizedBox(height: 16),
+                                                            Text(
+                                                              'No results',
+                                                              style: theme.textTheme.titleMedium?.copyWith(
+                                                                fontWeight: FontWeight.bold,
+                                                                color: theme.colorScheme.onSurface,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        )
+                                                  : Column(
+                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      children: [
+                                                        Container(
+                                                          padding: const EdgeInsets.all(16),
+                                                          decoration: BoxDecoration(
+                                                            color: theme.colorScheme.primary.withOpacity(0.08),
+                                                            shape: BoxShape.circle,
+                                                          ),
+                                                          child: Icon(
+                                                            Broken.folder_open,
+                                                            size: 48,
+                                                            color: theme.colorScheme.primary.withOpacity(0.6),
+                                                          ),
+                                                        ),
+                                                        const SizedBox(height: 16),
+                                                        Text(
+                                                          'Empty Folder',
+                                                          style: theme.textTheme.titleMedium?.copyWith(
+                                                            fontWeight: FontWeight.bold,
+                                                            color: theme.colorScheme.onSurface,
+                                                          ),
+                                                        ),
+                                                      ],
                                                     ),
-                                                    child: Icon(
-                                                      Broken.folder_open,
-                                                      size: 48,
-                                                      color: theme.colorScheme.primary.withOpacity(0.6),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 16),
-                                                  Text(
-                                                    'Empty Folder',
-                                                    style: theme.textTheme.titleMedium?.copyWith(
-                                                      fontWeight: FontWeight.bold,
-                                                      color: theme.colorScheme.onSurface,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
                                             ),
                                           ),
                                         )
@@ -375,7 +567,7 @@ class _PaneBrowserState extends State<PaneBrowser> {
                                                   ),
                                                   delegate: SliverChildBuilderDelegate(
                                                     (context, index) {
-                                                      final item = tab.currentFiles[index];
+                                                      final item = tab.displayFiles[index];
                                                       final isSelected = tab.selectedPaths.contains(item.path);
                                                       if (item.isDirectory) {
                                                         final itemLongPress = () {
@@ -441,13 +633,13 @@ class _PaneBrowserState extends State<PaneBrowser> {
                                                         );
                                                       }
                                                     },
-                                                    childCount: tab.currentFiles.length,
+                                                    childCount: tab.displayFiles.length,
                                                   ),
                                                 )
                                               : SliverList(
                                                   delegate: SliverChildBuilderDelegate(
                                                     (context, index) {
-                                                      final item = tab.currentFiles[index];
+                                                      final item = tab.displayFiles[index];
                                                       final isSelected = tab.selectedPaths.contains(item.path);
                                                       if (item.isDirectory) {
                                                         return _buildCompactFolderItem(
@@ -467,7 +659,7 @@ class _PaneBrowserState extends State<PaneBrowser> {
                                                         );
                                                       }
                                                     },
-                                                    childCount: tab.currentFiles.length,
+                                                    childCount: tab.displayFiles.length,
                                                   ),
                                                 ),
                                         ),

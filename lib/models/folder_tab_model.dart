@@ -15,6 +15,13 @@ class FolderTab {
   final Map<String, double> scrollPositions;
   bool isPinned;
 
+  // Tab-specific search state
+  String searchQuery;
+  String searchFilter;
+  List<FileItemModel> searchResults;
+  bool isSearching;
+  bool isSearchActive;
+
   FolderTab({
     required this.id,
     required this.currentPath,
@@ -29,6 +36,14 @@ class FolderTab {
     this.scrollOffset = 0.0,
     Map<String, double>? scrollPositions,
     this.isPinned = false,
+    this.searchQuery = '',
+    this.searchFilter = 'All',
+    this.searchResults = const [],
+    this.isSearching = false,
+    this.isSearchActive = false,
   }) : selectedPaths = selectedPaths ?? {},
        scrollPositions = scrollPositions ?? {};
+
+  List<FileItemModel> get displayFiles => isSearchActive ? searchResults : currentFiles;
+  bool get displayLoading => isSearchActive ? isSearching : isLoading;
 }

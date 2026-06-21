@@ -39,6 +39,7 @@ import '../services/remote/sftp_client.dart';
 import '../services/remote/webdav_client.dart';
 import '../services/remote/lan_client.dart';
 import '../services/remote/saf_client.dart';
+import 'media_provider.dart';
 
 enum FileSortType {
   nameAsc,
@@ -902,6 +903,7 @@ class FileManagerProvider extends ChangeNotifier {
   // --- Tab Management ---
   List<FolderTab> _tabs = [];
   int _activeTabIndex = 0;
+  final Map<String, StreamSubscription<FileSystemEntity>?> _searchSubscriptions = {};
 
   List<FolderTab> get tabs => _tabs;
   int get activeTabIndex => _activeTabIndex;
@@ -927,6 +929,8 @@ class FileManagerProvider extends ChangeNotifier {
 
   void closeTab(int index) {
     if (_tabs.length <= 1) return;
+    final closedTab = _tabs[index];
+    cancelSearchForTab(closedTab.id);
     _tabs.removeAt(index);
     if (_activeTabIndex >= _tabs.length) {
       _activeTabIndex = _tabs.length - 1;
@@ -944,6 +948,11 @@ class FileManagerProvider extends ChangeNotifier {
   void closeOtherTabs() {
     if (_tabs.length <= 1) return;
     final active = activeTab;
+    for (final tab in _tabs) {
+      if (tab.id != active.id) {
+        cancelSearchForTab(tab.id);
+      }
+    }
     _tabs = [active];
     _activeTabIndex = 0;
     _persistTabs();
@@ -1018,10 +1027,194 @@ class FileManagerProvider extends ChangeNotifier {
     PreferencesService.saveSavedTabs(list);
   }
 
+  void executeSearchForTab(
+    int tabIndex,
+    String query,
+    String filter,
+    MediaProvider mediaProvider,
+  ) {
+    if (tabIndex < 0 || tabIndex >= _tabs.length) return;
+    final tab = _tabs[tabIndex];
+
+    // Cancel existing search for this tab
+    _searchSubscriptions[tab.id]?.cancel();
+    _searchSubscriptions[tab.id] = null;
+
+    tab.searchQuery = query.trim();
+    tab.searchFilter = filter;
+    tab.searchResults = [];
+
+    if (tab.searchQuery.isEmpty) {
+      tab.isSearching = false;
+      notifyListeners();
+      return;
+    }
+
+    tab.isSearching = true;
+    notifyListeners();
+
+    final Set<String> seenPaths = {};
+    final List<FileItemModel> currentBatch = [];
+    final qLower = tab.searchQuery.toLowerCase();
+
+    // Resolve search scope: if starting search path is root or external storage, it's global
+    final isGlobal = tab.currentPath == '/storage/emulated/0' ||
+                     tab.currentPath == '/' ||
+                     tab.currentPath.isEmpty;
+
+    final rootPath = isGlobal
+        ? (Platform.isAndroid ? '/storage/emulated/0' : tab.currentPath)
+        : tab.currentPath;
+
+    // 1. Instant check from MediaProvider indexes if matching filter
+    if (filter == 'All' || filter == 'Docs') {
+      final matchingDocs = <FileSystemEntity>[];
+      for (final doc in mediaProvider.documents) {
+        if (!isGlobal && !doc.path.startsWith(rootPath)) continue;
+        final name = p.basename(doc.path);
+        if (name.toLowerCase().contains(qLower) && !seenPaths.contains(doc.path)) {
+          seenPaths.add(doc.path);
+          matchingDocs.add(doc);
+        }
+      }
+      if (matchingDocs.isNotEmpty) {
+        Future.wait(matchingDocs.map((doc) => FileItemModel.fromEntityAsync(doc))).then((resolvedDocs) {
+          if (tabIndex < _tabs.length && _tabs[tabIndex].id == tab.id) {
+            _tabs[tabIndex].searchResults = [..._tabs[tabIndex].searchResults, ...resolvedDocs];
+            notifyListeners();
+          }
+        });
+      }
+    }
+
+    if (filter == 'All' || filter == 'Audio') {
+      for (final song in mediaProvider.audios) {
+        final path = song.data;
+        if (!isGlobal && !path.startsWith(rootPath)) continue;
+        final name = p.basename(path);
+        if (name.toLowerCase().contains(qLower) && !seenPaths.contains(path)) {
+          seenPaths.add(path);
+          currentBatch.add(FileItemModel(
+            entity: File(path),
+            name: song.title,
+            path: path,
+            isDirectory: false,
+            size: song.size,
+            modified: DateTime.fromMillisecondsSinceEpoch((song.dateModified ?? 0) * 1000),
+          ));
+        }
+      }
+    }
+
+    if (currentBatch.isNotEmpty) {
+      tab.searchResults = List.from(currentBatch);
+      notifyListeners();
+    }
+
+    // 2. Stream across filesystem for full coverage (Folders and other files)
+    final rootDir = Directory(rootPath);
+    if (!rootDir.existsSync()) {
+      tab.isSearching = false;
+      notifyListeners();
+      return;
+    }
+
+    final isImage = (String name) {
+      final ext = p.extension(name).toLowerCase();
+      return ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.heic', '.avif'].contains(ext);
+    };
+
+    final isVideo = (String name) {
+      final ext = p.extension(name).toLowerCase();
+      return ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm', '.ts'].contains(ext);
+    };
+
+    final isAudio = (String name) {
+      final ext = p.extension(name).toLowerCase();
+      return ['.mp3', '.m4a', '.wav', '.flac', '.aac', '.ogg', '.opus', '.amr'].contains(ext);
+    };
+
+    final isDoc = (String name) {
+      final ext = p.extension(name).toLowerCase();
+      return ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.csv'].contains(ext);
+    };
+
+    final subscription = rootDir.list(recursive: true, followLinks: false).listen(
+      (entity) {
+        final name = p.basename(entity.path);
+        if (name.toLowerCase().contains(qLower)) {
+          final isDir = entity is Directory;
+          
+          bool matchFilter = false;
+          if (filter == 'All') {
+            matchFilter = true;
+          } else if (filter == 'Folders' && isDir) {
+            matchFilter = true;
+          } else if (filter == 'Images' && !isDir && isImage(name)) {
+            matchFilter = true;
+          } else if (filter == 'Videos' && !isDir && isVideo(name)) {
+            matchFilter = true;
+          } else if (filter == 'Audio' && !isDir && isAudio(name)) {
+            matchFilter = true;
+          } else if (filter == 'Docs' && !isDir && isDoc(name)) {
+            matchFilter = true;
+          }
+
+          if (matchFilter && !seenPaths.contains(entity.path)) {
+            seenPaths.add(entity.path);
+            FileItemModel.fromEntityAsync(entity).then((item) {
+              if (tabIndex < _tabs.length && _tabs[tabIndex].id == tab.id) {
+                _tabs[tabIndex].searchResults = [..._tabs[tabIndex].searchResults, item];
+                notifyListeners();
+              }
+            });
+          }
+        }
+      },
+      onError: (_) {},
+      onDone: () {
+        if (tabIndex < _tabs.length && _tabs[tabIndex].id == tab.id) {
+          _tabs[tabIndex].isSearching = false;
+          notifyListeners();
+        }
+      },
+    );
+
+    _searchSubscriptions[tab.id] = subscription;
+  }
+
+  void toggleSearchForTab(int index) {
+    if (index >= 0 && index < _tabs.length) {
+      final tab = _tabs[index];
+      tab.isSearchActive = !tab.isSearchActive;
+      if (!tab.isSearchActive) {
+        deactivateSearchForTab(tab);
+      }
+      notifyListeners();
+    }
+  }
+
+  void toggleSearchForActiveTab() {
+    toggleSearchForTab(_activeTabIndex);
+  }
+
+  void deactivateSearchForTab(FolderTab tab) {
+    cancelSearchForTab(tab.id);
+    tab.isSearchActive = false;
+    tab.searchQuery = '';
+    tab.searchResults = [];
+    tab.isSearching = false;
+  }
+
+  void cancelSearchForTab(String tabId) {
+    _searchSubscriptions[tabId]?.cancel();
+    _searchSubscriptions[tabId] = null;
+  }
+
   // --- Active Tab Delegations ---
-  List<FileItemModel> get currentFiles => activeTab.currentFiles;
+  List<FileItemModel> get currentFiles => activeTab.isSearchActive ? activeTab.searchResults : activeTab.currentFiles;
   String get currentPath => activeTab.currentPath;
-  bool get isLoading => activeTab.isLoading;
+  bool get isLoading => activeTab.isSearchActive ? activeTab.isSearching : activeTab.isLoading;
   bool get isRestrictedMode => activeTab.isRestrictedMode;
   bool get needsPermission => activeTab.needsPermission;
   bool get useRootMode => activeTab.useRootMode;
@@ -1393,6 +1586,7 @@ class FileManagerProvider extends ChangeNotifier {
   }
 
   Future<void> loadDirectory(String path, {bool showLoading = true, bool clearCache = false}) async {
+    deactivateSearchForTab(activeTab);
     // Normalize legacy sdcard paths to canonical /storage/emulated/0
     String resolvedPath = path.replaceAll(RegExp(r'/+'), '/');
     if (resolvedPath.startsWith('/sdcard')) {
