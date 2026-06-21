@@ -32,12 +32,15 @@ class PremiumStorageOverview extends StatelessWidget {
     final bool isDark = theme.brightness == Brightness.dark;
 
     final gradientColors = isDark
-        ? const [Color(0xFF1E293B), Color(0xFF0F172A)] // Sleek Slate in Dark Mode
+        ? [
+            Color.alphaBlend(theme.colorScheme.primary.withOpacity(0.15), const Color(0xFF181818)),
+            Color.alphaBlend(theme.colorScheme.primary.withOpacity(0.05), const Color(0xFF0C0C0C)),
+          ] // Primary Theme Gradient in Dark Mode
         : [theme.colorScheme.primary, theme.colorScheme.primary.withOpacity(0.82)]; // Primary Theme Gradient in Light Mode
 
-    final accentColor = isDark ? const Color(0xFF38BDF8) : Colors.white;
-    final iconBgColor = isDark ? const Color(0xFF38BDF8).withOpacity(0.15) : Colors.white.withOpacity(0.25);
-    final iconBorderColor = isDark ? const Color(0xFF38BDF8).withOpacity(0.3) : Colors.white.withOpacity(0.4);
+    final accentColor = isDark ? theme.colorScheme.primary : Colors.white;
+    final iconBgColor = isDark ? theme.colorScheme.primary.withOpacity(0.15) : Colors.white.withOpacity(0.25);
+    final iconBorderColor = isDark ? theme.colorScheme.primary.withOpacity(0.3) : Colors.white.withOpacity(0.4);
     final shadowColor = isDark ? const Color(0xFF0F172A).withOpacity(0.3) : theme.colorScheme.primary.withOpacity(0.35);
     final progressBgColor = isDark ? Colors.white.withOpacity(0.12) : Colors.white.withOpacity(0.3);
 
