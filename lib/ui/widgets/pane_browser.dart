@@ -1203,6 +1203,7 @@ class _CompactMediaThumbnailState extends State<_CompactMediaThumbnail> {
           fit: BoxFit.cover,
           width: double.infinity,
           height: double.infinity,
+          cacheWidth: 80,
           errorBuilder: (context, error, stackTrace) => Icon(Broken.image, color: widget.iconColor, size: 18),
         );
       }
