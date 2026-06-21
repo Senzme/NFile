@@ -737,6 +737,15 @@ class FileManagerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool _isVideoPlayingFullscreen = false;
+  bool get isVideoPlayingFullscreen => _isVideoPlayingFullscreen;
+
+  void setVideoPlayingFullscreen(bool value) {
+    if (_isVideoPlayingFullscreen == value) return;
+    _isVideoPlayingFullscreen = value;
+    notifyListeners();
+  }
+
   bool _showMediaPreviews = true;
   bool get showMediaPreviews => _showMediaPreviews;
 

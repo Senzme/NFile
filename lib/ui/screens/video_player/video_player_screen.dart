@@ -11,6 +11,8 @@ import 'video_loading_indicator.dart';
 import 'video_seek_indicator.dart';
 import 'video_controls_overlay.dart';
 import 'vertical_slider_widget.dart';
+import 'package:provider/provider.dart';
+import 'package:nfile/providers/file_manager_provider.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final String videoPath;
@@ -337,6 +339,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
   void _toggleFullScreen() {
     setState(() => _isFullScreen = !_isFullScreen);
+    try {
+      Provider.of<FileManagerProvider>(context, listen: false)
+          .setVideoPlayingFullscreen(_isFullScreen);
+    } catch (e) {
+      debugPrint('Error setting video playing fullscreen: $e');
+    }
     if (_isFullScreen) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       SystemChrome.setPreferredOrientations([
@@ -364,6 +372,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     _sliderTimer?.cancel();
     _controlsAnimController.dispose();
     player.dispose();
+    try {
+      Provider.of<FileManagerProvider>(context, listen: false)
+          .setVideoPlayingFullscreen(false);
+    } catch (e) {
+      debugPrint('Error resetting video playing fullscreen: $e');
+    }
     final hideNav = PreferencesService.getHideNavigationBar();
     if (hideNav) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: [SystemUiOverlay.top]);

@@ -134,8 +134,19 @@ class _NFileAppState extends State<NFileApp> {
     }
     SystemChrome.setSystemUIChangeCallback((bool visible) async {
       if (visible) {
+        final context = navigatorKey.currentContext;
+        if (context != null && context.mounted) {
+          final fileManager = Provider.of<FileManagerProvider>(context, listen: false);
+          if (fileManager.isVideoPlayingFullscreen) return;
+        }
+
         if (PreferencesService.getHideNavigationBar()) {
           await Future.delayed(const Duration(milliseconds: 1500));
+          final context2 = navigatorKey.currentContext;
+          if (context2 != null && context2.mounted) {
+            final fileManager = Provider.of<FileManagerProvider>(context2, listen: false);
+            if (fileManager.isVideoPlayingFullscreen) return;
+          }
           if (PreferencesService.getHideNavigationBar()) {
             SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: [SystemUiOverlay.top]);
           }
@@ -334,7 +345,9 @@ class _NFileAppState extends State<NFileApp> {
 
                 SystemChrome.setSystemUIOverlayStyle(style);
 
-                if (fileManager.hideNavigationBar) {
+                if (fileManager.isVideoPlayingFullscreen) {
+                  // Do not override system UI mode when playing fullscreen video.
+                } else if (fileManager.hideNavigationBar) {
                   SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: [SystemUiOverlay.top]);
                 } else {
                   SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
