@@ -62,9 +62,19 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
   Future<void> _initClient() async {
     final conn = widget.connection;
     if (conn.type == 'FTP') {
-      _client = FtpRemoteClient(host: conn.host, port: conn.port, username: conn.username, password: conn.password);
+      _client = FtpRemoteClient(
+        host: conn.host,
+        port: conn.port,
+        username: conn.username,
+        password: conn.password,
+      );
     } else if (conn.type == 'SFTP') {
-      _client = SftpRemoteClient(host: conn.host, port: conn.port, username: conn.username, password: conn.password);
+      _client = SftpRemoteClient(
+        host: conn.host,
+        port: conn.port,
+        username: conn.username,
+        password: conn.password,
+      );
     } else if (conn.type == 'WebDav') {
       _client = WebDavRemoteClient(
         host: conn.host,
@@ -75,7 +85,12 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
         rootPath: conn.rootPath,
       );
     } else if (conn.type == 'LAN/SMB') {
-      _client = LanClient(host: conn.host, port: conn.port, username: conn.username, password: conn.password);
+      _client = LanClient(
+        host: conn.host,
+        port: conn.port,
+        username: conn.username,
+        password: conn.password,
+      );
     } else if (conn.type == 'saf') {
       _client = SafRemoteClient(rootUri: conn.rootPath);
     }
@@ -136,15 +151,18 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
     if (currentUri == rootUri) return rootUri;
     final docIndex = currentUri.indexOf('/document/');
     if (docIndex == -1) return rootUri;
-    
-    final baseUri = currentUri.substring(0, docIndex + 10); // includes "content://.../document/"
+
+    final baseUri = currentUri.substring(
+      0,
+      docIndex + 10,
+    ); // includes "content://.../document/"
     final documentId = Uri.decodeComponent(currentUri.substring(docIndex + 10));
     final docParts = documentId.split('/');
     if (docParts.isEmpty) return rootUri;
-    
+
     docParts.removeLast();
     if (docParts.isEmpty) return rootUri;
-    
+
     final parentDocId = docParts.join('/');
     return '$baseUri${Uri.encodeComponent(parentDocId)}';
   }
@@ -152,7 +170,10 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
   void _navigateUp() {
     if (_currentPath == widget.connection.rootPath) return;
     if (widget.connection.type == 'saf') {
-      final parentUri = _getSafParentUri(_currentPath, widget.connection.rootPath);
+      final parentUri = _getSafParentUri(
+        _currentPath,
+        widget.connection.rootPath,
+      );
       _loadDirectoryContents(parentUri);
       return;
     }
@@ -234,7 +255,9 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
         }
 
         // Cleanup temp
-        try { File(tempPath).deleteSync(); } catch (_) {}
+        try {
+          File(tempPath).deleteSync();
+        } catch (_) {}
       } catch (e) {
         if (mounted) {
           setState(() => _isTransferring = false);
@@ -262,7 +285,10 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
   Future<void> _uploadFromLocalClipboard() async {
     final provider = context.read<FileManagerProvider>();
     if (!provider.hasClipboard) {
-      _showSnack('Local clipboard is empty. Copy files in the file manager first.', isError: true);
+      _showSnack(
+        'Local clipboard is empty. Copy files in the file manager first.',
+        isError: true,
+      );
       return;
     }
     if (_client == null) return;
@@ -275,7 +301,9 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
       if (!file.existsSync()) continue;
 
       final fileName = p.basename(localPath);
-      final remoteDest = _currentPath == '/' ? '/$fileName' : '$_currentPath/$fileName';
+      final remoteDest = _currentPath == '/'
+          ? '/$fileName'
+          : '$_currentPath/$fileName';
 
       setState(() {
         _isTransferring = true;
@@ -290,7 +318,9 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
         });
 
         if (isCut) {
-          try { file.deleteSync(); } catch (_) {}
+          try {
+            file.deleteSync();
+          } catch (_) {}
         }
       } catch (e) {
         if (mounted) {
@@ -314,7 +344,10 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
   // ─────────────────────────────────────────────────────────────────────────
 
   /// Download remote file to local Downloads and then put path in local clipboard
-  Future<void> _downloadToLocalClipboard(RemoteFileItem item, {bool isCut = false}) async {
+  Future<void> _downloadToLocalClipboard(
+    RemoteFileItem item, {
+    bool isCut = false,
+  }) async {
     if (_client == null) return;
 
     setState(() {
@@ -347,8 +380,12 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
       if (mounted) {
         setState(() => _isTransferring = false);
         // Put downloaded file in local clipboard
-        context.read<FileManagerProvider>().setClipboard([localPath], isCut: false);
-        _showSnack('"${item.name}" downloaded → local clipboard ready to paste');
+        context.read<FileManagerProvider>().setClipboard([
+          localPath,
+        ], isCut: false);
+        _showSnack(
+          '"${item.name}" downloaded → local clipboard ready to paste',
+        );
         if (isCut) await _loadDirectoryContents(_currentPath);
       }
     } catch (e) {
@@ -369,12 +406,27 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
       builder: (ctx) {
         final theme = Theme.of(ctx);
         return AlertDialog(
-          title: const Text('Delete Item', style: TextStyle(fontFamily: 'LexendDeca', fontWeight: FontWeight.bold)),
+          title: const Text(
+            'Delete Item',
+            style: TextStyle(
+              fontFamily: 'LexendDeca',
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           content: Text('Delete "${item.name}" permanently from the server?'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
               onPressed: () => Navigator.pop(ctx, true),
               child: const Text('Delete'),
             ),
@@ -409,7 +461,11 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
         return AlertDialog(
           title: const Text(
             'New Remote Folder',
-            style: TextStyle(fontFamily: 'LexendDeca', fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontFamily: 'LexendDeca',
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           content: TextField(
             controller: controller,
@@ -417,21 +473,38 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
             style: const TextStyle(fontSize: 14),
             decoration: InputDecoration(
               hintText: 'Folder name',
-              hintStyle: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.35)),
-              prefixIcon: Icon(Broken.folder_open, size: 18, color: theme.colorScheme.primary),
+              hintStyle: TextStyle(
+                color: theme.colorScheme.onSurface.withOpacity(0.35),
+              ),
+              prefixIcon: Icon(
+                Broken.folder_open,
+                size: 18,
+                color: theme.colorScheme.primary,
+              ),
               filled: true,
               fillColor: theme.colorScheme.primary.withOpacity(0.04),
-              contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 14,
+                horizontal: 16,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: theme.colorScheme.primary,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onPressed: () async {
                 final name = controller.text.trim();
@@ -439,7 +512,9 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
                   Navigator.pop(context);
                   setState(() => _isLoading = true);
                   try {
-                    final folderPath = _currentPath == '/' ? '/$name' : '$_currentPath/$name';
+                    final folderPath = _currentPath == '/'
+                        ? '/$name'
+                        : '$_currentPath/$name';
                     await _client?.createDirectory(folderPath);
                     await _loadDirectoryContents(_currentPath);
                   } catch (e) {
@@ -484,7 +559,8 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
               // Handle
               Center(
                 child: Container(
-                  width: 36, height: 4,
+                  width: 36,
+                  height: 4,
                   decoration: BoxDecoration(
                     color: theme.colorScheme.onSurface.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(2),
@@ -504,7 +580,8 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
                     ),
                     child: Icon(
                       item.isDirectory ? Broken.folder_open : Broken.document,
-                      size: 22, color: theme.colorScheme.primary,
+                      size: 22,
+                      color: theme.colorScheme.primary,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -512,12 +589,23 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(item.name,
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, fontFamily: 'LexendDeca'),
-                          overflow: TextOverflow.ellipsis),
                         Text(
-                          item.isDirectory ? 'Remote Directory' : item.formattedSize,
-                          style: TextStyle(fontSize: 11.5, color: theme.colorScheme.onSurface.withOpacity(0.5)),
+                          item.name,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'LexendDeca',
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          item.isDirectory
+                              ? 'Remote Directory'
+                              : item.formattedSize,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: theme.colorScheme.onSurface.withOpacity(0.5),
+                          ),
                         ),
                       ],
                     ),
@@ -531,41 +619,66 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
               // ── Actions ──
               // Copy remote item
               _buildActionTile(
-                ctx, icon: Broken.copy, label: 'Copy',
+                ctx,
+                icon: Broken.copy,
+                label: 'Copy',
                 color: theme.colorScheme.primary,
-                onTap: () { Navigator.pop(ctx); _copyRemoteItem(item); },
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _copyRemoteItem(item);
+                },
               ),
 
               // Cut remote item
               _buildActionTile(
-                ctx, icon: Broken.scissor, label: 'Cut',
+                ctx,
+                icon: Broken.scissor,
+                label: 'Cut',
                 color: Colors.orange,
-                onTap: () { Navigator.pop(ctx); _cutRemoteItem(item); },
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _cutRemoteItem(item);
+                },
               ),
 
               // Copy to local device (downloads file and puts in local clipboard)
               if (!item.isDirectory)
                 _buildActionTile(
-                  ctx, icon: Icons.download_for_offline_rounded, label: 'Copy to Local Device',
+                  ctx,
+                  icon: Icons.download_for_offline_rounded,
+                  label: 'Copy to Local Device',
                   subtitle: 'Downloads file → local clipboard',
                   color: const Color(0xFF0D9488),
-                  onTap: () { Navigator.pop(ctx); _downloadToLocalClipboard(item, isCut: false); },
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _downloadToLocalClipboard(item, isCut: false);
+                  },
                 ),
 
               // Cut from remote to local device
               if (!item.isDirectory)
                 _buildActionTile(
-                  ctx, icon: Icons.drive_file_move_rtl_rounded, label: 'Move to Local Device',
+                  ctx,
+                  icon: Icons.drive_file_move_rtl_rounded,
+                  label: 'Move to Local Device',
                   subtitle: 'Downloads and deletes from server',
                   color: const Color(0xFF7C3AED),
-                  onTap: () { Navigator.pop(ctx); _downloadToLocalClipboard(item, isCut: true); },
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _downloadToLocalClipboard(item, isCut: true);
+                  },
                 ),
 
               // Delete
               _buildActionTile(
-                ctx, icon: Broken.trash, label: 'Delete',
+                ctx,
+                icon: Broken.trash,
+                label: 'Delete',
                 color: Colors.redAccent,
-                onTap: () { Navigator.pop(ctx); _deleteItem(item); },
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _deleteItem(item);
+                },
               ),
             ],
           ),
@@ -603,9 +716,21 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   if (subtitle != null)
-                    Text(subtitle, style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface.withOpacity(0.45))),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: theme.colorScheme.onSurface.withOpacity(0.45),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -617,11 +742,15 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
 
   void _showSnack(String msg, {bool isError = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      behavior: SnackBarBehavior.floating,
-      backgroundColor: isError ? Colors.redAccent : Theme.of(context).colorScheme.primary,
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: isError
+            ? Colors.redAccent
+            : Theme.of(context).colorScheme.primary,
+      ),
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -636,20 +765,25 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
 
     final isSaf = widget.connection.type == 'saf';
     final rootPath = widget.connection.rootPath;
-    
+
     List<String> pathNodes = [];
     List<String> pathUris = [];
-    
+
     if (isSaf) {
       pathNodes.add('Root');
       pathUris.add(rootPath);
-      
+
       final docIndex = _currentPath.indexOf('/document/');
       if (docIndex != -1) {
         final baseUri = _currentPath.substring(0, docIndex + 10);
-        final documentId = Uri.decodeComponent(_currentPath.substring(docIndex + 10));
-        final docParts = documentId.split('/').where((n) => n.isNotEmpty).toList();
-        
+        final documentId = Uri.decodeComponent(
+          _currentPath.substring(docIndex + 10),
+        );
+        final docParts = documentId
+            .split('/')
+            .where((n) => n.isNotEmpty)
+            .toList();
+
         for (int i = 0; i < docParts.length; i++) {
           final part = docParts[i];
           String displayName = part;
@@ -660,7 +794,7 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
             }
           }
           pathNodes.add(displayName);
-          
+
           final subParts = docParts.sublist(0, i + 1);
           final subDocId = subParts.join('/');
           pathUris.add('$baseUri${Uri.encodeComponent(subDocId)}');
@@ -681,291 +815,512 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
     final hasLocalClipboard = provider.clipboardPaths.isNotEmpty;
     final hasRemoteClipboard = provider.isRemoteClipboard;
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          onPressed: () {
-            if (_currentPath != widget.connection.rootPath) _navigateUp();
-            else Navigator.pop(context);
-          },
-        ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.connection.name,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16.5)),
-            Text('${widget.connection.type} Server',
-              style: TextStyle(fontSize: 11.5, color: theme.colorScheme.primary, fontWeight: FontWeight.w600)),
-          ],
-        ),
-        actions: _isConnected ? [
-          // Paste local clipboard to remote
-          if (hasLocalClipboard)
-            IconButton(
-              icon: Stack(
-                alignment: Alignment.topRight,
-                children: [
-                  Icon(Broken.copy, size: 20, color: theme.colorScheme.primary),
-                  Container(
-                    width: 8, height: 8,
-                    decoration: BoxDecoration(color: Colors.orange, shape: BoxShape.circle,
-                      border: Border.all(color: theme.scaffoldBackgroundColor, width: 1)),
-                  ),
-                ],
-              ),
-              tooltip: 'Upload local clipboard to server',
-              onPressed: _uploadFromLocalClipboard,
-            ),
-          // Paste remote clipboard
-          if (hasRemoteClipboard)
-            IconButton(
-              icon: Stack(
-                alignment: Alignment.topRight,
-                children: [
-                  Icon(Icons.content_paste_rounded, size: 20, color: theme.colorScheme.primary),
-                  Container(
-                    width: 8, height: 8,
-                    decoration: BoxDecoration(color: provider.isCut ? Colors.orange : Colors.green, shape: BoxShape.circle,
-                      border: Border.all(color: theme.scaffoldBackgroundColor, width: 1)),
-                  ),
-                ],
-              ),
-              tooltip: provider.isCut ? 'Move here' : 'Paste remote clipboard',
-              onPressed: _pasteRemoteClipboard,
-            ),
-          IconButton(
-            icon: const Icon(Broken.folder_add, size: 20),
-            tooltip: 'New Folder',
-            onPressed: _showAddFolderDialog,
+    return PopScope(
+      canPop: _currentPath == widget.connection.rootPath,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        _navigateUp();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+            onPressed: () {
+              if (_currentPath != widget.connection.rootPath)
+                _navigateUp();
+              else
+                Navigator.pop(context);
+            },
           ),
-        ] : null,
-      ),
-
-      body: Stack(
-        children: [
-          if (_isLoading)
-            const Center(child: CircularProgressIndicator())
-          else if (_errorMsg.isNotEmpty)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Broken.info_circle, size: 64, color: Colors.redAccent),
-                    const SizedBox(height: 16),
-                    Text('Connection Lost', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    Text(_errorMsg, textAlign: TextAlign.center,
-                      style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.5))),
-                    const SizedBox(height: 24),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primary, foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
-                      onPressed: () {
-                        setState(() { _isLoading = true; _errorMsg = ''; });
-                        _initClient();
-                      },
-                      icon: const Icon(Icons.refresh_rounded),
-                      label: const Text('Retry Connection'),
-                    ),
-                  ],
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.connection.name,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16.5,
                 ),
               ),
-            )
-          else
-            Column(
-              children: [
-                // Clipboard status banner
-                if (hasLocalClipboard || hasRemoteClipboard)
-                  _buildClipboardBanner(theme, hasLocalClipboard, hasRemoteClipboard, provider),
-
-                // Breadcrumbs
-                Container(
-                  height: 44,
-                  width: double.infinity,
-                  color: theme.colorScheme.onSurface.withOpacity(0.03),
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: ScrollConfiguration(
-                    behavior: const ScrollBehavior().copyWith(overscroll: false),
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: pathNodes.length,
-                      itemBuilder: (context, idx) {
-                        final isLast = idx == pathNodes.length - 1;
-                        final String reconstructedPath = isSaf
-                            ? pathUris[idx]
-                            : (idx > 0
-                                ? (rootPath.endsWith('/') ? '$rootPath${pathNodes.sublist(1, idx + 1).join('/')}' : '$rootPath/${pathNodes.sublist(1, idx + 1).join('/')}')
-                                : rootPath);
-                        return Row(
-                          children: [
-                            InkWell(
-                              borderRadius: BorderRadius.circular(8),
-                              onTap: isLast ? null : () => _navigateToBreadcrumb(reconstructedPath),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
-                                child: Text(pathNodes[idx],
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: isLast ? FontWeight.bold : FontWeight.w500,
-                                    color: isLast
-                                        ? theme.colorScheme.onSurface.withOpacity(0.9)
-                                        : theme.colorScheme.primary,
-                                  )),
+              Text(
+                '${widget.connection.type} Server',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          actions: _isConnected
+              ? [
+                  // Paste local clipboard to remote
+                  if (hasLocalClipboard)
+                    IconButton(
+                      icon: Stack(
+                        alignment: Alignment.topRight,
+                        children: [
+                          Icon(
+                            Broken.copy,
+                            size: 20,
+                            color: theme.colorScheme.primary,
+                          ),
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: Colors.orange,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: theme.scaffoldBackgroundColor,
+                                width: 1,
                               ),
                             ),
-                            if (!isLast)
-                              Icon(Icons.chevron_right_rounded, size: 14, color: theme.colorScheme.onSurface.withOpacity(0.3)),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                ),
-
-                // File list
-                Expanded(
-                  child: _items.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Broken.folder_open, size: 56, color: theme.colorScheme.onSurface.withOpacity(0.2)),
-                              const SizedBox(height: 14),
-                              Text('Empty Directory',
-                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold,
-                                  color: theme.colorScheme.onSurface.withOpacity(0.4))),
-                              if (hasLocalClipboard) ...[
-                                const SizedBox(height: 12),
-                                ElevatedButton.icon(
-                                  onPressed: _uploadFromLocalClipboard,
-                                  icon: const Icon(Icons.upload_rounded, size: 16),
-                                  label: const Text('Upload Clipboard Here'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: theme.colorScheme.primary, foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                  ),
-                                ),
-                              ],
-                            ],
                           ),
-                        )
-                      : ScrollConfiguration(
-                          behavior: const ScrollBehavior().copyWith(overscroll: false),
-                          child: ListView.builder(
-                            physics: const BouncingScrollPhysics(),
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            itemCount: _items.length,
-                            itemBuilder: (context, index) {
-                              final item = _items[index];
-                              final isInRemoteClip = provider.isRemoteClipboard && provider.remoteClipboardItems.any((e) => e.path == item.path);
+                        ],
+                      ),
+                      tooltip: 'Upload local clipboard to server',
+                      onPressed: _uploadFromLocalClipboard,
+                    ),
+                  // Paste remote clipboard
+                  if (hasRemoteClipboard)
+                    IconButton(
+                      icon: Stack(
+                        alignment: Alignment.topRight,
+                        children: [
+                          Icon(
+                            Icons.content_paste_rounded,
+                            size: 20,
+                            color: theme.colorScheme.primary,
+                          ),
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: provider.isCut
+                                  ? Colors.orange
+                                  : Colors.green,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: theme.scaffoldBackgroundColor,
+                                width: 1,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      tooltip: provider.isCut
+                          ? 'Move here'
+                          : 'Paste remote clipboard',
+                      onPressed: _pasteRemoteClipboard,
+                    ),
+                  IconButton(
+                    icon: const Icon(Broken.folder_add, size: 20),
+                    tooltip: 'New Folder',
+                    onPressed: _showAddFolderDialog,
+                  ),
+                ]
+              : null,
+        ),
 
-                              return ListTile(
-                                leading: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: theme.colorScheme.primary.withOpacity(item.isDirectory ? 0.1 : 0.04),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Icon(
-                                    item.isDirectory ? Broken.folder_open : Broken.document,
-                                    size: 20,
-                                    color: theme.colorScheme.primary.withOpacity(item.isDirectory ? 0.9 : 0.6),
-                                  ),
-                                ),
-                                title: Text(item.name,
-                                  style: TextStyle(
-                                    fontSize: 14, fontWeight: FontWeight.w600,
-                                    color: isInRemoteClip ? theme.colorScheme.primary.withOpacity(0.6) : null,
-                                    decoration: (isInRemoteClip && provider.isCut)
-                                        ? TextDecoration.lineThrough : null,
-                                  ),
-                                  overflow: TextOverflow.ellipsis),
-                                subtitle: Text(
-                                  item.isDirectory
-                                      ? 'Directory'
-                                      : '${item.formattedSize} • ${item.modified.toLocal().toString().substring(0, 10)}',
-                                  style: TextStyle(fontSize: 11.5, color: theme.colorScheme.onSurface.withOpacity(0.4)),
-                                ),
-                                trailing: PopupMenuButton<String>(
-                                  icon: Icon(Icons.more_vert_rounded, size: 18, color: theme.colorScheme.onSurface.withOpacity(0.4)),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                  onSelected: (value) async {
-                                    switch (value) {
-                                      case 'copy': _copyRemoteItem(item); break;
-                                      case 'cut': _cutRemoteItem(item); break;
-                                      case 'paste': await _pasteRemoteClipboard(); break;
-                                      case 'copy_to_local': await _downloadToLocalClipboard(item); break;
-                                      case 'move_to_local': await _downloadToLocalClipboard(item, isCut: true); break;
-                                      case 'delete': await _deleteItem(item); break;
-                                    }
-                                  },
-                                  itemBuilder: (context) => [
-                                    _popItem('copy', Broken.copy, 'Copy', theme.colorScheme.primary),
-                                    _popItem('cut', Broken.scissor, 'Cut', Colors.orange),
-                                    if (hasRemoteClipboard)
-                                      _popItem('paste', Icons.content_paste_rounded, 'Paste Here', const Color(0xFF0D9488)),
-                                    if (!item.isDirectory) ...[
-                                      const PopupMenuDivider(),
-                                      _popItem('copy_to_local', Icons.download_for_offline_rounded, 'Copy to Device', const Color(0xFF7C3AED)),
-                                      _popItem('move_to_local', Icons.drive_file_move_rtl_rounded, 'Move to Device', const Color(0xFF0D9488)),
-                                    ],
-                                    const PopupMenuDivider(),
-                                    _popItem('delete', Broken.trash, 'Delete', Colors.redAccent),
-                                  ],
-                                ),
-                                onTap: () => _navigateTo(item),
-                                onLongPress: () => _showItemActions(item),
-                              );
-                            },
+        body: Stack(
+          children: [
+            if (_isLoading)
+              const Center(child: CircularProgressIndicator())
+            else if (_errorMsg.isNotEmpty)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Broken.info_circle,
+                        size: 64,
+                        color: Colors.redAccent,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Connection Lost',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _errorMsg,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurface.withOpacity(0.5),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
                           ),
                         ),
+                        onPressed: () {
+                          setState(() {
+                            _isLoading = true;
+                            _errorMsg = '';
+                          });
+                          _initClient();
+                        },
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Retry Connection'),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
+              )
+            else
+              Column(
+                children: [
+                  // Clipboard status banner
+                  if (hasLocalClipboard || hasRemoteClipboard)
+                    _buildClipboardBanner(
+                      theme,
+                      hasLocalClipboard,
+                      hasRemoteClipboard,
+                      provider,
+                    ),
 
-          // Transfer overlay
-          if (_isTransferring)
-            _buildTransferOverlay(theme, isDark),
-        ],
+                  // Breadcrumbs
+                  Container(
+                    height: 44,
+                    width: double.infinity,
+                    color: theme.colorScheme.onSurface.withOpacity(0.03),
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: ScrollConfiguration(
+                      behavior: const ScrollBehavior().copyWith(
+                        overscroll: false,
+                      ),
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: pathNodes.length,
+                        itemBuilder: (context, idx) {
+                          final isLast = idx == pathNodes.length - 1;
+                          final String reconstructedPath = isSaf
+                              ? pathUris[idx]
+                              : (idx > 0
+                                    ? (rootPath.endsWith('/')
+                                          ? '$rootPath${pathNodes.sublist(1, idx + 1).join('/')}'
+                                          : '$rootPath/${pathNodes.sublist(1, idx + 1).join('/')}')
+                                    : rootPath);
+                          return Row(
+                            children: [
+                              InkWell(
+                                borderRadius: BorderRadius.circular(8),
+                                onTap: isLast
+                                    ? null
+                                    : () => _navigateToBreadcrumb(
+                                        reconstructedPath,
+                                      ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6.0,
+                                    vertical: 4.0,
+                                  ),
+                                  child: Text(
+                                    pathNodes[idx],
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: isLast
+                                          ? FontWeight.bold
+                                          : FontWeight.w500,
+                                      color: isLast
+                                          ? theme.colorScheme.onSurface
+                                                .withOpacity(0.9)
+                                          : theme.colorScheme.primary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              if (!isLast)
+                                Icon(
+                                  Icons.chevron_right_rounded,
+                                  size: 14,
+                                  color: theme.colorScheme.onSurface
+                                      .withOpacity(0.3),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+
+                  // File list
+                  Expanded(
+                    child: _items.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Broken.folder_open,
+                                  size: 56,
+                                  color: theme.colorScheme.onSurface
+                                      .withOpacity(0.2),
+                                ),
+                                const SizedBox(height: 14),
+                                Text(
+                                  'Empty Directory',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.onSurface
+                                        .withOpacity(0.4),
+                                  ),
+                                ),
+                                if (hasLocalClipboard) ...[
+                                  const SizedBox(height: 12),
+                                  ElevatedButton.icon(
+                                    onPressed: _uploadFromLocalClipboard,
+                                    icon: const Icon(
+                                      Icons.upload_rounded,
+                                      size: 16,
+                                    ),
+                                    label: const Text('Upload Clipboard Here'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor:
+                                          theme.colorScheme.primary,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 20,
+                                        vertical: 10,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          )
+                        : ScrollConfiguration(
+                            behavior: const ScrollBehavior().copyWith(
+                              overscroll: false,
+                            ),
+                            child: ListView.builder(
+                              physics: const BouncingScrollPhysics(),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 8.0,
+                              ),
+                              itemCount: _items.length,
+                              itemBuilder: (context, index) {
+                                final item = _items[index];
+                                final isInRemoteClip =
+                                    provider.isRemoteClipboard &&
+                                    provider.remoteClipboardItems.any(
+                                      (e) => e.path == item.path,
+                                    );
+
+                                return ListTile(
+                                  leading: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.primary
+                                          .withOpacity(
+                                            item.isDirectory ? 0.1 : 0.04,
+                                          ),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      item.isDirectory
+                                          ? Broken.folder_open
+                                          : Broken.document,
+                                      size: 20,
+                                      color: theme.colorScheme.primary
+                                          .withOpacity(
+                                            item.isDirectory ? 0.9 : 0.6,
+                                          ),
+                                    ),
+                                  ),
+                                  title: Text(
+                                    item.name,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: isInRemoteClip
+                                          ? theme.colorScheme.primary
+                                                .withOpacity(0.6)
+                                          : null,
+                                      decoration:
+                                          (isInRemoteClip && provider.isCut)
+                                          ? TextDecoration.lineThrough
+                                          : null,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  subtitle: Text(
+                                    item.isDirectory
+                                        ? 'Directory'
+                                        : '${item.formattedSize} • ${item.modified.toLocal().toString().substring(0, 10)}',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      color: theme.colorScheme.onSurface
+                                          .withOpacity(0.4),
+                                    ),
+                                  ),
+                                  trailing: PopupMenuButton<String>(
+                                    icon: Icon(
+                                      Icons.more_vert_rounded,
+                                      size: 18,
+                                      color: theme.colorScheme.onSurface
+                                          .withOpacity(0.4),
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    onSelected: (value) async {
+                                      switch (value) {
+                                        case 'copy':
+                                          _copyRemoteItem(item);
+                                          break;
+                                        case 'cut':
+                                          _cutRemoteItem(item);
+                                          break;
+                                        case 'paste':
+                                          await _pasteRemoteClipboard();
+                                          break;
+                                        case 'copy_to_local':
+                                          await _downloadToLocalClipboard(item);
+                                          break;
+                                        case 'move_to_local':
+                                          await _downloadToLocalClipboard(
+                                            item,
+                                            isCut: true,
+                                          );
+                                          break;
+                                        case 'delete':
+                                          await _deleteItem(item);
+                                          break;
+                                      }
+                                    },
+                                    itemBuilder: (context) => [
+                                      _popItem(
+                                        'copy',
+                                        Broken.copy,
+                                        'Copy',
+                                        theme.colorScheme.primary,
+                                      ),
+                                      _popItem(
+                                        'cut',
+                                        Broken.scissor,
+                                        'Cut',
+                                        Colors.orange,
+                                      ),
+                                      if (hasRemoteClipboard)
+                                        _popItem(
+                                          'paste',
+                                          Icons.content_paste_rounded,
+                                          'Paste Here',
+                                          const Color(0xFF0D9488),
+                                        ),
+                                      if (!item.isDirectory) ...[
+                                        const PopupMenuDivider(),
+                                        _popItem(
+                                          'copy_to_local',
+                                          Icons.download_for_offline_rounded,
+                                          'Copy to Device',
+                                          const Color(0xFF7C3AED),
+                                        ),
+                                        _popItem(
+                                          'move_to_local',
+                                          Icons.drive_file_move_rtl_rounded,
+                                          'Move to Device',
+                                          const Color(0xFF0D9488),
+                                        ),
+                                      ],
+                                      const PopupMenuDivider(),
+                                      _popItem(
+                                        'delete',
+                                        Broken.trash,
+                                        'Delete',
+                                        Colors.redAccent,
+                                      ),
+                                    ],
+                                  ),
+                                  onTap: () => _navigateTo(item),
+                                  onLongPress: () => _showItemActions(item),
+                                );
+                              },
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+
+            // Transfer overlay
+            if (_isTransferring) _buildTransferOverlay(theme, isDark),
+          ],
+        ),
       ),
     );
   }
 
-  PopupMenuItem<String> _popItem(String value, IconData icon, String label, Color color) {
+  PopupMenuItem<String> _popItem(
+    String value,
+    IconData icon,
+    String label,
+    Color color,
+  ) {
     return PopupMenuItem<String>(
       value: value,
       child: Row(
         children: [
           Icon(icon, size: 16, color: color),
           const SizedBox(width: 10),
-          Text(label, style: TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.w500)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: color,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildClipboardBanner(ThemeData theme, bool hasLocal, bool hasRemote, FileManagerProvider provider) {
+  Widget _buildClipboardBanner(
+    ThemeData theme,
+    bool hasLocal,
+    bool hasRemote,
+    FileManagerProvider provider,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       color: theme.colorScheme.primary.withOpacity(0.08),
       child: Row(
         children: [
-          Icon(hasLocal ? Icons.upload_rounded : Icons.content_paste_rounded,
-            size: 18, color: theme.colorScheme.primary),
+          Icon(
+            hasLocal ? Icons.upload_rounded : Icons.content_paste_rounded,
+            size: 18,
+            color: theme.colorScheme.primary,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               hasLocal
                   ? '${provider.clipboardPaths.length} local file(s) ready to upload'
                   : '${provider.remoteClipboardItems.length} remote item(s) ${provider.isCut ? "cut" : "copied"}',
-              style: TextStyle(fontSize: 12, color: theme.colorScheme.primary, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontSize: 12,
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           if (hasLocal)
@@ -974,9 +1329,14 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
               style: TextButton.styleFrom(
                 foregroundColor: Colors.white,
                 backgroundColor: theme.colorScheme.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 minimumSize: Size.zero,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               child: const Text('Upload', style: TextStyle(fontSize: 12)),
             ),
@@ -986,9 +1346,14 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
               style: TextButton.styleFrom(
                 foregroundColor: Colors.white,
                 backgroundColor: theme.colorScheme.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 minimumSize: Size.zero,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               child: const Text('Paste', style: TextStyle(fontSize: 12)),
             ),
@@ -997,7 +1362,11 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
             onTap: () {
               provider.clearClipboard();
             },
-            child: Icon(Icons.close_rounded, size: 18, color: theme.colorScheme.onSurface.withOpacity(0.4)),
+            child: Icon(
+              Icons.close_rounded,
+              size: 18,
+              color: theme.colorScheme.onSurface.withOpacity(0.4),
+            ),
           ),
         ],
       ),
@@ -1013,35 +1382,64 @@ class _RemoteExplorerScreenState extends State<RemoteExplorerScreen> {
         child: Card(
           color: isDark ? const Color(0xFF1E293B) : Colors.white,
           elevation: 16,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 28.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 32.0,
+              vertical: 28.0,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 SizedBox(
-                  height: 72, width: 72,
+                  height: 72,
+                  width: 72,
                   child: CircularProgressIndicator(
                     strokeWidth: 5,
                     value: _transferProgress,
-                    valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
-                    backgroundColor: theme.colorScheme.primary.withOpacity(0.15),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      theme.colorScheme.primary,
+                    ),
+                    backgroundColor: theme.colorScheme.primary.withOpacity(
+                      0.15,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
-                Text(_transferLabel,
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onSurface.withOpacity(0.9), fontFamily: 'LexendDeca')),
+                Text(
+                  _transferLabel,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface.withOpacity(0.9),
+                    fontFamily: 'LexendDeca',
+                  ),
+                ),
                 const SizedBox(height: 4),
                 SizedBox(
                   width: 200,
-                  child: Text(_transferFileName,
-                    style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.5)),
-                    textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  child: Text(
+                    _transferFileName,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: theme.colorScheme.onSurface.withOpacity(0.5),
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 const SizedBox(height: 10),
-                Text('${(_transferProgress * 100).toInt()}%',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
+                Text(
+                  '${(_transferProgress * 100).toInt()}%',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
               ],
             ),
           ),
