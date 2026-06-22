@@ -1,0 +1,55 @@
+Categories:
+  - System
+  - Utility
+License: GPL-3.0-only
+AuthorName: Senzme
+WebSite: https://github.com/Senzme/NFile
+SourceCode: https://github.com/Senzme/NFile
+IssueTracker: https://github.com/Senzme/NFile/issues
+
+AutoName: NFile
+
+RepoType: git
+Repo: https://github.com/Senzme/NFile.git
+
+Builds:
+  - versionName: '1.0.42'
+    versionCode: 42
+    commit: 1ee9a85e452267a1e0b1c76ad9bbaac99f178d49
+    srclibs:
+      - flutter@stable
+    output: build/app/outputs/flutter-apk/app-release.apk
+    rm:
+      - ios
+      - linux
+      - macos
+      - web
+      - windows
+    prebuild:
+      - cd ..
+      - mv com.rubex.nfile /tmp/build
+      - pushd /tmp/build
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter config --no-analytics
+      - $$flutter$$/bin/flutter pub get --enforce-lockfile
+      - popd
+      - mv /tmp/build com.rubex.nfile
+    scanignore:
+      - .flutter/bin/cache
+    scandelete:
+      - .flutter
+      - .pub-cache
+    build:
+      - cd ..
+      - mv com.rubex.nfile /tmp/build
+      - pushd /tmp/build
+      - export PUB_CACHE=$(pwd)/.pub-cache
+      - $$flutter$$/bin/flutter build apk --release
+      - popd
+      - mv /tmp/build com.rubex.nfile
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+UpdateCheckData: pubspec.yaml|version:\s.+\+(\d+)|.|version:\s(.+)\+
+CurrentVersion: '1.0.42'
+CurrentVersionCode: 42

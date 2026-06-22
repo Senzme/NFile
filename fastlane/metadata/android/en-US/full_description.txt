@@ -1,0 +1,12 @@
+NFile is a beautiful File Manager application designed to provide a highly aesthetic file management experience on Android. It features a stunning interface with custom and expressive Material Design icon options, a dynamic AMOLED-friendly dark mode, and a fluid user experience.
+
+Features:
+- Premium UI/UX: Textured and alpha-blended glassmorphic design that feels modern and premium.
+- Native Media Indexing: Lightning-fast gallery views for Images, Videos, and Audio using native device indexing.
+- Built-in Media Players: Powered by high-performance engines for smooth audio and video playback.
+- Built-in Text Editor: View and edit text, markdown, json, and other code files.
+- Advanced Sorting & Categories: Access your files and media libraries instantly.
+- Complete File Operations: Copy, cut, paste, rename, delete, and customized shortcuts.
+- Recycle Bin: Safe deletion support with toggle-able shortcuts.
+- Storage Overview: Visual representation of your device's internal storage usage.
+- Smooth Navigation: iOS-style bouncy physics and smooth transitions.
