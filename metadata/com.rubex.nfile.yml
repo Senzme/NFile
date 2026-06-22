@@ -15,16 +15,11 @@ Repo: https://github.com/Senzme/NFile.git
 Builds:
   - versionName: '1.0.42'
     versionCode: 42
-    commit: 1ee9a85e452267a1e0b1c76ad9bbaac99f178d49
+    commit: cfbd10d81a069339fe2eeb8156a6546e8582acff
     srclibs:
       - flutter@stable
     output: build/app/outputs/flutter-apk/app-release.apk
-    rm:
-      - ios
-      - linux
-      - macos
-      - web
-      - windows
+
     prebuild:
       - cd ..
       - mv com.rubex.nfile /tmp/build
