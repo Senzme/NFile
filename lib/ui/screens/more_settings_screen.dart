@@ -6,6 +6,7 @@ import '../../core/icon_fonts/broken_icons.dart';
 import '../../core/utils.dart';
 import '../widgets/quick_categories_grid.dart';
 import '../../services/preferences_service.dart';
+import '../widgets/nfile_icon.dart';
 import '../../services/recycle_bin_service.dart';
 import 'package:path/path.dart' as p;
 import 'internal_file_picker_screen.dart';
@@ -240,7 +241,7 @@ class _MoreSettingsScreenState extends State<MoreSettingsScreen> {
                 )
               : const Text('More Settings'),
           leading: IconButton(
-            icon: const Icon(Broken.arrow_left),
+            icon: const NfileIcon(Broken.arrow_left),
             onPressed: () {
               if (_isSearching) {
                 setState(() {
@@ -1059,7 +1060,7 @@ class SettingsTile extends StatelessWidget {
             color: theme.colorScheme.primary.withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(icon, color: theme.colorScheme.primary, size: 22),
+          child: NfileIcon(icon, color: theme.colorScheme.primary, size: 22),
         ),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
         subtitle: Text(subtitle, style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withOpacity(0.6))),
@@ -1087,7 +1088,7 @@ class GeneralSettingsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('General & Behavior'),
         leading: IconButton(
-          icon: const Icon(Broken.arrow_left),
+          icon: const NfileIcon(Broken.arrow_left),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -1247,7 +1248,7 @@ class AppearanceSettingsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Appearance & Themes'),
         leading: IconButton(
-          icon: const Icon(Broken.arrow_left),
+          icon: const NfileIcon(Broken.arrow_left),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -1300,6 +1301,20 @@ class AppearanceSettingsScreen extends StatelessWidget {
               subtitle: _getFontFamilyLabel(fileManager.fontFamilyOption),
               onTap: () => _showFontFamilyPickerDialog(context, fileManager, theme),
             ),
+            SettingsTile(
+              icon: Broken.setting,
+              title: 'Use Expressive Material Icons',
+              subtitle: 'Replace custom Broken icons with standard Material Design icons',
+              trailing: Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: fileManager.useMaterialIcons,
+                  activeColor: theme.colorScheme.primary,
+                  onChanged: (val) => fileManager.setUseMaterialIcons(val),
+                ),
+              ),
+              onTap: () => fileManager.setUseMaterialIcons(!fileManager.useMaterialIcons),
+            ),
           ],
         ),
       ),
@@ -1319,7 +1334,7 @@ class ExplorerSettingsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('File Explorer Options'),
         leading: IconButton(
-          icon: const Icon(Broken.arrow_left),
+          icon: const NfileIcon(Broken.arrow_left),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -1463,7 +1478,7 @@ class LayoutSettingsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('List & Layout Styling'),
         leading: IconButton(
-          icon: const Icon(Broken.arrow_left),
+          icon: const NfileIcon(Broken.arrow_left),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -1609,7 +1624,7 @@ class _MediaSettingsScreenState extends State<MediaSettingsScreen> {
       appBar: AppBar(
         title: const Text('Media Preferences'),
         leading: IconButton(
-          icon: const Icon(Broken.arrow_left),
+          icon: const NfileIcon(Broken.arrow_left),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -1676,7 +1691,7 @@ class ActionsSettingsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('File Actions & Viewers'),
         leading: IconButton(
-          icon: const Icon(Broken.arrow_left),
+          icon: const NfileIcon(Broken.arrow_left),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -1738,7 +1753,7 @@ class _TrashSettingsScreenState extends State<TrashSettingsScreen> {
       appBar: AppBar(
         title: const Text('Recycle Bin (Trash)'),
         leading: IconButton(
-          icon: const Icon(Broken.arrow_left),
+          icon: const NfileIcon(Broken.arrow_left),
           onPressed: () => Navigator.pop(context),
         ),
       ),

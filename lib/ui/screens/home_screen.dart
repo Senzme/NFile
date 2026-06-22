@@ -8,6 +8,7 @@ import '../widgets/swipable_storage_overview.dart';
 import '../widgets/quick_categories_grid.dart';
 import '../widgets/recent_files_section.dart';
 import '../widgets/nfile_drawer.dart';
+import '../widgets/nfile_icon.dart';
 import 'directory_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -116,7 +117,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Si
                         color: theme.colorScheme.errorContainer.withOpacity(0.2),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
+                      child: NfileIcon(
                         Broken.logout,
                         color: theme.colorScheme.error,
                         size: 32,
@@ -221,13 +222,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Si
                 },
                 destinations: const [
                   NavigationDestination(
-                    icon: Icon(Broken.home),
-                    selectedIcon: Icon(Broken.home_1),
+                    icon: NfileIcon(Broken.home),
+                    selectedIcon: NfileIcon(Broken.home_1),
                     label: 'Home',
                   ),
                   NavigationDestination(
-                    icon: Icon(Broken.folder),
-                    selectedIcon: Icon(Broken.folder_open),
+                    icon: NfileIcon(Broken.folder),
+                    selectedIcon: NfileIcon(Broken.folder_open),
                     label: 'Browse',
                   ),
                 ],
@@ -264,12 +265,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver, Si
                         tooltip: 'Refresh Dashboard',
                         icon: RotationTransition(
                           turns: _refreshIconController,
-                          child: const Icon(Broken.refresh),
+                          child: const NfileIcon(Broken.refresh),
                         ),
                       ),
                       IconButton(
                         onPressed: widget.toggleTheme,
-                        icon: Icon(
+                        icon: NfileIcon(
                           theme.brightness == Brightness.dark ? Broken.sun_1 : Broken.moon,
                           color: theme.colorScheme.onSurface,
                         ),

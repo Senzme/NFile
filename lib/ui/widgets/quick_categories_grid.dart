@@ -7,6 +7,7 @@ import '../screens/media_category_screen.dart';
 import '../screens/internal_file_picker_screen.dart';
 import '../screens/storage_analyzer/app_manager_screen.dart';
 import '../screens/more_settings_screen.dart';
+import 'nfile_icon.dart';
 
 class QuickCategoriesGrid extends StatelessWidget {
   final Function(int) onNavigateTab;
@@ -231,7 +232,7 @@ class QuickCategoriesGrid extends StatelessWidget {
                             width: 52,
                             height: 52,
                             alignment: Alignment.center,
-                            child: Icon(icon, color: color, size: 24),
+                            child: NfileIcon(icon, color: color, size: 24),
                           ),
                         ),
                       ),
@@ -318,7 +319,7 @@ class _CustomizeCategoriesSheet extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20.0),
                   child: OutlinedButton.icon(
-                    icon: const Icon(Broken.add, size: 20),
+                    icon: const NfileIcon(Broken.add, size: 20),
                     label: const Text('Add Folder / File Shortcut', style: TextStyle(fontWeight: FontWeight.bold)),
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size.fromHeight(46),
@@ -451,7 +452,7 @@ class _CategoryItemWidgetState extends State<CategoryItemWidget> {
             width: 42,
             height: 42,
             decoration: BoxDecoration(color: color.withOpacity(0.15), shape: BoxShape.circle),
-            child: Icon(icon, color: color, size: 22),
+            child: NfileIcon(icon, color: color, size: 22),
           ),
           title: Row(
             children: [
@@ -486,7 +487,7 @@ class _CategoryItemWidgetState extends State<CategoryItemWidget> {
             children: [
               if (isCustom) ...[
                 IconButton(
-                  icon: const Icon(Broken.trash, color: Colors.redAccent, size: 20),
+                  icon: const NfileIcon(Broken.trash, color: Colors.redAccent, size: 20),
                   tooltip: 'Delete Shortcut',
                   onPressed: () => widget.provider.removeCustomShortcut(label),
                 ),
@@ -574,7 +575,7 @@ class _CategoryItemWidgetState extends State<CategoryItemWidget> {
                           )
                         else
                           IconButton(
-                            icon: const Icon(Broken.trash, color: Colors.redAccent, size: 18),
+                            icon: const NfileIcon(Broken.trash, color: Colors.redAccent, size: 18),
                             tooltip: 'Exclude Location',
                             onPressed: () {
                               widget.provider.excludeDefaultCategoryPath(label, path);
@@ -616,7 +617,7 @@ class _CategoryItemWidgetState extends State<CategoryItemWidget> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(Broken.folder, size: 16, color: Colors.grey),
+                            const NfileIcon(Broken.folder, size: 16, color: Colors.grey),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
@@ -627,7 +628,7 @@ class _CategoryItemWidgetState extends State<CategoryItemWidget> {
                               ),
                             ),
                             IconButton(
-                              icon: const Icon(Broken.trash, color: Colors.redAccent, size: 18),
+                              icon: const NfileIcon(Broken.trash, color: Colors.redAccent, size: 18),
                               onPressed: () {
                                 widget.provider.removeCustomCategoryPath(label, path);
                               },
@@ -653,7 +654,7 @@ class _CategoryItemWidgetState extends State<CategoryItemWidget> {
                       }
                     }
                   },
-                  icon: const Icon(Broken.folder_add, size: 16),
+                  icon: const NfileIcon(Broken.folder_add, size: 16),
                   label: const Text('Add Custom Path', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   style: TextButton.styleFrom(
                     foregroundColor: theme.colorScheme.primary,

@@ -26,6 +26,7 @@ class PreferencesService {
   static const String _keyMenuIconStyle = 'menu_icon_style';
   static const String _keyRememberLastFolder = 'remember_last_folder';
   static const String _keyTrailingInfoType = 'trailing_info_type';
+  static const String _keyUseMaterialIcons = 'use_material_icons';
 
   static SharedPreferences? _prefs;
 
@@ -324,6 +325,14 @@ class PreferencesService {
 
   static Future<void> saveMenuIconStyle(String val) async {
     await _prefs?.setString(_keyMenuIconStyle, val);
+  }
+
+  static bool getUseMaterialIcons() {
+    return _prefs?.getBool(_keyUseMaterialIcons) ?? false;
+  }
+
+  static Future<void> saveUseMaterialIcons(bool val) async {
+    await _prefs?.setBool(_keyUseMaterialIcons, val);
   }
 
   // --- Preferred Media Category default view & Open With preferences ---

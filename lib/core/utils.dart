@@ -114,22 +114,35 @@ class FileUtils {
     return lower.endsWith('.mp3') || lower.endsWith('.wav') || lower.endsWith('.m4a') || lower.endsWith('.ogg') || lower.endsWith('.flac') || lower.endsWith('.aac') || lower.endsWith('.wma') || lower.endsWith('.opus');
   }
 
-  static IconData getIconForFile(String path) {
-    if (isArchive(path)) return Broken.archive;
-    if (isTextOrCode(path)) return Broken.document_code;
-
-    final mimeType = lookupMimeType(path);
-    if (mimeType == null) return Broken.document;
-
-    if (mimeType.startsWith('image/')) return Broken.image;
-    if (mimeType.startsWith('video/')) return Broken.video;
-    if (mimeType.startsWith('audio/')) return Broken.music;
-    if (mimeType == 'application/pdf') return Broken.document;
-    if (mimeType.startsWith('application/vnd.android.package-archive')) {
-      return Broken.mobile;
+  static IconData getIconForFile(String path, {bool useMaterial = false}) {
+    IconData icon;
+    if (isArchive(path)) {
+      icon = Broken.archive;
+    } else if (isTextOrCode(path)) {
+      icon = Broken.document_code;
+    } else {
+      final mimeType = lookupMimeType(path);
+      if (mimeType == null) {
+        icon = Broken.document;
+      } else if (mimeType.startsWith('image/')) {
+        icon = Broken.image;
+      } else if (mimeType.startsWith('video/')) {
+        icon = Broken.video;
+      } else if (mimeType.startsWith('audio/')) {
+        icon = Broken.music;
+      } else if (mimeType == 'application/pdf') {
+        icon = Broken.document;
+      } else if (mimeType.startsWith('application/vnd.android.package-archive')) {
+        icon = Broken.mobile;
+      } else {
+        icon = Broken.document;
+      }
     }
 
-    return Broken.document;
+    if (useMaterial) {
+      return getAdaptiveIcon(icon, true);
+    }
+    return icon;
   }
   
   static Color getColorForFile(String path, BuildContext context) {
@@ -147,7 +160,10 @@ class FileUtils {
     return Theme.of(context).colorScheme.primary;
   }
 
-  static IconData getFolderIcon(String option) {
+  static IconData getFolderIcon(String option, {bool useMaterial = false}) {
+    if (useMaterial && option == 'broken') {
+      return Icons.folder;
+    }
     switch (option) {
       case 'solid': return Icons.folder;
       case 'rounded': return Icons.folder_rounded;
@@ -158,6 +174,59 @@ class FileUtils {
       default:
         return Broken.folder;
     }
+  }
+
+  static IconData getAdaptiveIcon(IconData icon, bool useMaterial) {
+    if (!useMaterial) return icon;
+
+    // Map of Broken IconData constants to Material Design equivalents
+    if (icon == Broken.folder || icon == Broken.folder_2) return Icons.folder;
+    if (icon == Broken.folder_open) return Icons.folder_open;
+    if (icon == Broken.folder_connection) return Icons.lan_outlined;
+    if (icon == Broken.folder_cloud) return Icons.cloud_queue;
+    if (icon == Broken.folder_favorite) return Icons.folder_special;
+    if (icon == Broken.image) return Icons.image;
+    if (icon == Broken.video || icon == Broken.video_circle || icon == Broken.video_play) return Icons.movie;
+    if (icon == Broken.music || icon == Broken.musicnote) return Icons.music_note;
+    if (icon == Broken.document || icon == Broken.document_text) return Icons.description;
+    if (icon == Broken.document_code) return Icons.code;
+    if (icon == Broken.archive || icon == Broken.box || icon == Broken.box_add) return Icons.archive;
+    if (icon == Broken.mobile || icon == Broken.mobile_programming) return Icons.android;
+    if (icon == Broken.setting_2 || icon == Broken.settings || icon == Broken.setting) return Icons.settings;
+    if (icon == Broken.trash) return Icons.delete;
+    if (icon == Broken.edit) return Icons.edit;
+    if (icon == Broken.document_copy || icon == Broken.copy) return Icons.copy;
+    if (icon == Broken.scissor) return Icons.content_cut;
+    if (icon == Broken.info_circle) return Icons.info_outline;
+    if (icon == Broken.search_normal) return Icons.search;
+    if (icon == Broken.close_circle || icon == Broken.close_square) return Icons.close;
+    if (icon == Broken.tick_circle || icon == Broken.tick_square) return Icons.check_circle;
+    if (icon == Broken.add) return Icons.add;
+    if (icon == Broken.key) return Icons.vpn_key;
+    if (icon == Broken.lock) return Icons.lock;
+    if (icon == Broken.shield_tick) return Icons.shield;
+    if (icon == Broken.arrow_right_3) return Icons.chevron_right;
+    if (icon == Broken.arrow_up_1) return Icons.arrow_upward;
+    if (icon == Broken.more) return Icons.more_vert;
+    if (icon == Broken.home_1 || icon == Broken.home_2 || icon == Broken.home) return Icons.home;
+    if (icon == Broken.category) return Icons.category;
+    if (icon == Broken.clipboard) return Icons.assignment;
+    if (icon == Broken.wifi_square) return Icons.wifi;
+    if (icon == Broken.document_download) return Icons.download;
+    if (icon == Broken.logout) return Icons.logout;
+    if (icon == Broken.refresh) return Icons.refresh;
+    if (icon == Broken.sun_1) return Icons.light_mode;
+    if (icon == Broken.moon) return Icons.dark_mode;
+    if (icon == Broken.add_circle || icon == Broken.folder_add) return Icons.create_new_folder;
+    if (icon == Broken.eye) return Icons.visibility;
+    if (icon == Broken.arrow_left_1 || icon == Broken.arrow_left || icon == Broken.arrow_left_2) return Icons.arrow_back;
+
+    // Check if it's from the broken icon font family and fallback
+    if (icon.fontFamily == 'broken' || icon.fontFamily == 'broken_filled') {
+      return Icons.star;
+    }
+
+    return icon;
   }
 
   static int compareNatural(String a, String b) {

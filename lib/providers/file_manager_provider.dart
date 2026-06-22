@@ -131,6 +131,7 @@ class FileManagerProvider extends ChangeNotifier {
     _hideActionText = PreferencesService.getHideActionText();
     _disableLeftBackGesture = PreferencesService.getDisableLeftBackGesture();
     _rememberLastFolder = PreferencesService.getRememberLastFolder();
+    _useMaterialIcons = PreferencesService.getUseMaterialIcons();
 
     // One-time migration: reset PDF (and other documents) default open action to 'native' if it was set to 'external'
     if (!PreferencesService.getPdfResetDone()) {
@@ -211,6 +212,7 @@ class FileManagerProvider extends ChangeNotifier {
     _hideActionText = PreferencesService.getHideActionText();
     _disableLeftBackGesture = PreferencesService.getDisableLeftBackGesture();
     _rememberLastFolder = PreferencesService.getRememberLastFolder();
+    _useMaterialIcons = PreferencesService.getUseMaterialIcons();
     notifyListeners();
   }
 
@@ -602,6 +604,16 @@ class FileManagerProvider extends ChangeNotifier {
   void toggleRememberLastFolder() {
     _rememberLastFolder = !_rememberLastFolder;
     PreferencesService.saveRememberLastFolder(_rememberLastFolder);
+    notifyListeners();
+  }
+
+  bool _useMaterialIcons = false;
+  bool get useMaterialIcons => _useMaterialIcons;
+
+  void setUseMaterialIcons(bool val) {
+    if (_useMaterialIcons == val) return;
+    _useMaterialIcons = val;
+    PreferencesService.saveUseMaterialIcons(val);
     notifyListeners();
   }
 

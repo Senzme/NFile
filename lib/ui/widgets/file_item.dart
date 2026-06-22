@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_avif/flutter_avif.dart';
+import 'nfile_icon.dart';
 import '../../models/file_item_model.dart';
 import '../../core/utils.dart';
 import '../../core/icon_fonts/broken_icons.dart';
@@ -146,7 +147,7 @@ class FileItem extends StatelessWidget {
               ),
               if (!context.select<FileManagerProvider, bool>((p) => p.hideActionMenuButtons))
                 PopupMenuButton<String>(
-                  icon: const Icon(Broken.more, size: 22),
+                  icon: const NfileIcon(Broken.more, size: 22),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   position: PopupMenuPosition.under,
                   elevation: 8,
@@ -156,7 +157,7 @@ class FileItem extends StatelessWidget {
                       if (showShowInLocationOption)
                         const PopupMenuItem(
                           value: 'show_in_location',
-                          child: Row(children: [Icon(Broken.folder_open, size: 20), SizedBox(width: 12), Text('Show in location', style: TextStyle(fontWeight: FontWeight.w500))]),
+                          child: Row(children: [NfileIcon(Broken.folder_open, size: 20), SizedBox(width: 12), Text('Show in location', style: TextStyle(fontWeight: FontWeight.w500))]),
                         ),
                       if (showShowInLocationOption)
                         const PopupMenuItem(
@@ -164,14 +165,14 @@ class FileItem extends StatelessWidget {
                           child: Row(children: [Icon(Icons.share_outlined, size: 20), SizedBox(width: 12), Text('Share', style: TextStyle(fontWeight: FontWeight.w500))]),
                         ),
                       if (isArchive)
-                        const PopupMenuItem(value: 'extract', child: Row(children: [Icon(Broken.archive, size: 20), SizedBox(width: 12), Text('Extract', style: TextStyle(fontWeight: FontWeight.w500))])),
-                      const PopupMenuItem(value: 'archive', child: Row(children: [Icon(Broken.box_add, size: 20), SizedBox(width: 12), Text('Archive', style: TextStyle(fontWeight: FontWeight.w500))])),
-                      const PopupMenuItem(value: 'copy', child: Row(children: [Icon(Broken.document_copy, size: 20), SizedBox(width: 12), Text('Copy', style: TextStyle(fontWeight: FontWeight.w500))])),
-                      const PopupMenuItem(value: 'cut', child: Row(children: [Icon(Broken.scissor, size: 20), SizedBox(width: 12), Text('Cut', style: TextStyle(fontWeight: FontWeight.w500))])),
-                      const PopupMenuItem(value: 'rename', child: Row(children: [Icon(Broken.edit, size: 20), SizedBox(width: 12), Text('Rename', style: TextStyle(fontWeight: FontWeight.w500))])),
+                        const PopupMenuItem(value: 'extract', child: Row(children: [NfileIcon(Broken.archive, size: 20), SizedBox(width: 12), Text('Extract', style: TextStyle(fontWeight: FontWeight.w500))])),
+                      const PopupMenuItem(value: 'archive', child: Row(children: [NfileIcon(Broken.box_add, size: 20), SizedBox(width: 12), Text('Archive', style: TextStyle(fontWeight: FontWeight.w500))])),
+                      const PopupMenuItem(value: 'copy', child: Row(children: [NfileIcon(Broken.document_copy, size: 20), SizedBox(width: 12), Text('Copy', style: TextStyle(fontWeight: FontWeight.w500))])),
+                      const PopupMenuItem(value: 'cut', child: Row(children: [NfileIcon(Broken.scissor, size: 20), SizedBox(width: 12), Text('Cut', style: TextStyle(fontWeight: FontWeight.w500))])),
+                      const PopupMenuItem(value: 'rename', child: Row(children: [NfileIcon(Broken.edit, size: 20), SizedBox(width: 12), Text('Rename', style: TextStyle(fontWeight: FontWeight.w500))])),
                       const PopupMenuItem(
                         value: 'delete',
-                        child: Row(children: [Icon(Broken.trash, size: 20, color: Colors.redAccent), SizedBox(width: 12), Text('Delete', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w500))]),
+                        child: Row(children: [NfileIcon(Broken.trash, size: 20, color: Colors.redAccent), SizedBox(width: 12), Text('Delete', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w500))]),
                       ),
                     ];
                   },
@@ -358,18 +359,19 @@ class _MediaThumbnailState extends State<MediaThumbnail> {
   @override
   Widget build(BuildContext context) {
     final showMediaPreviews = context.select<FileManagerProvider, bool>((p) => p.showMediaPreviews);
+    final useMaterialIcons = context.select<FileManagerProvider, bool>((p) => p.useMaterialIcons);
     final isImg = FileUtils.isImage(widget.file.path);
     final isVid = FileUtils.isVideo(widget.file.path);
     final isAud = FileUtils.isAudio(widget.file.path);
     final isApk = widget.file.path.toLowerCase().endsWith('.apk') || widget.file.path.toLowerCase().endsWith('.xapk') || widget.file.path.toLowerCase().endsWith('.apks') || widget.file.path.toLowerCase().endsWith('.apkm');
 
     if (widget.isSelected) {
-      return Icon(Broken.tick_circle, color: Theme.of(context).colorScheme.onPrimary, size: 28 * widget.iconScale);
+      return Icon(FileUtils.getAdaptiveIcon(Broken.tick_circle, useMaterialIcons), color: Theme.of(context).colorScheme.onPrimary, size: 28 * widget.iconScale);
     }
 
     if (!showMediaPreviews) {
       return Icon(
-        FileUtils.getIconForFile(widget.file.path),
+        FileUtils.getIconForFile(widget.file.path, useMaterial: useMaterialIcons),
         color: widget.iconColor,
         size: 28 * widget.iconScale,
       );
@@ -381,7 +383,7 @@ class _MediaThumbnailState extends State<MediaThumbnail> {
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
-        errorBuilder: (context, error, stackTrace) => Icon(Broken.mobile, color: widget.iconColor, size: 28 * widget.iconScale),
+        errorBuilder: (context, error, stackTrace) => Icon(FileUtils.getAdaptiveIcon(Broken.mobile, useMaterialIcons), color: widget.iconColor, size: 28 * widget.iconScale),
       );
     }
 
@@ -393,7 +395,7 @@ class _MediaThumbnailState extends State<MediaThumbnail> {
           width: double.infinity,
           height: double.infinity,
           cacheWidth: 160,
-          errorBuilder: (context, error, stackTrace) => Icon(Broken.image, color: widget.iconColor, size: 28 * widget.iconScale),
+          errorBuilder: (context, error, stackTrace) => Icon(FileUtils.getAdaptiveIcon(Broken.image, useMaterialIcons), color: widget.iconColor, size: 28 * widget.iconScale),
         );
       }
       return Image.file(
@@ -402,7 +404,7 @@ class _MediaThumbnailState extends State<MediaThumbnail> {
         width: double.infinity,
         height: double.infinity,
         cacheWidth: 160,
-        errorBuilder: (context, error, stackTrace) => Icon(Broken.image, color: widget.iconColor, size: 28 * widget.iconScale),
+        errorBuilder: (context, error, stackTrace) => Icon(FileUtils.getAdaptiveIcon(Broken.image, useMaterialIcons), color: widget.iconColor, size: 28 * widget.iconScale),
       );
     }
 
@@ -415,13 +417,13 @@ class _MediaThumbnailState extends State<MediaThumbnail> {
             fit: BoxFit.cover,
             width: double.infinity,
             height: double.infinity,
-            errorBuilder: (context, error, stackTrace) => Icon(Broken.video, color: widget.iconColor, size: 28 * widget.iconScale),
+            errorBuilder: (context, error, stackTrace) => Icon(FileUtils.getAdaptiveIcon(Broken.video, useMaterialIcons), color: widget.iconColor, size: 28 * widget.iconScale),
           ),
           Center(
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), shape: BoxShape.circle),
-              child: Icon(Broken.video, color: Colors.white, size: 16 * widget.iconScale),
+              child: Icon(FileUtils.getAdaptiveIcon(Broken.video, useMaterialIcons), color: Colors.white, size: 16 * widget.iconScale),
             ),
           ),
         ],
@@ -437,13 +439,13 @@ class _MediaThumbnailState extends State<MediaThumbnail> {
             fit: BoxFit.cover,
             width: double.infinity,
             height: double.infinity,
-            errorBuilder: (context, error, stackTrace) => Icon(Broken.music, color: widget.iconColor, size: 28 * widget.iconScale),
+            errorBuilder: (context, error, stackTrace) => Icon(FileUtils.getAdaptiveIcon(Broken.music, useMaterialIcons), color: widget.iconColor, size: 28 * widget.iconScale),
           ),
           Center(
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), shape: BoxShape.circle),
-              child: Icon(Broken.music, color: Colors.white, size: 16 * widget.iconScale),
+              child: Icon(FileUtils.getAdaptiveIcon(Broken.music, useMaterialIcons), color: Colors.white, size: 16 * widget.iconScale),
             ),
           ),
         ],
@@ -451,7 +453,7 @@ class _MediaThumbnailState extends State<MediaThumbnail> {
     }
 
     return Icon(
-      FileUtils.getIconForFile(widget.file.path),
+      FileUtils.getIconForFile(widget.file.path, useMaterial: useMaterialIcons),
       color: widget.iconColor,
       size: 28 * widget.iconScale,
     );

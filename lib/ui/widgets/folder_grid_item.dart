@@ -3,6 +3,7 @@ import '../../models/file_item_model.dart';
 import '../../models/file_filter_type.dart';
 import 'package:provider/provider.dart';
 import '../../providers/file_manager_provider.dart';
+import 'nfile_icon.dart';
 import '../../core/utils.dart';
 import '../../core/icon_fonts/broken_icons.dart';
 import '../../services/pin_service.dart';
@@ -35,6 +36,8 @@ class FolderGridItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final folderIconOption = context.select<FileManagerProvider, String>((p) => p.folderIconOption);
+    final useMaterialIcons = context.select<FileManagerProvider, bool>((p) => p.useMaterialIcons);
     final isHighlighted = context.select<FileManagerProvider, bool>(
       (p) => p.forceHighlightedPaths.contains(folder.path) || (p.enableFolderHighlight && p.highlightedPaths.contains(folder.path)),
     );
@@ -93,7 +96,7 @@ class FolderGridItem extends StatelessWidget {
                                           height: 38 * iconScale,
                                           fit: BoxFit.cover,
                                           errorBuilder: (_, __, ___) => Icon(
-                                            FileUtils.getFolderIcon(context.select<FileManagerProvider, String>((p) => p.folderIconOption)),
+                                            FileUtils.getFolderIcon(folderIconOption, useMaterial: useMaterialIcons),
                                             color: theme.colorScheme.primary,
                                             size: 28 * iconScale,
                                           ),
@@ -102,7 +105,7 @@ class FolderGridItem extends StatelessWidget {
                                     );
                                   }
                                   return Icon(
-                                    FileUtils.getFolderIcon(context.select<FileManagerProvider, String>((p) => p.folderIconOption)),
+                                    FileUtils.getFolderIcon(folderIconOption, useMaterial: useMaterialIcons),
                                     color: theme.colorScheme.primary,
                                     size: 28 * iconScale,
                                   );
@@ -111,7 +114,7 @@ class FolderGridItem extends StatelessWidget {
                             }
 
                             return Icon(
-                              isSelected ? Broken.tick_circle : FileUtils.getFolderIcon(context.select<FileManagerProvider, String>((p) => p.folderIconOption)),
+                              isSelected ? FileUtils.getAdaptiveIcon(Broken.tick_circle, useMaterialIcons) : FileUtils.getFolderIcon(folderIconOption, useMaterial: useMaterialIcons),
                               color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.primary,
                               size: 28 * iconScale,
                             );
@@ -223,7 +226,7 @@ class FolderGridItem extends StatelessWidget {
                     color: theme.colorScheme.primary,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Broken.tick_circle, size: 16, color: theme.colorScheme.onPrimary),
+                  child: NfileIcon(Broken.tick_circle, size: 16, color: theme.colorScheme.onPrimary),
                 ),
               )
             else if (PinService.isPinned(folder.path))
@@ -244,20 +247,20 @@ class FolderGridItem extends StatelessWidget {
                 top: 4,
                 right: 4,
                 child: PopupMenuButton<String>(
-                  icon: const Icon(Broken.more, size: 20),
+                  icon: const NfileIcon(Broken.more, size: 20),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   position: PopupMenuPosition.under,
                   elevation: 8,
                   onSelected: onAction,
                   itemBuilder: (context) {
                     return [
-                      const PopupMenuItem(value: 'archive', child: Row(children: [Icon(Broken.box_add, size: 20), SizedBox(width: 12), Text('Archive', style: TextStyle(fontWeight: FontWeight.w500))])),
-                      const PopupMenuItem(value: 'copy', child: Row(children: [Icon(Broken.document_copy, size: 20), SizedBox(width: 12), Text('Copy', style: TextStyle(fontWeight: FontWeight.w500))])),
-                      const PopupMenuItem(value: 'cut', child: Row(children: [Icon(Broken.scissor, size: 20), SizedBox(width: 12), Text('Cut', style: TextStyle(fontWeight: FontWeight.w500))])),
-                      const PopupMenuItem(value: 'rename', child: Row(children: [Icon(Broken.edit, size: 20), SizedBox(width: 12), Text('Rename', style: TextStyle(fontWeight: FontWeight.w500))])),
+                      const PopupMenuItem(value: 'archive', child: Row(children: [NfileIcon(Broken.box_add, size: 20), SizedBox(width: 12), Text('Archive', style: TextStyle(fontWeight: FontWeight.w500))])),
+                      const PopupMenuItem(value: 'copy', child: Row(children: [NfileIcon(Broken.document_copy, size: 20), SizedBox(width: 12), Text('Copy', style: TextStyle(fontWeight: FontWeight.w500))])),
+                      const PopupMenuItem(value: 'cut', child: Row(children: [NfileIcon(Broken.scissor, size: 20), SizedBox(width: 12), Text('Cut', style: TextStyle(fontWeight: FontWeight.w500))])),
+                      const PopupMenuItem(value: 'rename', child: Row(children: [NfileIcon(Broken.edit, size: 20), SizedBox(width: 12), Text('Rename', style: TextStyle(fontWeight: FontWeight.w500))])),
                       const PopupMenuItem(
                         value: 'delete',
-                        child: Row(children: [Icon(Broken.trash, size: 20, color: Colors.redAccent), SizedBox(width: 12), Text('Delete', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w500))]),
+                        child: Row(children: [NfileIcon(Broken.trash, size: 20, color: Colors.redAccent), SizedBox(width: 12), Text('Delete', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w500))]),
                       ),
                     ];
                   },
