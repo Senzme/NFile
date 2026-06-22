@@ -29,10 +29,7 @@ Builds:
       - $$flutter$$/bin/flutter pub get --enforce-lockfile
       - popd
       - mv /tmp/build com.rubex.nfile
-    scanignore:
-      - .flutter/bin/cache
     scandelete:
-      - .flutter
       - .pub-cache
     build:
       - cd ..
