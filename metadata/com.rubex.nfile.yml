@@ -1,6 +1,6 @@
 Categories:
-  - System
   - File Manager
+  - System
 License: GPL-3.0-only
 AuthorName: Senzme
 WebSite: https://github.com/Senzme/NFile
@@ -13,13 +13,12 @@ RepoType: git
 Repo: https://github.com/Senzme/NFile.git
 
 Builds:
-  - versionName: '1.0.42'
+  - versionName: 1.0.42
     versionCode: 42
     commit: cfbd10d81a069339fe2eeb8156a6546e8582acff
+    output: build/app/outputs/flutter-apk/app-release.apk
     srclibs:
       - flutter@stable
-    output: build/app/outputs/flutter-apk/app-release.apk
-
     prebuild:
       - cd ..
       - mv com.rubex.nfile /tmp/build
@@ -43,5 +42,5 @@ Builds:
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
 UpdateCheckData: pubspec.yaml|version:\s.+\+(\d+)|.|version:\s(.+)\+
-CurrentVersion: '1.0.42'
+CurrentVersion: 1.0.42
 CurrentVersionCode: 42
