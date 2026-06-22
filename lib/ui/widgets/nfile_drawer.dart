@@ -13,6 +13,7 @@ import '../screens/about_screen.dart';
 import '../screens/web_sharing_screen.dart';
 import '../../providers/media_provider.dart';
 import 'quick_categories_grid.dart';
+import 'nfile_icon.dart';
 import '../screens/internal_file_picker_screen.dart';
 import '../screens/recycle_bin_screen.dart';
 
@@ -125,7 +126,7 @@ class NFileDrawer extends StatelessWidget {
                       child: Theme(
                         data: theme.copyWith(dividerColor: Colors.transparent),
                         child: ExpansionTile(
-                          leading: Icon(Broken.wifi_square, size: 22, color: theme.colorScheme.onSurface.withOpacity(0.8)),
+                          leading: NfileIcon(Broken.wifi_square, size: 22, color: theme.colorScheme.onSurface.withOpacity(0.8)),
                           title: Text(
                             'Servers & Tools',
                             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface.withOpacity(0.9)),
@@ -219,7 +220,7 @@ class NFileDrawer extends StatelessWidget {
                       child: Theme(
                         data: theme.copyWith(dividerColor: Colors.transparent),
                         child: ExpansionTile(
-                          leading: Icon(Icons.category_rounded, size: 22, color: theme.colorScheme.onSurface.withOpacity(0.8)),
+                          leading: NfileIcon(Icons.category_rounded, size: 22, color: theme.colorScheme.onSurface.withOpacity(0.8)),
                           title: Text(
                             'Quick Categories',
                             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface.withOpacity(0.9)),
@@ -355,7 +356,7 @@ class NFileDrawer extends StatelessWidget {
               color: Colors.white.withOpacity(0.2),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Broken.folder, color: Colors.white, size: 28),
+            child: const NfileIcon(Broken.folder, color: Colors.white, size: 28),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -418,7 +419,7 @@ class NFileDrawer extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: trailing != null ? 4.0 : 12.0),
             child: Row(
               children: [
-                Icon(icon, size: 22, color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface.withOpacity(0.8)),
+                NfileIcon(icon, size: 22, color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface.withOpacity(0.8)),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Text(

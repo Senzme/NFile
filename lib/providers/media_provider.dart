@@ -119,6 +119,10 @@ class MediaProvider extends ChangeNotifier {
         _categoryOrder.add('Apps');
         orderUpdated = true;
       }
+      if (!_categoryOrder.contains('Recycle Bin')) {
+        _categoryOrder.add('Recycle Bin');
+        orderUpdated = true;
+      }
       if (!_categoryOrder.contains('Settings')) {
         _categoryOrder.add('Settings');
         orderUpdated = true;
@@ -146,6 +150,10 @@ class MediaProvider extends ChangeNotifier {
       bool orderUpdated = false;
       if (!_categoryOrder.contains('Apps')) {
         _categoryOrder.add('Apps');
+        orderUpdated = true;
+      }
+      if (!_categoryOrder.contains('Recycle Bin')) {
+        _categoryOrder.add('Recycle Bin');
         orderUpdated = true;
       }
       if (!_categoryOrder.contains('Settings')) {
@@ -204,6 +212,7 @@ class MediaProvider extends ChangeNotifier {
     'APKs',
     'Screenshots',
     'Apps',
+    'Recycle Bin',
     'Settings',
   ];
 
@@ -216,6 +225,7 @@ class MediaProvider extends ChangeNotifier {
     'Downloads',
     'APKs',
     'Screenshots',
+    'Recycle Bin',
   ];
 
 
@@ -496,6 +506,9 @@ class MediaProvider extends ChangeNotifier {
           _categoryOrder = List<String>.from(map['categoryOrder'] ?? _categoryOrder);
           if (!_categoryOrder.contains('Apps')) {
             _categoryOrder.add('Apps');
+          }
+          if (!_categoryOrder.contains('Recycle Bin')) {
+            _categoryOrder.add('Recycle Bin');
           }
           if (!_categoryOrder.contains('Settings')) {
             _categoryOrder.add('Settings');

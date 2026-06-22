@@ -7,6 +7,7 @@ import '../screens/media_category_screen.dart';
 import '../screens/internal_file_picker_screen.dart';
 import '../screens/storage_analyzer/app_manager_screen.dart';
 import '../screens/more_settings_screen.dart';
+import '../screens/recycle_bin_screen.dart';
 import 'nfile_icon.dart';
 
 class QuickCategoriesGrid extends StatelessWidget {
@@ -88,6 +89,14 @@ class QuickCategoriesGrid extends StatelessWidget {
         'count': 'Manager',
         'isCustom': false,
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AppManagerScreen())),
+      },
+      'Recycle Bin': {
+        'label': 'Recycle Bin',
+        'icon': Broken.trash,
+        'color': isDark ? Colors.redAccent : const Color(0xFFC62828),
+        'count': 'Bin',
+        'isCustom': false,
+        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RecycleBinScreen())),
       },
       'Settings': {
         'label': 'Settings',
