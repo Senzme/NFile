@@ -15,7 +15,7 @@ Repo: https://github.com/Senzme/NFile.git
 Builds:
   - versionName: 1.0.42
     versionCode: 42
-    commit: cfbd10d81a069339fe2eeb8156a6546e8582acff
+    commit: cc3e140748f9993e384cfb4606d2c5587286fc35
     output: build/app/outputs/flutter-apk/app-release.apk
     srclibs:
       - flutter@stable
@@ -26,6 +26,8 @@ Builds:
       - export PUB_CACHE=$(pwd)/.pub-cache
       - $$flutter$$/bin/flutter config --no-analytics
       - $$flutter$$/bin/flutter pub get --enforce-lockfile
+      - JFILE=$(find .pub-cache -name FlutterAvifPlugin.java | head -1)
+      - test -z "$JFILE" || echo "// cleared" > "$JFILE"
       - popd
       - mv /tmp/build com.rubex.nfile
     scandelete:
