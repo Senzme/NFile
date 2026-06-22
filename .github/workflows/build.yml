@@ -9,6 +9,8 @@ on:
       - '.gitignore'
       - 'LICENSE'
       - 'docs/**'
+      - 'fastlane/**'
+      - 'metadata/**'
   pull_request:
     branches:
       - main
@@ -17,6 +19,8 @@ on:
       - '.gitignore'
       - 'LICENSE'
       - 'docs/**'
+      - 'fastlane/**'
+      - 'metadata/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
