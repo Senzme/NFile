@@ -3,6 +3,9 @@ allprojects {
         google()
         mavenCentral()
     }
+    configurations.all {
+        exclude(group = "com.google.android.play")
+    }
 }
 
 val newBuildDir: Directory =
