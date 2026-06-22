@@ -311,12 +311,13 @@ packages:
     source: hosted
     version: "3.1.0"
   flutter_avif_android:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: flutter_avif_android
-      sha256: "1da135ea0d74225fae3154f954f9ba4cf7aa5e56b30d9851fcfc0ddecab9d8c5"
-      url: "https://pub.dev"
-    source: hosted
+      path: flutter_avif_android
+      ref: HEAD
+      resolved-ref: "513c918e4f881a1c08600149a56ac2e604863f79"
+      url: "https://github.com/yekeskin/flutter_avif"
+    source: git
     version: "3.1.0"
   flutter_avif_ios:
     dependency: transitive

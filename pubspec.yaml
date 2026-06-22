@@ -32,6 +32,10 @@ dependency_overrides:
     git:
       url: https://github.com/MSOB7YY/on_audio_query
       path: packages/on_audio_query_platform_interface
+  flutter_avif_android:
+    git:
+      url: https://github.com/yekeskin/flutter_avif
+      path: flutter_avif_android
 
 dependencies:
   flutter:
