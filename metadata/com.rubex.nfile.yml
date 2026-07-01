@@ -37,7 +37,7 @@ Builds:
       - mv com.rubex.nfile /tmp/build
       - pushd /tmp/build
       - export PUB_CACHE=$(pwd)/.pub-cache
-      - $$flutter$$/bin/flutter build apk --release --no-deferred-components
+      - $$flutter$$/bin/flutter build apk --release
       - popd
       - mv /tmp/build com.rubex.nfile
 
