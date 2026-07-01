@@ -3,8 +3,25 @@ allprojects {
         google()
         mavenCentral()
     }
-    configurations.all {
+    configurations.configureEach {
         exclude(group = "com.google.android.play")
+        exclude(group = "com.google.android.play", module = "core")
+        exclude(group = "com.google.android.play", module = "core-common")
+        exclude(group = "com.google.android.play", module = "review")
+        exclude(group = "com.google.android.play", module = "app-update")
+        exclude(group = "com.google.android.play", module = "feature-delivery")
+        exclude(group = "com.google.android.play", module = "integrity")
+        exclude(group = "com.google.android.play", module = "asset-delivery")
+        
+        resolutionStrategy.dependencySubstitution {
+            substitute(module("com.google.android.play:core")).using(module("androidx.annotation:annotation:1.9.1"))
+            substitute(module("com.google.android.play:core-common")).using(module("androidx.annotation:annotation:1.9.1"))
+            substitute(module("com.google.android.play:review")).using(module("androidx.annotation:annotation:1.9.1"))
+            substitute(module("com.google.android.play:app-update")).using(module("androidx.annotation:annotation:1.9.1"))
+            substitute(module("com.google.android.play:feature-delivery")).using(module("androidx.annotation:annotation:1.9.1"))
+            substitute(module("com.google.android.play:integrity")).using(module("androidx.annotation:annotation:1.9.1"))
+            substitute(module("com.google.android.play:asset-delivery")).using(module("androidx.annotation:annotation:1.9.1"))
+        }
     }
 }
 

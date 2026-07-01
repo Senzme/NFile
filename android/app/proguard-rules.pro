@@ -3,13 +3,17 @@
 -keep class io.flutter.plugin.**  { *; }
 -keep class io.flutter.util.**  { *; }
 -keep class io.flutter.view.**  { *; }
--keep class io.flutter.**  { *; }
 -keep class io.flutter.plugins.**  { *; }
 -keep class com.media_kit.** { *; }
 -keep class com.open_filex.** { *; }
 -keep class com.receive_sharing_intent.** { *; }
 -dontwarn io.flutter.embedding.**
 -dontwarn com.media_kit.**
+
+# Google Play Core dontwarn rules for F-Droid compatibility
+-dontwarn com.google.android.play.core.splitcompat.**
+-dontwarn com.google.android.play.core.splitinstall.**
+-dontwarn com.google.android.play.core.tasks.**
 
 # audio_service — keep all classes needed for MediaBrowserService and notification
 -keep class com.ryanheise.audioservice.** { *; }
