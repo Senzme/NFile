@@ -38,7 +38,8 @@ Builds:
       - mv com.rubex.nfile /tmp/build
       - pushd /tmp/build
       - export PUB_CACHE=$(pwd)/.pub-cache
-      - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform android-arm
+      - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform
+        android-arm
       - popd
       - mv /tmp/build com.rubex.nfile
 
@@ -66,7 +67,8 @@ Builds:
       - mv com.rubex.nfile /tmp/build
       - pushd /tmp/build
       - export PUB_CACHE=$(pwd)/.pub-cache
-      - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform android-arm64
+      - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform
+        android-arm64
       - popd
       - mv /tmp/build com.rubex.nfile
 
@@ -94,7 +96,8 @@ Builds:
       - mv com.rubex.nfile /tmp/build
       - pushd /tmp/build
       - export PUB_CACHE=$(pwd)/.pub-cache
-      - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform android-x64
+      - $$flutter$$/bin/flutter build apk --release --split-per-abi --target-platform
+        android-x64
       - popd
       - mv /tmp/build com.rubex.nfile
 
