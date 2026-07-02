@@ -11,7 +11,7 @@ AutoName: NFile
 
 RepoType: git
 Repo: https://github.com/Senzme/NFile.git
-Binaries: https://github.com/Senzme/NFile/releases/download/v%v/app-%c.apk
+
 
 Builds:
   - versionName: 1.0.42
