@@ -16,7 +16,7 @@ Binaries: https://github.com/Senzme/NFile/releases/download/v%v/app-%c.apk
 Builds:
   - versionName: 1.0.42
     versionCode: 421
-    commit: a04e739fc931a5ebd645db7f32f7bc4f9cdc229a
+    commit: 892fd2a4b4944a19cd047231a59ce8dd34bf47ba
     output: build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
     srclibs:
       - flutter@stable
@@ -44,7 +44,7 @@ Builds:
 
   - versionName: 1.0.42
     versionCode: 422
-    commit: a04e739fc931a5ebd645db7f32f7bc4f9cdc229a
+    commit: 892fd2a4b4944a19cd047231a59ce8dd34bf47ba
     output: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
     srclibs:
       - flutter@stable
@@ -72,7 +72,7 @@ Builds:
 
   - versionName: 1.0.42
     versionCode: 423
-    commit: a04e739fc931a5ebd645db7f32f7bc4f9cdc229a
+    commit: 892fd2a4b4944a19cd047231a59ce8dd34bf47ba
     output: build/app/outputs/flutter-apk/app-x86_64-release.apk
     srclibs:
       - flutter@stable
