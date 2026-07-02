@@ -1,5 +1,6 @@
 import java.io.FileInputStream
 import java.util.Properties
+import com.android.build.gradle.internal.api.ApkVariantOutputImpl
 
 plugins {
     id("com.android.application")
@@ -45,7 +46,9 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        resourceConfigurations.addAll(listOf("en"))
+        androidResources {
+            localeFilters.addAll(listOf("en"))
+        }
     }
 
     buildTypes {
@@ -70,7 +73,6 @@ flutter {
 }
 
 // ABI split version code scheme required for F-Droid ABI split support
-import com.android.build.gradle.internal.api.ApkVariantOutputImpl
 val abiCodes = mapOf("armeabi-v7a" to 1, "arm64-v8a" to 2, "x86_64" to 3)
 android.applicationVariants.configureEach {
     val variant = this

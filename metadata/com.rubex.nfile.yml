@@ -11,6 +11,7 @@ AutoName: NFile
 
 RepoType: git
 Repo: https://github.com/Senzme/NFile.git
+Binaries: https://github.com/Senzme/NFile/releases/download/v%v/app-%c.apk
 
 Builds:
   - versionName: 1.0.42
@@ -97,15 +98,14 @@ Builds:
       - popd
       - mv /tmp/build com.rubex.nfile
 
-Binaries: https://github.com/Senzme/NFile/releases/download/v%v/app-%c.apk
 AllowedAPKSigningKeys: f6e86eca9b0d00c51a7758611b26c3c075d1e9e788265c5b115640114994c2ca
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-UpdateCheckData: pubspec.yaml|version:\s.+\+(\d+)|.|version:\s(.+)\+
 VercodeOperation:
   - 10 * %c + 1
   - 10 * %c + 2
   - 10 * %c + 3
+UpdateCheckData: pubspec.yaml|version:\s.+\+(\d+)|.|version:\s(.+)\+
 CurrentVersion: 1.0.42
-CurrentVersionCode: 422
+CurrentVersionCode: 423
