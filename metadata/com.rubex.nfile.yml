@@ -12,7 +12,6 @@ AutoName: NFile
 RepoType: git
 Repo: https://github.com/Senzme/NFile.git
 
-
 Builds:
   - versionName: 1.0.42
     versionCode: 421
