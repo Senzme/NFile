@@ -7,9 +7,10 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
-    <!-- Granular media permissions for Android 13+ (API 33+) -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <!-- READ_MEDIA_IMAGES and READ_MEDIA_VIDEO removed: MANAGE_EXTERNAL_STORAGE covers all
+         media access for this file manager app. photo_manager uses setIgnorePermissionCheck(true)
+         under MANAGE_EXTERNAL_STORAGE so these granular permissions are not needed. -->
+    <!-- Audio permission still required for on_audio_query on Android 13+ -->
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <!-- Required for image/video metadata (EXIF) on Android 10+ (API 29+) -->
     <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" />

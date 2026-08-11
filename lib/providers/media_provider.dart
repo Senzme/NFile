@@ -766,12 +766,30 @@ class MediaProvider extends ChangeNotifier {
     try {
       isStorageGranted = await Permission.storage.isGranted || await Permission.manageExternalStorage.isGranted;
     } catch (_) {}
-    
-    PermissionState ps = PermissionState.denied;
-    try {
-      ps = await PhotoManager.requestPermissionExtend();
-    } catch (_) {}
 
+    // On Android 13+, photo_manager should not be asked to request its own permissions
+    // (which would internally request READ_MEDIA_IMAGES/VIDEO, removed from manifest).
+    // Instead rely on MANAGE_EXTERNAL_STORAGE + setIgnorePermissionCheck.
+    PermissionState ps = PermissionState.denied;
+    if (isStorageGranted) {
+      ps = PermissionState.authorized;
+      try {
+        PhotoManager.setIgnorePermissionCheck(true);
+      } catch (_) {}
+    } else {
+      try {
+        // Only call requestPermissionExtend on non-Android or Android < 13
+        bool shouldRequestPhotoManager = true;
+        if (Platform.isAndroid) {
+          final info = await DeviceInfoPlugin().androidInfo;
+          if (info.version.sdkInt >= 33) shouldRequestPhotoManager = false;
+        }
+        if (shouldRequestPhotoManager) {
+          ps = await PhotoManager.requestPermissionExtend();
+        }
+      } catch (_) {}
+    }
+    
     bool hasAudioPermission = false;
     try {
       hasAudioPermission = await _audioQuery.permissionsStatus();
@@ -860,6 +878,7 @@ class MediaProvider extends ChangeNotifier {
           final info = await DeviceInfoPlugin().androidInfo;
           final sdk = info.version.sdkInt;
           if (sdk < 33) {
+            // Android 12 and below: use legacy READ/WRITE_EXTERNAL_STORAGE
             final storageStatus = await Permission.storage.request();
             if (storageStatus.isGranted) {
               isStorageGranted = true;
@@ -869,8 +888,16 @@ class MediaProvider extends ChangeNotifier {
             await Permission.accessMediaLocation.request();
             PhotoManager.setIgnorePermissionCheck(true);
           } else {
+            // Android 13+: request All Files Access (MANAGE_EXTERNAL_STORAGE).
+            // READ_MEDIA_IMAGES / READ_MEDIA_VIDEO have been removed from the manifest
+            // per Google Play policy — MANAGE_EXTERNAL_STORAGE covers all media access
+            // for a file manager. photo_manager is unlocked via setIgnorePermissionCheck.
             try {
-              ps = await PhotoManager.requestPermissionExtend();
+              final manageStatus = await Permission.manageExternalStorage.request();
+              if (manageStatus.isGranted) {
+                isStorageGranted = true;
+                ps = PermissionState.authorized;
+              }
             } catch (_) {}
 
             try {
